@@ -68,26 +68,57 @@ png_datetime_split<-lapply(png_datetime_split, function(x)
 
 avg_alt<-lapply(png_datetime_split, function(x) 
 {
-  
+  #x<-png_datetime_split[[1]]
   exact<-x %>%
     left_join(lidar_merge, by = c('png_datetime_nz' = 'nz_datetime'))
   
   y<-lidar_merge%>%
     filter(nz_datetime >= x$avg_start_nz & nz_datetime <= x$avg_end_nz)%>%
     #filter out surrounding values that are more than 20 cm different than at exact time
-    filter(laser_altitude_cm >= exact$laser_altitude_cm - 20 & laser_altitude_cm <= exact$laser_altitude_cm + 20)
-  
+    #filter(laser_altitude_cm >= exact$laser_altitude_cm - 20 & laser_altitude_cm <= exact$laser_altitude_cm + 20)%>%
+    mutate(num_avg = n())
+
   exact%>%
     mutate(avg_alt_cm = mean(y$laser_altitude_cm),
-           time_offset_alt_avg = time_offset_alt_avg)
+           time_offset_alt_avg = time_offset_alt_avg,
+           num_avg = unique(y$num_avg))
 
   })
 
 avg_alt_df<-do.call(rbind, avg_alt)
 
 avg_alt_df<-avg_alt_df%>%
-  dplyr::select(vlc_filename, png_datetime_gmt, png_datetime_nz, laser_altitude_cm, avg_alt_cm, everything())
+  dplyr::select(vlc_filename, png_datetime_gmt, png_datetime_nz, laser_altitude_cm, avg_alt_cm, tilt_deg, everything())
 
-write.csv(avg_alt_df, paste0('./altperimage_',as.character(Sys.Date()),'.csv'), row.names = F)
+write.csv(avg_alt_df, paste0(path,'/altperimage_',as.character(Sys.Date()),'.csv'), row.names = F)
 
-          
+# Lidar choice ----
+
+lidar_type = as.list(c('exact','average'))
+
+#######
+
+lapply(lidar_type, function(x){
+  
+  if (x == 'exact'){
+  lidar_alt = avg_alt_df$laser_altitude_cm
+} else if (x == 'average'){
+  lidar_alt = avg_alt_df$avg_alt_cm
+}
+  
+whalelength<-avg_alt_df%>%
+  mutate(Folder = date,
+         Content = 'sa',
+         Notes = '',
+         Best_image = vlc_filename,
+         Blank1 = '',
+         Blank2 = '',
+         time = png_datetime_nz,
+         Blank3 = '',
+         tilt = tilt_deg,
+         Lidar = lidar_alt*0.01)%>% #cm to m for whalelength
+  dplyr::select(Folder, Content, Notes, Best_image, Blank1, Blank2,
+                time, Blank3, tilt, Lidar, longitude, latitude)
+
+openxlsx::write.xlsx(whalelength, paste0(path,'/whalelength_',date,'_',x,'_',as.character(Sys.Date()),'.xlsx'), rowNames = F, sheetName="Sheet1")
+})
