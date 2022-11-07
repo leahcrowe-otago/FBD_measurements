@@ -5,9 +5,9 @@ library(exifr)
 
 # Date and path ----
 
-date <- '20221004'
+date <- '20221010'
 path <- paste0("./Images/", date)
-
+offset_s<--(seconds(54)) # how much faster is the metadata time than the GPS
 # LiDAR ----
 
 lidar_list <- list.files(path, ".CSV")
@@ -25,16 +25,29 @@ lidar_merge <- lidar_merge %>%
 
 # .MOV start time ----
 
-mov_list <- paste0(path, '/', list.files(path, ".MOV"))
+mov_list <- paste0(path, '/', list.files(path, ".MOV$"))
 mov_metadata <- exifr::read_exif(unlist(mov_list))
 mov_metadata <-
   exifr::read_exif(unlist(mov_list),
-                   tags = c("FileName", "FileModifyDate", "GPSCoordinates-err"))
+                   tags = c("FileName", "FileModifyDate", "GPSLatitude", "GPSLongitude", "GPSAltitude", "GPSCoordinates", "Duration"))
 mov_metadata <- mov_metadata %>%
-  mutate(mov_datetime_start_gmt = ymd_hms(FileModifyDate, tz = "GMT")) %>%
+  mutate(offset_FileModifyDate = ymd_hms(FileModifyDate) - offset_s)%>%
+  mutate(mov_datetime_start_gmt = ymd_hms(offset_FileModifyDate, tz = "GMT") - seconds(Duration)) %>% #start time is the metadata time minus the duration of the video
   mutate(mov_datetime_start_nz = ymd_hms(format(mov_datetime_start_gmt, tz = "Pacific/Auckland")))
 
-# .png snapshot from VLC time
+# .jpg from drone ----
+
+jpg_list <- paste0(path, '/', list.files(path, ".JPG"))
+jpg_metadata <- exifr::read_exif(unlist(jpg_list))
+jpg_metadata <-
+  exifr::read_exif(unlist(jpg_list),
+                   tags = c("FileName", "DateTimeOriginal", "GPSLatitude", "GPSLongitude", "GPSAltitude", "GPSCoordinates"))
+jpg_metadata <- jpg_metadata %>%
+  mutate(offset_DateTimeOriginal = ymd_hms(DateTimeOriginal) - offset_s)%>%
+  mutate(jpg_datetime_start_gmt = ymd_hms(offset_DateTimeOriginal, tz = "GMT")) %>% #
+  mutate(jpg_datetime_start_nz = ymd_hms(format(jpg_datetime_start_gmt, tz = "Pacific/Auckland")))
+
+# .png snapshot from VLC time ----
 
 png_df <- data.frame(vlc_filename = unlist(list.files(path, ".png")))
 png_df <- png_df %>%
@@ -69,28 +82,35 @@ png_datetime_split<-lapply(png_datetime_split, function(x)
 avg_alt<-lapply(png_datetime_split, function(x) 
 {
   #x<-png_datetime_split[[1]]
+  print(x)
   exact<-x %>%
     left_join(lidar_merge, by = c('png_datetime_nz' = 'nz_datetime'))
   
   y<-lidar_merge%>%
     filter(nz_datetime >= x$avg_start_nz & nz_datetime <= x$avg_end_nz)%>%
-    #filter out surrounding values that are more than 20 cm different than at exact time
-    #filter(laser_altitude_cm >= exact$laser_altitude_cm - 20 & laser_altitude_cm <= exact$laser_altitude_cm + 20)%>%
     mutate(num_avg = n())
-
+print(y)
   exact%>%
     mutate(avg_alt_cm = mean(y$laser_altitude_cm),
            time_offset_alt_avg = time_offset_alt_avg,
-           num_avg = unique(y$num_avg))
+           num_avg = nrow(y),
+           range = max(y$laser_altitude_cm)-min(y$laser_altitude_cm))
 
   })
 
 avg_alt_df<-do.call(rbind, avg_alt)
 
 avg_alt_df<-avg_alt_df%>%
-  dplyr::select(vlc_filename, png_datetime_gmt, png_datetime_nz, laser_altitude_cm, avg_alt_cm, tilt_deg, everything())
+  dplyr::select(vlc_filename, png_datetime_gmt, png_datetime_nz, laser_altitude_cm, avg_alt_cm, tilt_deg, everything())%>%
+  mutate(issue = case_when(
+    laser_altitude_cm > 5000 ~ 'Y', #erroneously high alt value
+    avg_alt_cm > 5000 ~ 'Y', #erroneously high average alt value
+    time_offset_alt_avg == 2 & range > 80 ~ 'Y', #range of >80cm over 5secs
+    time_offset_alt_avg == 1 & range > 40 ~ 'Y', #range of >40cm over 3secs
+    TRUE ~ "N"
+  ))
 
-write.csv(avg_alt_df, paste0(path,'/altperimage_',as.character(Sys.Date()),'.csv'), row.names = F)
+write.csv(avg_alt_df, paste0(path,'/altperimage_',date,"-",as.character(Sys.Date()),'.csv'), row.names = F)
 
 # Lidar choice ----
 
@@ -107,6 +127,7 @@ lapply(lidar_type, function(x){
 }
   
 whalelength<-avg_alt_df%>%
+  filter(issue == "N")%>% # no issues
   mutate(Folder = date,
          Content = 'sa',
          Notes = '',
