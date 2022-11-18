@@ -4,10 +4,13 @@ library(stringr)
 library(exifr)
 
 # Date and path ----
+#year <- '2022'
+trip <- '2022_07'
+date <- '20220711'
+offset_s<--(seconds(36)) # how much faster is the metadata time than the GPS
 
-date <- '20221010'
-path <- paste0("./Images/", date)
-offset_s<--(seconds(54)) # how much faster is the metadata time than the GPS
+path <- paste0("./Images/",trip, "/", date)
+#path <- paste0("Z:/Fiordland bottlenose dolphin/Long Term Monitoring/Dusky Sound Dolphin Monitoring/", year,"/", trip,"/UAS/",date)
 # LiDAR ----
 
 lidar_list <- list.files(path, ".CSV")
@@ -20,8 +23,7 @@ lidar_merge <- do.call(rbind, lidar_files)
 lidar_merge <- lidar_merge %>%
   dplyr::rename('gmt_date' = 'X.gmt_date') %>%
   mutate(gmt_datetime = ymd_hms(paste(gmt_date, gmt_time), tz = "GMT")) %>%
-  mutate(nz_datetime = ymd_hms(format(gmt_datetime, tz = "Pacific/Auckland"))) %>%
-  arrange(nz_datetime)
+  mutate(nz_datetime = with_tz(gmt_datetime, tz = "Pacific/Auckland")) 
 
 # .MOV start time ----
 
@@ -31,25 +33,49 @@ mov_metadata <-
   exifr::read_exif(unlist(mov_list),
                    tags = c("FileName", "FileModifyDate", "GPSLatitude", "GPSLongitude", "GPSAltitude", "GPSCoordinates", "Duration"))
 mov_metadata <- mov_metadata %>%
-  mutate(offset_FileModifyDate = ymd_hms(FileModifyDate) - offset_s)%>%
-  mutate(mov_datetime_start_gmt = ymd_hms(offset_FileModifyDate, tz = "GMT") - seconds(Duration)) %>% #start time is the metadata time minus the duration of the video
-  mutate(mov_datetime_start_nz = ymd_hms(format(mov_datetime_start_gmt, tz = "Pacific/Auckland")))
+  mutate(offset_FileModifyDate =  ymd_hms(FileModifyDate) - offset_s)%>%
+  mutate(mov_datetime_start_gmt = round_date(ymd_hms(offset_FileModifyDate, tz = "GMT") - seconds(Duration), unit = "seconds")) %>% #start time is the metadata time minus the duration of the video
+  mutate(mov_datetime_start_nz = with_tz(mov_datetime_start_gmt, tz = "Pacific/Auckland"))
 
 # .jpg from drone ----
 
 jpg_list <- paste0(path, '/', list.files(path, ".JPG"))
+
+if (length(list.files(path, ".JPG")) > 0) {
 jpg_metadata <- exifr::read_exif(unlist(jpg_list))
 jpg_metadata <-
   exifr::read_exif(unlist(jpg_list),
                    tags = c("FileName", "DateTimeOriginal", "GPSLatitude", "GPSLongitude", "GPSAltitude", "GPSCoordinates"))
 jpg_metadata <- jpg_metadata %>%
   mutate(offset_DateTimeOriginal = ymd_hms(DateTimeOriginal) - offset_s)%>%
-  mutate(jpg_datetime_start_gmt = ymd_hms(offset_DateTimeOriginal, tz = "GMT")) %>% #
-  mutate(jpg_datetime_start_nz = ymd_hms(format(jpg_datetime_start_gmt, tz = "Pacific/Auckland")))
+  mutate(jpg_datetime_nz = ymd_hms(offset_DateTimeOriginal, tz = "Pacific/Auckland")) %>% #
+  mutate(jpg_datetime_gmt = with_tz(jpg_datetime_nz, tz = "GMT"))
+} else {
+  jpg_metadata = data.frame(SourceFile = NA, 
+                              FileName = NA, 
+                              GPSLatitude = NA, 
+                              GPSLongitude = NA, 
+                              jpg_datetime_nz = NA)
+}
+
+x<-jpg_metadata %>% 
+  dplyr::select(SourceFile, FileName, GPSLatitude, GPSLongitude, jpg_datetime_nz)%>%
+  dplyr::rename(nz_datetime = jpg_datetime_nz)
+y<-mov_metadata %>% 
+  dplyr::select(SourceFile, FileName, GPSLatitude, GPSLongitude, mov_datetime_start_nz)%>%
+  dplyr::rename(nz_datetime = mov_datetime_start_nz)
+
+DJI_lidar<-x%>%
+  bind_rows(y)%>%
+  left_join(lidar_merge, by = 'nz_datetime')%>%
+  mutate(DJI_time_correction = offset_s)%>%
+  filter(!is.na(SourceFile))
+
+write.csv(DJI_lidar, paste0(path,"/jpg_lidar.csv"), row.names = F)
 
 # .png snapshot from VLC time ----
 
-png_df <- data.frame(vlc_filename = unlist(list.files(path, ".png")))
+png_df <- data.frame(vlc_filename = unlist(list.files(paste0(path,"/screen grabs"), ".png")))
 png_df <- png_df %>%
   mutate(
     mov_filename = str_sub(vlc_filename, 1, 12),
@@ -110,24 +136,39 @@ avg_alt_df<-avg_alt_df%>%
     TRUE ~ "N"
   ))
 
-write.csv(avg_alt_df, paste0(path,'/altperimage_',date,"-",as.character(Sys.Date()),'.csv'), row.names = F)
+# READ IDs ----
+
+IDs<-readxl::read_excel(paste0("./Images/",trip,"/UAS IDs.xlsx"))
+
+IDs<-IDs%>%
+  filter(ymd(DATE) == ymd(date))%>%
+  mutate(vlc_filename = case_when(
+    !is.na(vlc_filename) ~ paste0(vlc_filename,".png"),
+    is.na(vlc_filename) ~ vlc_filename
+  ))
+
+avg_alt_ID<-IDs%>%
+  left_join(avg_alt_df, by = c("vlc_filename"))
+
+write.csv(avg_alt_ID, paste0(path,'/altperimage_',date,"-",as.character(Sys.Date()),'.csv'), row.names = F)
 
 # Lidar choice ----
 
 lidar_type = as.list(c('exact','average'))
 
-#######
+# output for potential feed into whalength ----
 
 lapply(lidar_type, function(x){
   
   if (x == 'exact'){
-  lidar_alt = avg_alt_df$laser_altitude_cm
+  avg_alt_ID<-avg_alt_ID%>%
+    mutate(lidar_alt = laser_altitude_cm)
 } else if (x == 'average'){
-  lidar_alt = avg_alt_df$avg_alt_cm
+  avg_alt_ID<-avg_alt_ID%>%
+    mutate(lidar_alt = avg_alt_cm)
 }
   
-whalelength<-avg_alt_df%>%
-  filter(issue == "N")%>% # no issues
+whalelength<-avg_alt_ID%>%
   mutate(Folder = date,
          Content = 'sa',
          Notes = '',
@@ -136,10 +177,11 @@ whalelength<-avg_alt_df%>%
          Blank2 = '',
          time = png_datetime_nz,
          Blank3 = '',
-         tilt = tilt_deg,
+         tilt = tilt_deg, 
          Lidar = lidar_alt*0.01)%>% #cm to m for whalelength
-  dplyr::select(Folder, Content, Notes, Best_image, Blank1, Blank2,
-                time, Blank3, tilt, Lidar, longitude, latitude)
+  filter(issue == "N")%>% # no issues
+  dplyr::select(ID,Folder, Content, Notes, Best_image, Blank1, Blank2,
+                time, Blank3, tilt, Lidar, longitude, latitude) 
 
 openxlsx::write.xlsx(whalelength, paste0(path,'/whalelength_',date,'_',x,'_',as.character(Sys.Date()),'.xlsx'), rowNames = F, sheetName="Sheet1")
 })
