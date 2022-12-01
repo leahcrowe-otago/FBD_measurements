@@ -6,14 +6,14 @@ library(exifr)
 # Date and path ----
 #year <- '2022'
 trip <- '2022_07'
-date <- '20220711'
-offset_s<--(seconds(36)) # how much faster is the metadata time than the GPS
+date <- '20220710'
+offset_s<-(seconds(-36)) # how much faster is the metadata time than the GPS
 
-path <- paste0("./Images/",trip, "/", date)
+path <- paste0("./Images/", trip, "/", date)
 #path <- paste0("Z:/Fiordland bottlenose dolphin/Long Term Monitoring/Dusky Sound Dolphin Monitoring/", year,"/", trip,"/UAS/",date)
 # LiDAR ----
 
-lidar_list <- list.files(path, ".CSV")
+lidar_list <- list.files(path, ".CSV", ignore.case = TRUE)
 
 lidar_files <-
   lapply(lidar_list, function(x)
@@ -71,7 +71,9 @@ DJI_lidar<-x%>%
   mutate(DJI_time_correction = offset_s)%>%
   filter(!is.na(SourceFile))
 
-write.csv(DJI_lidar, paste0(path,"/jpg_lidar.csv"), row.names = F)
+#lidar_merge%>%filter(nz_datetime == '2022-02-20 12:26:54')
+
+write.csv(DJI_lidar, paste0(path,"/measure_files/DJI_lidar.csv"), row.names = F)
 
 # .png snapshot from VLC time ----
 
@@ -150,7 +152,7 @@ IDs<-IDs%>%
 avg_alt_ID<-IDs%>%
   left_join(avg_alt_df, by = c("vlc_filename"))
 
-write.csv(avg_alt_ID, paste0(path,'/altperimage_',date,"-",as.character(Sys.Date()),'.csv'), row.names = F)
+write.csv(avg_alt_ID, paste0(path,'/measure_files/altperimage_',date,"-",as.character(Sys.Date()),'.csv'), row.names = F)
 
 # Lidar choice ----
 
@@ -183,5 +185,5 @@ whalelength<-avg_alt_ID%>%
   dplyr::select(ID,Folder, Content, Notes, Best_image, Blank1, Blank2,
                 time, Blank3, tilt, Lidar, longitude, latitude) 
 
-openxlsx::write.xlsx(whalelength, paste0(path,'/whalelength_',date,'_',x,'_',as.character(Sys.Date()),'.xlsx'), rowNames = F, sheetName="Sheet1")
+openxlsx::write.xlsx(whalelength, paste0(path,'/measure_files/whalelength_',date,'_',x,'_',as.character(Sys.Date()),'.xlsx'), rowNames = F, sheetName="Sheet1")
 })
