@@ -6,4 +6,10 @@
 2. Screen grab the best image of the dolphin above that shows rostrum to tail at/near the surface
 3. Add screen grab filename to the time and ID from #1
 4. Run "Altitudes for snapshots" for each day of droning
-5. Run "measurements_demo" to group by age and sex classes
+  - this adds a check to make sure GPS of the LiDAR and the metadata from the drone match up
+  - finds altitude for each snapshot
+  - matches up to IDs and outputs file to enter measurements
+5. Take the "altperimage_*" file to populate with measurements
+  - filter by issue == "N"
+  - hide columns C, G, H, and J to AC
+6. Run "measurements_demo" to group by age and sex classes
