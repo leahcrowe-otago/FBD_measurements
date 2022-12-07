@@ -12,4 +12,6 @@
 5. Take the "altperimage_*" file to populate with measurements
   - filter by issue == "N"
   - hide columns C, G, H, and J to AC
+  - Run each resulting image through Whalength
+    - I1P Video stills, -1.5 cm offset
 6. Run "measurements_demo" to group by age and sex classes
