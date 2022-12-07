@@ -6,7 +6,7 @@ library(exifr)
 # Date and path ----
 #year <- '2022'
 trip <- '2022_07'
-date <- '20220710'
+date <- '20220711'
 offset_s<-(seconds(-36)) # how much faster is the metadata time than the GPS
 
 path <- paste0("./Images/", trip, "/", date)
@@ -150,7 +150,12 @@ IDs<-IDs%>%
   ))
 
 avg_alt_ID<-IDs%>%
-  left_join(avg_alt_df, by = c("vlc_filename"))
+  left_join(avg_alt_df, by = c("vlc_filename"))%>%
+  mutate(laser_altitude_m = laser_altitude_cm*0.01,
+         avg_alt_m = avg_alt_cm*0.01,
+         actual_length = '',
+         avg_length = '')%>%
+  dplyr::select(-laser_altitude_cm, -avg_alt_cm)
 
 write.csv(avg_alt_ID, paste0(path,'/measure_files/altperimage_',date,"-",as.character(Sys.Date()),'.csv'), row.names = F)
 
@@ -164,10 +169,10 @@ lapply(lidar_type, function(x){
   
   if (x == 'exact'){
   avg_alt_ID<-avg_alt_ID%>%
-    mutate(lidar_alt = laser_altitude_cm)
+    mutate(lidar_alt = laser_altitude_m)
 } else if (x == 'average'){
   avg_alt_ID<-avg_alt_ID%>%
-    mutate(lidar_alt = avg_alt_cm)
+    mutate(lidar_alt = avg_alt_m)
 }
   
 whalelength<-avg_alt_ID%>%
@@ -180,10 +185,10 @@ whalelength<-avg_alt_ID%>%
          time = png_datetime_nz,
          Blank3 = '',
          tilt = tilt_deg, 
-         Lidar = lidar_alt*0.01)%>% #cm to m for whalelength
+         Lidar = lidar_alt)%>% #cm to m for whalelength
   filter(issue == "N")%>% # no issues
   dplyr::select(ID,Folder, Content, Notes, Best_image, Blank1, Blank2,
                 time, Blank3, tilt, Lidar, longitude, latitude) 
-
+#movie_time is nonsense because it doesn't recognize the format of mm:ss as character to identify when in the vid the dolphin shows up
 openxlsx::write.xlsx(whalelength, paste0(path,'/measure_files/whalelength_',date,'_',x,'_',as.character(Sys.Date()),'.xlsx'), rowNames = F, sheetName="Sheet1")
 })
