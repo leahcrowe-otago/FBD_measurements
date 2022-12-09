@@ -36,6 +36,8 @@ measurement_files_filter<-lapply(measurement_files, function(x)
   )
 
 measurement_merge <- do.call(rbind, measurement_files_filter)
+#number measurements
+nrow(measurement_merge)
 
 measurement_ID<-measurement_merge%>%
   ungroup()%>%
@@ -50,6 +52,8 @@ measurement_ID<-measurement_merge%>%
          trip = trip)%>%
   distinct(ID, actual_length_mean, actual_length_sd, n, trip)
 
+nrow(measurement_ID)
+
 # sluething suspect measurements
 ggplot(measurement_ID)+
   geom_point(aes(x = actual_length_mean, y = actual_length_sd))
@@ -59,7 +63,7 @@ measurement_ID%>%
   arrange(actual_length_sd)
 
 measurement_merge%>%
-  filter(ID == 'CHAZ')
+  filter(ID == 'NICKY')
 ```
 ```{r measure_per_individual, echo = F}
 
