@@ -1,12 +1,23 @@
+---
+title: "FBD measurements"
+author: "Leah Crowe"
+date: '2022-12-09'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
 library(dplyr)
 library(lubridate)
 library(stringr)
 library(readxl)
+library(ggplot2)
 
 # Date and path ----
 calf_year <- '2022'
 trip <- '2022_07'
 #date <- '20220711'
+#add population variable to datasheet
+#write code to merge data xlsx from Whalelength
 
 #grabs all alts from altperimage files
 path <- paste0("./Images/", trip)
@@ -38,8 +49,8 @@ measurement_ID<-measurement_merge%>%
          n = n(),
          trip = trip)%>%
   distinct(ID, actual_length_mean, actual_length_sd, n, trip)
-  
-library(ggplot2)
+
+# sluething suspect measurements
 ggplot(measurement_ID)+
   geom_point(aes(x = actual_length_mean, y = actual_length_sd))
           
@@ -49,11 +60,15 @@ measurement_ID%>%
 
 measurement_merge%>%
   filter(ID == 'CHAZ')
+```
+```{r measure_per_individual, echo = F}
 
 ggplot(measurement_ID)+
   geom_histogram(aes(x = n), binwidth = 1, color = "black")+
   facet_wrap(~trip)
-
+```
+Fig. 1: number of times individuals were measured per trip
+```{r demo, include = F}
 # life history update ----
 
 source('C:/Users/leahm/Documents/git_otago/Fiordland_reporting/scripts/life_history_ageclass update.R', local = TRUE, verbose = F)$value
@@ -95,11 +110,19 @@ age_calc<-age_length%>%
   
 age_calc%>%
   filter(is.na(BIRTH_YEAR))
+```
+```{r age_length, echo = F}
+#ggplot(age_calc, aes(x = age, y = log(actual_length_mean)))+
+  #geom_point()+
+  #geom_smooth(se = FALSE, method = "gam", formula = y ~ s(x, bs = "cs"))
 
-ggplot(age_calc, aes(x = age, y = log(actual_length_mean)))+
+ggplot(age_calc, aes(x = age, y = actual_length_mean))+
   geom_point()+
-  geom_smooth(se = FALSE, method = "gam", formula = y ~ s(x, bs = "cs"))
+  facet_wrap(~trip)
+```
+Fig. 2: Each point represents the mean total length of an individual at its age in July 2022 for animals whose birth year is known. 
 
+```{r summary_stats_ageclass, include = F}
 age_length%>%
   group_by(trip, AGECLASS)%>%
   mutate(actual_length_mean_agg = mean(actual_length_mean), #mean of lengths measured using altitude at exact time
@@ -110,15 +133,23 @@ age_length%>%
          #avg_length_range = paste0(min(avg_length_mean),'–',max(avg_length_mean)),
          num_ind = n())%>%
   distinct(trip, AGECLASS, actual_length_mean_agg, actual_length_sd_agg, actual_length_range, num_ind)
+```
+```{r ageclass_boxplots, echo = F}
 
-ggplot(age_length)+
+ggplot(age_length%>%filter(!is.na(AGECLASS)))+
   geom_boxplot(aes(x=AGECLASS, y = actual_length_mean))
+
+```
+Fig. 3: Summary of total lengths (m) per age-class. C = calf of the year, J = 1-2 y, S-A = 3-8, A = 9+.
+
+```{r summary_stats_agesex, include = F}
 
 age_length%>%
   filter(actual_length_mean < 1.8 & AGECLASS == "C")
 
 # age and sex grouping ----
 
+###Assumed males assigned
 agesex_length<-measurements_demo_ind%>%
   #mutate(YEAR = year(DATE))%>%
   group_by(YEAR, SEX, AGECLASS)%>%
@@ -136,6 +167,12 @@ agesex_length%>%
          num_ind = n())%>%
   distinct(YEAR, SEX, AGECLASS, actual_length_mean_agg, actual_length_sd_agg, actual_length_range, num_ind)
 
-ggplot(agesex_length)+
+measurements_demo_ind%>%
+  filter(SEX == "F")
+```
+```{r agesex_boxplots, echo = F}
+ggplot(agesex_length%>%filter(!is.na(SEX)))+
   geom_boxplot(aes(x=AGECLASS, y=actual_length_mean))+
   facet_wrap(~SEX)
+```
+Fig. 4: Summary of total lengths (m) per sex and age-class. C = calf of the year, J = 1-2 y, S-A = 3-8, A = 9+. F = female, M = male, X = unknown.
