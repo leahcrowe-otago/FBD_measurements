@@ -9,8 +9,8 @@
   - this adds a check to make sure GPS of the LiDAR and the metadata from the drone match up
   - finds altitude for each snapshot
   - matches up to IDs and outputs file to enter measurements
-  - identifies if altimeter reading meets criteria per Dickson et al. 2020 ("issues" column"
-5. Take the "altperimage_*" file to populate with measurements
+  - identifies if altimeter reading meets criteria per Dickson et al. 2020 ("issues" column)
+5. Populate the "altperimage_*" file with measurements (also consider instead merging output csvs from Whalelength)
   - filter by issue == "N"
   - hide columns C, G, H, and J to AC
   - Run each resulting image through Whalength
