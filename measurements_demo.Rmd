@@ -156,10 +156,10 @@ age_length%>%
 ###Assumed males assigned
 agesex_length<-measurements_demo_ind%>%
   #mutate(YEAR = year(DATE))%>%
-  group_by(YEAR, SEX, AGECLASS)%>%
-  mutate(SEX = case_when(
-    ID == "LOWSPOT" | ID == "KEEL" | ID == "DUB" ~ 'M',
-    TRUE ~ SEX))
+  group_by(YEAR, SEX, AGECLASS)#%>%
+  # mutate(SEX = case_when(
+  #   ID == "LOWSPOT" | ID == "KEEL" | ID == "DUB" ~ 'M',
+  #   TRUE ~ SEX))
 
 agesex_length%>%
   mutate(actual_length_mean_agg = mean(actual_length_mean), #mean of lengths measured using altitude at exact time
