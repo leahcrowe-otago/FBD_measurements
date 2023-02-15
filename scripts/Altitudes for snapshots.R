@@ -6,7 +6,7 @@ library(exifr)
 # Date and path ----
 #year <- '2022'
 trip <- '2022_07'
-date <- '20220711'
+date <- '20220715'
 offset_s<-(seconds(-36)) # how much faster is the metadata time than the GPS
 
 path <- paste0("./Images/", trip, "/", date)
@@ -72,6 +72,10 @@ DJI_lidar<-x%>%
   filter(!is.na(SourceFile))
 
 #lidar_merge%>%filter(nz_datetime == '2022-02-20 12:26:54')
+
+if (file.exists(paste0(path,"/measure_files")) == FALSE) {
+  dir.create(paste0(path,"/measure_files"))
+}
 
 write.csv(DJI_lidar, paste0(path,"/measure_files/DJI_lidar.csv"), row.names = F)
 
@@ -140,7 +144,7 @@ avg_alt_df<-avg_alt_df%>%
 
 # READ IDs ----
 
-IDs<-readxl::read_excel(paste0("./Images/",trip,"/UAS IDs.xlsx"))
+IDs<-readxl::read_excel(paste0("./Images/",trip,"/",trip, " UAS IDs.xlsx"))
 
 IDs<-IDs%>%
   filter(ymd(DATE) == ymd(date))%>%
