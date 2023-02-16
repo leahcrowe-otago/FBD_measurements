@@ -5,9 +5,9 @@ library(exifr)
 
 # Date and path ----
 #year <- '2022'
-trip <- '2022_07'
-date <- '20220715'
-offset_s<-(seconds(-36)) # how much faster is the metadata time than the GPS
+trip <- '2022_10'
+date <- '20221025'
+offset_s<-(seconds(10)) # how much faster is the metadata time than the GPS
 
 path <- paste0("./Images/", trip, "/", date)
 #path <- paste0("Z:/Fiordland bottlenose dolphin/Long Term Monitoring/Dusky Sound Dolphin Monitoring/", year,"/", trip,"/UAS/",date)
@@ -76,6 +76,13 @@ DJI_lidar<-x%>%
 if (file.exists(paste0(path,"/measure_files")) == FALSE) {
   dir.create(paste0(path,"/measure_files"))
 }
+
+##distance between points from LiDAR and points from GPS
+m_nm<-1/1852
+
+DJI_lidar<-DJI_lidar%>%
+  mutate(dist_km = geosphere::distVincentyEllipsoid(matrix(c(GPSLongitude,GPSLatitude), ncol = 2),matrix(c(longitude, latitude), ncol =2),a=6378137, f=1/298.257222101)*m_nm)
+
 
 write.csv(DJI_lidar, paste0(path,"/measure_files/DJI_lidar.csv"), row.names = F)
 
@@ -196,3 +203,4 @@ whalelength<-avg_alt_ID%>%
 #movie_time is nonsense because it doesn't recognize the format of mm:ss as character to identify when in the vid the dolphin shows up
 openxlsx::write.xlsx(whalelength, paste0(path,'/measure_files/whalelength_',date,'_',x,'_',as.character(Sys.Date()),'.xlsx'), rowNames = F, sheetName="Sheet1")
 })
+
