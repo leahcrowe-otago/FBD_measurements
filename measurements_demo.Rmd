@@ -18,7 +18,6 @@ library(ggplot2)
 
 #grabs all alts from altperimage files
 path<-"./Images/"
-calf_year = '2022'
 
 measurement_list <- list.files(path, glob2rx("altperimage*.xlsx"), ignore.case = TRUE, recursive = TRUE)
 
@@ -31,7 +30,9 @@ measurement_files_filter<-lapply(measurement_files, function(x)
   x%>%
     filter(issue == 'N' & !is.na(actual_length))%>%
     distinct(DATE, vlc_filename, ID, actual_length)%>% #avg_length_mean, avg_length_sd)
-    mutate(trip = paste0(year(DATE),"_",month(DATE)))
+    mutate(trip = paste0(year(DATE),"_",month(DATE)))%>%
+    mutate(trip = str_replace(trip, "_7", "_07"))%>%
+    mutate(trip = str_replace(trip, "2023_1", "2023_01"))
   )
 
 measurement_merge <- bind_rows(measurement_files_filter)
@@ -39,7 +40,7 @@ measurement_merge <- bind_rows(measurement_files_filter)
 #number measurements
 nrow(measurement_merge)
 
-measurement_ID<-measurement_merge%>%
+measurement_ID_trip<-measurement_merge%>%
   ungroup()%>%
   dplyr::select(ID, actual_length, trip)%>%
   filter(ID != 'NA')%>%
@@ -49,24 +50,25 @@ measurement_ID<-measurement_merge%>%
          #avg_length_mean = mean(avg_length), #mean of lengths measured using averaged altitude +/- 2 sec from exact time
          #avg_length_sd = sd(avg_length), #sd of lengths measured using averaged altitude +/- 2 sec from exact time
          n = n())%>%
-  distinct(ID, actual_length_mean, actual_length_sd, n, trip)
+  distinct(ID, actual_length_mean, actual_length_sd, n, trip)%>%
+  mutate(actual_length_CV = actual_length_sd/actual_length_mean*100)
 
-nrow(measurement_ID)
-
-# sluething suspect measurements
-ggplot(measurement_ID)+
-  geom_point(aes(x = actual_length_mean, y = actual_length_sd))
+nrow(measurement_ID_trip)
           
-measurement_ID%>%
+measurement_ID_trip%>%
   filter(actual_length_sd > 0.1)%>%
   arrange(actual_length_sd)
 
 measurement_merge%>%
-  filter(ID == 'NICKY')
+  filter(ID == 'PONCHO')
 ```
 ```{r measure_per_individual, echo = F}
 
-ggplot(measurement_ID)+
+# sluething suspect measurements
+ggplot(measurement_ID_trip)+
+  geom_point(aes(x = actual_length_mean, y = actual_length_sd))
+
+ggplot(measurement_ID_trip)+
   geom_histogram(aes(x = n), binwidth = 1, color = "black")+
   facet_wrap(~trip)
 ```
@@ -79,11 +81,19 @@ lifehist<-dbReadTable(con, "life_history_ageclass")
 
 # merge lh with measurements ----
 
-measurements_demo_ind<-measurement_ID%>%
+measurements_demo_ind<-measurement_ID_trip%>%
+  filter(ID != '-')%>%
   left_join(lifehist, by = c('ID' = 'NAME'))%>%
-  dplyr::select(trip, ID, actual_length_mean, actual_length_sd, n, SEX, BIRTH_YEAR, FIRST_YEAR, ends_with(calf_year), POD)%>%
-  dplyr::rename(AGECLASS = ends_with(calf_year))%>%
-  mutate(YEAR = calf_year)%>%
+  mutate(YEAR = case_when(
+    as.numeric(str_sub(trip,6,7)) < 9 ~ as.numeric(str_sub(trip,1,4)),
+    as.numeric(str_sub(trip,6,7)) >= 9 ~ as.numeric(str_sub(trip,1,4))+1,
+  ))%>%
+  mutate(month = as.numeric(str_sub(trip,6,7)))%>%
+  dplyr::select(trip, YEAR, ID, actual_length_mean, actual_length_sd, n, SEX, BIRTH_YEAR, FIRST_YEAR, ends_with('2022'), ends_with('2023'), POD, month)%>% 
+  tidyr::pivot_longer(cols = starts_with("X"), names_to = "AGECLASS_YEAR", values_to = "AGECLASS")%>%
+  mutate(AGECLASS_YEAR = str_replace(AGECLASS_YEAR, "X", ""))%>%
+  filter(YEAR == AGECLASS_YEAR)%>%
+  #dplyr::rename(AGECLASS = ends_with(YEAR))%>%
   mutate(AGECLASS = case_when(
     ID == "SUNSHINE" ~ "C",
     TRUE ~ AGECLASS
@@ -113,17 +123,74 @@ age_calc<-age_length%>%
   
 age_calc%>%
   filter(is.na(BIRTH_YEAR))
+
 ```
 ```{r age_length, echo = F}
+
 #ggplot(age_calc, aes(x = age, y = log(actual_length_mean)))+
   #geom_point()+
   #geom_smooth(se = FALSE, method = "gam", formula = y ~ s(x, bs = "cs"))
 
+# length per age per trip ----
 ggplot(age_calc, aes(x = age, y = actual_length_mean, color = POD))+
   geom_point()+
-  facet_wrap(~trip)
+  geom_errorbar(aes(ymin=actual_length_mean-actual_length_sd, ymax=actual_length_mean+actual_length_sd))+
+  facet_wrap(~trip)+
+  theme(legend.position = "bottom")
+
+# Individuals that have been measured on more than one trip ----
+ID_age<-age_calc%>%
+  group_by(ID)%>%
+  mutate(n = n())%>%
+  filter(n > 1)%>%
+  arrange(ID,trip)%>%
+  mutate(length_diff = lead(actual_length_mean) - actual_length_mean)
+  
+ggplot(ID_age, aes(x = trip, y = actual_length_mean, color = SEX))+
+  geom_point()+
+  geom_errorbar(aes(ymin=actual_length_mean-actual_length_sd, ymax=actual_length_mean+actual_length_sd))+
+  facet_wrap(~ID)+
+  theme(legend.position = "bottom")
+
+# one measurement for each individual for each of its ages ----
+age_calc_year_mean<-age_calc%>%
+  group_by(ID, YEAR)%>%
+  mutate(actual_length_mean_mean = mean(as.numeric(actual_length_mean)), #mean of lengths measured using altitude at exact time
+         actual_length_mean_sd = sd(as.numeric(actual_length_mean)), #sd of lengths measured using altitude at exact time
+         n = n())%>%
+  distinct(ID, age, n, SEX, BIRTH_YEAR, FIRST_YEAR, POD, YEAR, actual_length_mean_mean, actual_length_mean_sd)  
+
+ggplot(age_calc_year_mean, aes(x = age, y = actual_length_mean_mean, color = POD))+
+  geom_point()+
+  geom_line(aes(group = ID))+
+  geom_smooth()+
+  theme(legend.position = "bottom")
+
+age_calc_month<-age_calc%>%
+  mutate(age = case_when(
+    month == 9 ~ age + 0,
+    month == 10 ~ age + 1/12,
+    month == 11 ~ age + 2/12,
+    month == 12 ~ age + 3/12,
+    month == 1 ~ age + 4/12,
+    month == 2 ~ age + 5/12,
+    month == 3 ~ age + 6/12,
+    month == 4 ~ age + 7/12,
+    month == 5 ~ age + 8/12,
+    month == 6 ~ age + 9/12,
+    month == 7 ~ age + 10/12,
+    month == 8 ~ age + 11/12,
+  ))
+
+
+ggplot(age_calc_month, aes(x = age, y = actual_length_mean, color = POD))+
+  geom_point()+
+  geom_line(aes(group = ID))+
+  geom_smooth()+
+  theme(legend.position = "bottom")
+
 ```
-Fig. 2: Each point represents the mean total length of an individual at its age in July 2022 for animals whose birth year is known. 
+Fig. 2: Each point represents the mean total length of an individual at its age for animals whose birth year is known. 
 
 ```{r summary_stats_ageclass, include = F}
 age_length%>%
@@ -139,44 +206,42 @@ age_length%>%
 ```
 ```{r ageclass_boxplots, echo = F}
 
-ggplot(age_length%>%filter(!is.na(AGECLASS)))+
-  geom_boxplot(aes(x=AGECLASS, y = actual_length_mean, color = POD))+
-  facet_wrap(~trip)
+ageclass_length_peryear<-age_length%>%
+  filter(!is.na(AGECLASS))%>%
+  group_by(ID, YEAR)%>%
+  mutate(actual_length_mean_mean = mean(as.numeric(actual_length_mean)), #mean of lengths measured using altitude at exact time
+         actual_length_mean_sd = sd(as.numeric(actual_length_mean)), #sd of lengths measured using altitude at exact time
+         n = n())%>%
+  distinct(ID, AGECLASS, n, SEX, BIRTH_YEAR, FIRST_YEAR, POD, YEAR, actual_length_mean_mean, actual_length_mean_sd) 
+
+
+ggplot(ageclass_length_peryear)+
+  geom_boxplot(aes(x=AGECLASS, y = actual_length_mean_mean, color = POD))+
+  theme(legend.position = "bottom")
 
 ```
 Fig. 3: Summary of total lengths (m) per age-class. C = calf of the year, J = 1-2 y, S-A = 3-8, A = 9+.
 
-```{r summary_stats_agesex, include = F}
 
-age_length%>%
-  filter(actual_length_mean < 1.8 & AGECLASS == "C")
-
-# age and sex grouping ----
-
-###Assumed males assigned
-agesex_length<-measurements_demo_ind%>%
-  #mutate(YEAR = year(DATE))%>%
-  group_by(YEAR, SEX, AGECLASS)#%>%
-  # mutate(SEX = case_when(
-  #   ID == "LOWSPOT" | ID == "KEEL" | ID == "DUB" ~ 'M',
-  #   TRUE ~ SEX))
-
-agesex_length%>%
-  mutate(actual_length_mean_agg = mean(actual_length_mean), #mean of lengths measured using altitude at exact time
-         actual_length_sd_agg = sd(actual_length_mean), #sd of lengths measured using altitude at exact time
-         actual_length_range = paste0(round(min(actual_length_mean),2),'–',round(max(actual_length_mean), 2)),
-         #avg_length_mean_agg = mean(avg_length_mean), #mean of lengths measured using averaged altitude +/- 2 sec from exact time
-         #avg_length_sd_agg = sd(avg_length_mean), #sd of lengths measured using averaged altitude +/- 2 sec from exact time
-         #avg_length_range = paste0(min(avg_length_mean),'–',max(avg_length_mean)),
-         num_ind = n())%>%
-  distinct(YEAR, SEX, AGECLASS, actual_length_mean_agg, actual_length_sd_agg, actual_length_range, num_ind)
-
-measurements_demo_ind%>%
-  filter(SEX == "F")
-```
 ```{r agesex_boxplots, echo = F}
-ggplot(agesex_length%>%filter(!is.na(SEX)))+
-  geom_boxplot(aes(x=AGECLASS, y=actual_length_mean, color = POD))+
-  facet_wrap(~SEX)
+
+agesex_length_peryear<-age_length%>%
+  filter(!is.na(SEX))%>%
+  group_by(ID, YEAR)%>%
+  mutate(actual_length_mean_mean = mean(as.numeric(actual_length_mean)), #mean of lengths measured using altitude at exact time
+         actual_length_mean_sd = sd(as.numeric(actual_length_mean)), #sd of lengths measured using altitude at exact time
+         n = n())%>%
+  distinct(ID, n, SEX, AGECLASS, BIRTH_YEAR, FIRST_YEAR, POD, YEAR, actual_length_mean_mean, actual_length_mean_sd)
+
+ggplot(agesex_length_peryear)+
+  geom_boxplot(aes(x=AGECLASS, y=actual_length_mean_mean, color = POD))+
+  facet_wrap(~SEX)+
+  theme(legend.position = "bottom")
+
+agesex_length_peryear%>%
+  filter(actual_length_mean_mean > 3.1)
+
+agesex_length_peryear%>%
+  filter(ID == "COMET")
 ```
 Fig. 4: Summary of total lengths (m) per sex and age-class. C = calf of the year, J = 1-2 y, S-A = 3-8, A = 9+. F = female, M = male, X = unknown.
