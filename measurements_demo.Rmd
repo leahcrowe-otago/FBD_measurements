@@ -1,8 +1,9 @@
 ---
 title: "FBD measurements"
 author: "Leah Crowe"
-date: '2022-12-09'
+date: 'Mar 2023'
 output: pdf_document
+bibliography: references.bib
 ---
 
 ```{r setup, include=FALSE}
@@ -53,15 +54,16 @@ measurement_ID_trip<-measurement_merge%>%
   distinct(ID, actual_length_mean, actual_length_sd, n, trip)%>%
   mutate(actual_length_CV = actual_length_sd/actual_length_mean*100)
 
-nrow(measurement_ID_trip)
+#nrow(measurement_ID_trip)
           
-measurement_ID_trip%>%
-  filter(actual_length_sd > 0.1)%>%
-  arrange(actual_length_sd)
-
-measurement_merge%>%
-  filter(ID == 'PONCHO')
+# measurement_ID_trip%>%
+#   filter(actual_length_sd > 0.1)%>%
+#   arrange(actual_length_sd)
+# 
+# measurement_merge%>%
+#   filter(ID == 'PONCHO')
 ```
+
 ```{r measure_per_individual, echo = F}
 
 # sluething suspect measurements
@@ -72,7 +74,9 @@ ggplot(measurement_ID_trip)+
   geom_histogram(aes(x = n), binwidth = 1, color = "black")+
   facet_wrap(~trip)
 ```
+
 Fig. 1: number of times individuals were measured per trip
+
 ```{r demo, include = F}
 # life history update ----
 
@@ -121,11 +125,12 @@ age_calc<-age_length%>%
   #   !is.na(BIRTH_YEAR) ~ as.character(age)
   # ))
   
-age_calc%>%
-  filter(is.na(BIRTH_YEAR))
+# age_calc%>%
+#   filter(is.na(BIRTH_YEAR))
 
 ```
-```{r age_length, echo = F}
+
+```{r age_length, echo = F, message = F}
 
 #ggplot(age_calc, aes(x = age, y = log(actual_length_mean)))+
   #geom_point()+
@@ -183,14 +188,17 @@ age_calc_month<-age_calc%>%
   ))
 
 
-ggplot(age_calc_month, aes(x = age, y = actual_length_mean, color = POD))+
+ggplot(age_calc_month%>%filter(SEX != 'X'), aes(x = age, y = actual_length_mean, color = SEX))+
   geom_point()+
   geom_line(aes(group = ID))+
   geom_smooth()+
   theme(legend.position = "bottom")
 
+age_calc_month%>%filter(ID == 'DANGER')
+
 ```
-Fig. 2: Each point represents the mean total length of an individual at its age for animals whose birth year is known. 
+
+Fig. 2: Each point represents the mean total length of an individual at its age for animals whose birth year is known.
 
 ```{r summary_stats_ageclass, include = F}
 age_length%>%
@@ -198,12 +206,10 @@ age_length%>%
   mutate(actual_length_mean_agg = mean(actual_length_mean), #mean of lengths measured using altitude at exact time
          actual_length_sd_agg = sd(actual_length_mean), #sd of lengths measured using altitude at exact time
          actual_length_range = paste0(round(min(actual_length_mean),2),'–',round(max(actual_length_mean), 2)),
-         #avg_length_mean_agg = mean(avg_length_mean), #mean of lengths measured using averaged altitude +/- 2 sec from exact time
-         #avg_length_sd_agg = sd(avg_length_mean), #sd of lengths measured using averaged altitude +/- 2 sec from exact time
-         #avg_length_range = paste0(min(avg_length_mean),'–',max(avg_length_mean)),
          num_ind = n())%>%
   distinct(trip, AGECLASS, actual_length_mean_agg, actual_length_sd_agg, actual_length_range, num_ind)
 ```
+
 ```{r ageclass_boxplots, echo = F}
 
 ageclass_length_peryear<-age_length%>%
@@ -216,12 +222,12 @@ ageclass_length_peryear<-age_length%>%
 
 
 ggplot(ageclass_length_peryear)+
-  geom_boxplot(aes(x=AGECLASS, y = actual_length_mean_mean, color = POD))+
+  geom_boxplot(aes(x=AGECLASS, y = actual_length_mean_mean, color = POD), varwidth = T)+
   theme(legend.position = "bottom")
 
 ```
-Fig. 3: Summary of total lengths (m) per age-class. C = calf of the year, J = 1-2 y, S-A = 3-8, A = 9+.
 
+Fig. 3: Summary of total lengths (m) per age-class. C = calf of the year, J = 1-2 y, S-A = 3-8, A = 9+.
 
 ```{r agesex_boxplots, echo = F}
 
@@ -234,14 +240,15 @@ agesex_length_peryear<-age_length%>%
   distinct(ID, n, SEX, AGECLASS, BIRTH_YEAR, FIRST_YEAR, POD, YEAR, actual_length_mean_mean, actual_length_mean_sd)
 
 ggplot(agesex_length_peryear)+
-  geom_boxplot(aes(x=AGECLASS, y=actual_length_mean_mean, color = POD))+
+  geom_boxplot(aes(x=AGECLASS, y=actual_length_mean_mean, color = POD), varwidth = T)+
   facet_wrap(~SEX)+
   theme(legend.position = "bottom")
 
 agesex_length_peryear%>%
-  filter(actual_length_mean_mean > 3.1)
-
-agesex_length_peryear%>%
-  filter(ID == "COMET")
+  filter(actual_length_mean_mean > 3)
+# 
+# agesex_length_peryear%>%
+#   filter(ID == "COMET")
 ```
+
 Fig. 4: Summary of total lengths (m) per sex and age-class. C = calf of the year, J = 1-2 y, S-A = 3-8, A = 9+. F = female, M = male, X = unknown.
