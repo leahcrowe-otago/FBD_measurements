@@ -1,9 +1,29 @@
 library(dplyr)
 library(ggplot2)
+library(ggpubr)
+
+# regression plot function ----
+
+tl_bhdf_regression<-function(x){
+  ggplot(x, aes(x = mean_BHDF, y = mean_TL))+
+    geom_point()+
+    geom_smooth(method="lm", formula = y ~ x, se=FALSE)+
+    stat_cor(aes(label = paste(..rr.label..)), # adds R^2 value
+             r.accuracy = 0.01,
+             label.x = 0.5, label.y = 2.9, size = 4) +
+    stat_regline_equation(aes(label = ..eq.label..), # adds equation to linear regression
+                          label.x = 0.5, label.y = 3, size = 4)
+}
+
 
 # trip and day ----
 
-trip <- '2022_07'
+trip <- c('2022_07', '2022_10', '2023_01')
+
+lapply(trip, function(x){
+
+  trip<-x
+  print(x)
 
 # file paths ----
 
@@ -83,21 +103,12 @@ bh_tl<-bh_trip%>%
 
 write.csv(bh_tl, paste0(path,"./bh_tl_",trip,".csv"), row.names = F)
 
-# regression ----
-library(ggpubr)
+write.csv(length_ID_merge, paste0(path,"./length_ID_merge_",trip,".csv"), row.names = F)
 
-tl_bhdf_regression<-function(x){
-  ggplot(x, aes(x = mean_BHDF, y = mean_TL))+
-  geom_point()+
-  geom_smooth(method="lm", formula = y ~ x, se=FALSE)+
-  stat_cor(aes(label = paste(..rr.label..)), # adds R^2 value
-           r.accuracy = 0.01,
-           label.x = 0.5, label.y = 2.9, size = 4) +
-  stat_regline_equation(aes(label = ..eq.label..), # adds equation to linear regression
-                        label.x = 0.5, label.y = 3, size = 4)
-}
+#tl_bhdf_regression(bh_tl)
 
-tl_bhdf_regression(bh_tl)
+})
+
 
 # merge all trip means ----
 bh_tl_list<-list.files("./Images", "bh_tl_", ignore.case = TRUE, full.names = T, recursive = T)
@@ -116,9 +127,36 @@ est_calc<-bh_tl_merge%>%
   mutate(est_TL = mean_BHDF*prop$mean_prop,
          diff = est_TL-mean_TL)
 
-est_calc%>%filter(diff > 0.2)
 ggplot(est_calc, aes(x = est_TL, y = diff))+
-  geom_point()
+  geom_point()+
+  geom_density_2d()
+
+est_calc%>%filter(diff > 0.2)
+
+# same measurement bh to df compared to total length
+
+length_ID_merge_list<-list.files("./Images", "length_ID_merge_", ignore.case = TRUE, full.names = T, recursive = T)
+
+length_ID_merge_read<-lapply(length_ID_merge_list, function(x) read.csv(x, header = T))
+
+length_ID_merge <- do.call(rbind, length_ID_merge_read)
+
+#only include REAL total lengths
+length_ID_filter<-length_ID_merge%>%filter(!is.na(actual_length))
+
+
+ggplot(length_ID_filter, aes(x = BH.DF.insertion, y = Total.Length..m.))+
+  geom_point()+
+  geom_smooth(method="lm", formula = y ~ x, se=FALSE)+
+  stat_cor(aes(label = paste(..rr.label..)), # adds R^2 value
+           r.accuracy = 0.01,
+           label.x = 0.5, label.y = 2.9, size = 4) +
+  stat_regline_equation(aes(label = ..eq.label..), # adds equation to linear regression
+                        label.x = 0.5, label.y = 3, size = 4)+
+  theme_bw()+
+  xlab("BH to DF length (m)")+
+  ylab("Total length (m)")
+
 
 # noodle ----
 

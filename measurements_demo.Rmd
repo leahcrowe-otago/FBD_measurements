@@ -12,6 +12,7 @@ library(lubridate)
 library(stringr)
 library(readxl)
 library(ggplot2)
+library(ggpubr)
 
 # Data ----
 #add population variable to datasheet
@@ -70,9 +71,17 @@ measurement_ID_trip<-measurement_merge%>%
 ggplot(measurement_ID_trip)+
   geom_point(aes(x = actual_length_mean, y = actual_length_sd))
 
-ggplot(measurement_ID_trip)+
+hist<-ggplot(measurement_ID_trip)+
   geom_histogram(aes(x = n), binwidth = 1, color = "black")+
-  facet_wrap(~trip)
+  facet_wrap(~trip)+
+  xlab("Number of individuals")+
+  ylab("Number of photographs measured")+
+  theme_bw()
+
+hist
+
+ggsave("./Figures/hist.png", hist, dpi = 320, height = 75, units = 'mm')
+
 ```
 
 Fig. 1: number of times individuals were measured per trip
@@ -128,6 +137,8 @@ age_calc<-age_length%>%
 # age_calc%>%
 #   filter(is.na(BIRTH_YEAR))
 
+age_length%>%ungroup()%>%distinct(ID, POD)%>%filter(!is.na(POD))%>%group_by(POD)%>%tally()
+
 ```
 
 ```{r age_length, echo = F, message = F}
@@ -137,11 +148,18 @@ age_calc<-age_length%>%
   #geom_smooth(se = FALSE, method = "gam", formula = y ~ s(x, bs = "cs"))
 
 # length per age per trip ----
-ggplot(age_calc, aes(x = age, y = actual_length_mean, color = POD))+
+length_trip<-ggplot(age_calc, aes(x = age, y = actual_length_mean, color = POD))+
   geom_point()+
-  geom_errorbar(aes(ymin=actual_length_mean-actual_length_sd, ymax=actual_length_mean+actual_length_sd))+
+  geom_errorbar(aes(ymin=actual_length_mean-actual_length_sd, ymax=actual_length_mean+actual_length_sd), alpha = 0.5)+
   facet_wrap(~trip)+
-  theme(legend.position = "bottom")
+  theme_bw()+
+  theme(legend.position = "bottom")+
+  xlab("Age")+
+  ylab("Length (m)")
+
+age_calc%>%distinct(ID, POD)%>%group_by(POD)%>%tally()
+
+ggsave("./Figures/length_trip.png", length_trip, dpi = 320, height = 100, units = 'mm')
 
 # Individuals that have been measured on more than one trip ----
 ID_age<-age_calc%>%
@@ -166,10 +184,13 @@ age_calc_year_mean<-age_calc%>%
   distinct(ID, age, n, SEX, BIRTH_YEAR, FIRST_YEAR, POD, YEAR, actual_length_mean_mean, actual_length_mean_sd)  
 
 ggplot(age_calc_year_mean, aes(x = age, y = actual_length_mean_mean, color = POD))+
+  #geom_errorbar(aes(ymin=actual_length_mean_mean-actual_length_mean_sd, ymax=actual_length_mean_mean+actual_length_mean_sd))+
   geom_point()+
   geom_line(aes(group = ID))+
-  geom_smooth()+
-  theme(legend.position = "bottom")
+  #geom_smooth()+
+  theme(legend.position = "bottom")+
+  xlab("Age")+
+  ylab("Mean length per individual (m)")
 
 age_calc_month<-age_calc%>%
   mutate(age = case_when(
@@ -188,13 +209,18 @@ age_calc_month<-age_calc%>%
   ))
 
 
-ggplot(age_calc_month%>%filter(SEX != 'X'), aes(x = age, y = actual_length_mean, color = SEX))+
+mean_trip_age<-ggplot(age_calc_month, aes(x = age, y = actual_length_mean))+
   geom_point()+
-  geom_line(aes(group = ID))+
-  geom_smooth()+
-  theme(legend.position = "bottom")
+  geom_line(aes(group = ID), alpha = 0.5, size = 0.5)+
+  #geom_smooth()+
+  theme(legend.position = "bottom")+
+  theme_bw()+
+  xlab("Age")+
+  ylab("Mean length (m)")
 
 age_calc_month%>%filter(ID == 'DANGER')
+
+ggsave("./Figures/ mean_trip_age.png", mean_trip_age, dpi = 320, height = 100, units = 'mm')
 
 ```
 
@@ -221,9 +247,12 @@ ageclass_length_peryear<-age_length%>%
   distinct(ID, AGECLASS, n, SEX, BIRTH_YEAR, FIRST_YEAR, POD, YEAR, actual_length_mean_mean, actual_length_mean_sd) 
 
 
-ggplot(ageclass_length_peryear)+
-  geom_boxplot(aes(x=AGECLASS, y = actual_length_mean_mean, color = POD), varwidth = T)+
-  theme(legend.position = "bottom")
+ageclass<-ggplot(ageclass_length_peryear)+
+  geom_boxplot(aes(x=AGECLASS, y = actual_length_mean_mean, color = POD, fill = POD), alpha = 0.5, varwidth = T)+
+  theme(legend.position = "bottom")+
+  xlab("Age class")+
+  ylab("Length (m)")+
+  theme_bw()
 
 ```
 
@@ -239,16 +268,32 @@ agesex_length_peryear<-age_length%>%
          n = n())%>%
   distinct(ID, n, SEX, AGECLASS, BIRTH_YEAR, FIRST_YEAR, POD, YEAR, actual_length_mean_mean, actual_length_mean_sd)
 
-ggplot(agesex_length_peryear)+
-  geom_boxplot(aes(x=AGECLASS, y=actual_length_mean_mean, color = POD), varwidth = T)+
+sex<-ggplot(agesex_length_peryear)+
+  geom_boxplot(aes(x=AGECLASS, y=actual_length_mean_mean, color = POD, fill = POD), alpha = 0.5, varwidth = T)+
   facet_wrap(~SEX)+
-  theme(legend.position = "bottom")
+  theme(legend.position = "bottom")+
+  xlab("Age class")+
+  ylab("")+
+  theme_bw()
 
 agesex_length_peryear%>%
   filter(actual_length_mean_mean > 3)
+
+agesex_length_peryear%>%
+  ungroup()%>%
+  distinct(ID, SEX, POD)%>%
+  group_by(SEX, POD)%>%
+  filter(SEX == "X")%>%
+   tally()
 # 
 # agesex_length_peryear%>%
 #   filter(ID == "COMET")
+
+
+box_plot<-ggpubr::ggarrange(ageclass,sex, common.legend = T, widths = c(0.3, 0.7), legend = "bottom")
+
+ggsave("./Figures/box_plot.png", box_plot, dpi = 320, height = 100, width = 250, units = 'mm')
+
 ```
 
 Fig. 4: Summary of total lengths (m) per sex and age-class. C = calf of the year, J = 1-2 y, S-A = 3-8, A = 9+. F = female, M = male, X = unknown.

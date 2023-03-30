@@ -6,11 +6,11 @@ library(exifr)
 # Date and path ----
 #year <- '2022'
 trip <- '2022_10'
-date <- '20221025'
-offset_s<-(seconds(10)) # how much faster is the metadata time than the GPS
+date <- '20221021'
+offset_s<-(seconds(3)) # how much faster is the metadata time than the GPS
 
 path <- paste0("./Images/", trip, "/", date)
-#path <- paste0("Z:/Fiordland bottlenose dolphin/Long Term Monitoring/Dusky Sound Dolphin Monitoring/", year,"/", trip,"/UAS/",date)
+
 # LiDAR ----
 
 lidar_list <- list.files(path, ".CSV", ignore.case = TRUE)
