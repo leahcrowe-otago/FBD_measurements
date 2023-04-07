@@ -65,26 +65,7 @@ measurement_ID_trip<-measurement_merge%>%
 #   filter(ID == 'PONCHO')
 ```
 
-```{r measure_per_individual, echo = F}
 
-# sluething suspect measurements
-ggplot(measurement_ID_trip)+
-  geom_point(aes(x = actual_length_mean, y = actual_length_sd))
-
-hist<-ggplot(measurement_ID_trip)+
-  geom_histogram(aes(x = n), binwidth = 1, color = "black")+
-  facet_wrap(~trip)+
-  xlab("Number of individuals")+
-  ylab("Number of photographs measured")+
-  theme_bw()
-
-hist
-
-ggsave("./Figures/hist.png", hist, dpi = 320, height = 75, units = 'mm')
-
-```
-
-Fig. 1: number of times individuals were measured per trip
 
 ```{r demo, include = F}
 # life history update ----
@@ -95,7 +76,7 @@ lifehist<-dbReadTable(con, "life_history_ageclass")
 # merge lh with measurements ----
 
 measurements_demo_ind<-measurement_ID_trip%>%
-  filter(ID != '-')%>%
+  filter(ID != 'calibration')%>%
   left_join(lifehist, by = c('ID' = 'NAME'))%>%
   mutate(YEAR = case_when(
     as.numeric(str_sub(trip,6,7)) < 9 ~ as.numeric(str_sub(trip,1,4)),
@@ -133,11 +114,6 @@ age_calc<-age_length%>%
   #   is.na(BIRTH_YEAR) ~ paste0(age,"+"),
   #   !is.na(BIRTH_YEAR) ~ as.character(age)
   # ))
-  
-# age_calc%>%
-#   filter(is.na(BIRTH_YEAR))
-
-age_length%>%ungroup()%>%distinct(ID, POD)%>%filter(!is.na(POD))%>%group_by(POD)%>%tally()
 
 ```
 
@@ -160,6 +136,8 @@ length_trip<-ggplot(age_calc, aes(x = age, y = actual_length_mean, color = POD))
 age_calc%>%distinct(ID, POD)%>%group_by(POD)%>%tally()
 
 ggsave("./Figures/length_trip.png", length_trip, dpi = 320, height = 100, units = 'mm')
+
+age_calc%>%filter(n>1)%>%mutate(CV = actual_length_sd/actual_length_mean)%>%group_by(trip)%>%summarise(min = min(CV),max=max(CV), mean_CV=mean(CV), n = n())
 
 # Individuals that have been measured on more than one trip ----
 ID_age<-age_calc%>%
@@ -192,36 +170,56 @@ ggplot(age_calc_year_mean, aes(x = age, y = actual_length_mean_mean, color = POD
   xlab("Age")+
   ylab("Mean length per individual (m)")
 
-age_calc_month<-age_calc%>%
-  mutate(age = case_when(
-    month == 9 ~ age + 0,
-    month == 10 ~ age + 1/12,
-    month == 11 ~ age + 2/12,
-    month == 12 ~ age + 3/12,
-    month == 1 ~ age + 4/12,
-    month == 2 ~ age + 5/12,
-    month == 3 ~ age + 6/12,
-    month == 4 ~ age + 7/12,
-    month == 5 ~ age + 8/12,
-    month == 6 ~ age + 9/12,
-    month == 7 ~ age + 10/12,
-    month == 8 ~ age + 11/12,
-  ))
+# age_calc_month<-age_calc%>%
+#   mutate(age = case_when(
+#     month == 9 ~ age + 0,
+#     month == 10 ~ age + 1/12,
+#     month == 11 ~ age + 2/12,
+#     month == 12 ~ age + 3/12,
+#     month == 1 ~ age + 4/12,
+#     month == 2 ~ age + 5/12,
+#     month == 3 ~ age + 6/12,
+#     month == 4 ~ age + 7/12,
+#     month == 5 ~ age + 8/12,
+#     month == 6 ~ age + 9/12,
+#     month == 7 ~ age + 10/12,
+#     month == 8 ~ age + 11/12,
+#   ))
 
 
-mean_trip_age<-ggplot(age_calc_month, aes(x = age, y = actual_length_mean))+
+## length per year age
+mean_year_age<-ggplot(age_calc_year_mean, aes(x = age, y = actual_length_mean_mean))+
   geom_point()+
-  geom_line(aes(group = ID), alpha = 0.5, size = 0.5)+
+  geom_line(aes(group = ID))+
+  #geom_smooth()+
+  theme(legend.position = "bottom")+
+  xlab("Age")+
+  ylab("Mean length (m)")+
+  theme_bw()
+
+##
+mean_year_age_scotland<-ggplot()+
+  geom_point(data = age_calc_year_mean, mapping = aes(x = age, y = actual_length_mean_mean))+
   #geom_smooth()+
   theme(legend.position = "bottom")+
   theme_bw()+
   xlab("Age")+
-  ylab("Mean length (m)")
+  ylab("Mean length (m)")+
+  geom_vline(xintercept = c(1,3,5,9), color = "orange")+
+  geom_point(mapping = aes(x=c(0.5,2,4,7,20), y=c(1.39,2.43,2.75,2.86,3.06)), color = "orange", size = 3, shape = 17)
 
-age_calc_month%>%filter(ID == 'DANGER')
+#age_calc_month%>%filter(ID == 'SPLASH')
 
-ggsave("./Figures/ mean_trip_age.png", mean_trip_age, dpi = 320, height = 100, units = 'mm')
+ggsave("./Figures/mean_year_age.png", mean_year_age, dpi = 320, height = 100, units = 'mm')
+ggsave("./Figures/mean_year_age_scotland.png", mean_year_age_scotland, dpi = 320, height = 100, units = 'mm')
 
+#growth/shrinking
+age_calc_year_mean%>%
+  arrange(ID, age)%>%
+  group_by(ID)%>%
+  mutate(growth = lead(actual_length_mean_mean)-actual_length_mean_mean)%>%
+  filter(!is.na(growth))%>%
+  arrange(age)
 ```
 
 Fig. 2: Each point represents the mean total length of an individual at its age for animals whose birth year is known.
@@ -241,18 +239,20 @@ age_length%>%
 ageclass_length_peryear<-age_length%>%
   filter(!is.na(AGECLASS))%>%
   group_by(ID, YEAR)%>%
-  mutate(actual_length_mean_mean = mean(as.numeric(actual_length_mean)), #mean of lengths measured using altitude at exact time
-         actual_length_mean_sd = sd(as.numeric(actual_length_mean)), #sd of lengths measured using altitude at exact time
+  mutate(actual_length_mean_mean = mean(as.numeric(actual_length_mean), na.rm = T), #mean of lengths measured using altitude at exact time
+         actual_length_mean_sd = sd(as.numeric(actual_length_mean), na.rm = T), #sd of lengths measured using altitude at exact time
          n = n())%>%
   distinct(ID, AGECLASS, n, SEX, BIRTH_YEAR, FIRST_YEAR, POD, YEAR, actual_length_mean_mean, actual_length_mean_sd) 
 
 
-ageclass<-ggplot(ageclass_length_peryear)+
-  geom_boxplot(aes(x=AGECLASS, y = actual_length_mean_mean, color = POD, fill = POD), alpha = 0.5, varwidth = T)+
+ageclass<-ggplot(ageclass_length_peryear, aes(x=AGECLASS, y=actual_length_mean_mean))+
+  geom_boxplot(aes(fill = AGECLASS), color = "black", alpha = 0.5)+
+  #geom_boxplot(aes(x=AGECLASS, y = actual_length_mean_mean, color = POD, fill = POD), alpha = 0.5, varwidth = T)+
   theme(legend.position = "bottom")+
   xlab("Age class")+
   ylab("Length (m)")+
-  theme_bw()
+  theme_bw()+
+  scale_fill_viridis_d()
 
 ```
 
@@ -260,26 +260,20 @@ Fig. 3: Summary of total lengths (m) per age-class. C = calf of the year, J = 1-
 
 ```{r agesex_boxplots, echo = F}
 
-agesex_length_peryear<-age_length%>%
-  filter(!is.na(SEX))%>%
-  group_by(ID, YEAR)%>%
-  mutate(actual_length_mean_mean = mean(as.numeric(actual_length_mean)), #mean of lengths measured using altitude at exact time
-         actual_length_mean_sd = sd(as.numeric(actual_length_mean)), #sd of lengths measured using altitude at exact time
-         n = n())%>%
-  distinct(ID, n, SEX, AGECLASS, BIRTH_YEAR, FIRST_YEAR, POD, YEAR, actual_length_mean_mean, actual_length_mean_sd)
-
-sex<-ggplot(agesex_length_peryear)+
-  geom_boxplot(aes(x=AGECLASS, y=actual_length_mean_mean, color = POD, fill = POD), alpha = 0.5, varwidth = T)+
+sex<-ggplot(ageclass_length_peryear, aes(x=AGECLASS, y=actual_length_mean_mean))+
+  geom_boxplot(aes(fill = AGECLASS),color = "black", alpha = 0.5)+
+  #geom_boxplot(aes(x=AGECLASS, y=actual_length_mean_mean, color = POD, fill = POD), alpha = 0.5, varwidth = T)+
   facet_wrap(~SEX)+
   theme(legend.position = "bottom")+
   xlab("Age class")+
   ylab("")+
-  theme_bw()
+  theme_bw()+
+  scale_fill_viridis_d()
 
-agesex_length_peryear%>%
+ageclass_length_peryear%>%
   filter(actual_length_mean_mean > 3)
 
-agesex_length_peryear%>%
+ageclass_length_peryear%>%
   ungroup()%>%
   distinct(ID, SEX, POD)%>%
   group_by(SEX, POD)%>%
@@ -297,3 +291,47 @@ ggsave("./Figures/box_plot.png", box_plot, dpi = 320, height = 100, width = 250,
 ```
 
 Fig. 4: Summary of total lengths (m) per sex and age-class. C = calf of the year, J = 1-2 y, S-A = 3-8, A = 9+. F = female, M = male, X = unknown.
+
+```{r, stats}
+
+ageclass_length_peryear%>%
+  filter(actual_length_mean_mean>3)%>%
+  arrange(actual_length_mean_mean)
+
+
+measurement_ID_trip%>%
+  filter(ID == 'MENTRY')
+
+```
+```{r, whalength_file_merge}
+
+source('./whalength_file_merge.R', local = TRUE, verbose = F)$value
+
+```
+
+```{r measure_per_individual, echo = F}
+
+# sluething suspect measurements
+ggplot(length_ID_merge_Tt)+
+  geom_point(aes(x = actual_length_mean_mean, y = actual_length_mean_sd))
+
+hist<-ggplot(length_ID_merge_Tt%>%group_by(ID,trip)%>%tally())+
+  geom_histogram(aes(x = n), binwidth = 1, color = "black")+
+  facet_wrap(~trip)+
+  ylab("Number of individuals")+
+  xlab("Number of photographs measured")+
+  theme_bw()
+
+
+hist
+
+length_ID_merge_Tt%>%
+  filter(is.na(actual_length))
+
+ggsave("./Figures/hist.png", hist, dpi = 320, height = 75, units = 'mm')
+
+length_ID_merge_Tt%>%ungroup()%>%distinct(ID, POD)%>%filter(!is.na(POD))%>%group_by(POD)%>%tally()
+
+```
+
+Fig. 1: number of times individuals were measured per trip
