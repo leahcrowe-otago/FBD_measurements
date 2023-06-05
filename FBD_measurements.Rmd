@@ -1,0 +1,178 @@
+---
+title: "Untitled"
+author: "Leah Crowe"
+date: '2023-06-05'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(lubridate)
+library(stringr)
+library(readxl)
+library(ggplot2)
+library(ggpubr)
+
+```
+
+```{r merge_whalength_output, echo = F}
+# trip ----
+
+trips <- c('2022_07', '2022_10', '2023_01', '2023_05')
+
+merge_trips<-lapply(trips, function(x){
+  
+  #x<-'2022_07'
+  trip<-x
+  print(x)
+
+# file paths ----
+
+path <- paste0("./Images/", trip)
+date_list <- grep(list.files(path), pattern='.xlsx', invert=TRUE, value=TRUE)
+
+# path to 'screen_grab' folder in each day
+sg_path <- lapply(date_list, function(x) paste0(path,"/",x,"/screen grabs"))
+# path to 'measure_files' folder in each day
+mf_path <- lapply(date_list, function(x) paste0(path,"/",x,"/measure_files"))
+
+# whalelength output merge ----
+
+# list all whalength output csvs
+whalength_list <- as.list(unlist(lapply(sg_path, function(x) list.files(x, ".CSV", ignore.case = TRUE, full.names = T))))
+#read all whalength csvs without headers
+whalength_files <-
+  lapply(whalength_list, function(x)
+    read.csv(paste0(x), skip = 1)[, 1:50])
+#merge all whalength csvs in one dataframe
+whalength_merge <- do.call(rbind, whalength_files)
+head(whalength_merge)
+
+# IDs and decipher if total length was an actual measurement  ---- 
+
+# list file where I manually add length output to signal that total length in whalength output is real, blank values mean total length is not a real value, but done as hack to measure bh to df insertion
+ID_alt<-as.list(unlist(lapply(mf_path, function(x) list.files(x, glob2rx("altperimage*.xlsx"), full.names = T))))
+
+#read all, remove ones with altitude issues, merge
+ID_alt_read<-lapply(ID_alt, function(x) readxl::read_excel(x, range = cellranger::cell_cols("A:AI"), na = "NA")%>%filter(issue == "N"))
+head(ID_alt_read)
+
+ID_alt_merge <- do.call(rbind, ID_alt_read)
+
+# names of both merged outputs ----
+
+names(whalength_merge)
+names(ID_alt_merge)
+
+# merge measurements with ID data ----
+
+length_ID_merge<-whalength_merge%>%
+  filter(is.na(Label..for.mult.whales.per.image.))%>%
+  left_join(ID_alt_merge, by = c("Filename" = "vlc_filename"))
+
+# add in data where more than one dolphin was measured in one photo ----
+
+if(nrow(whalength_merge%>%
+   filter(!is.na(Label..for.mult.whales.per.image.))) > 0){
+
+length_ID_merge<-whalength_merge%>%
+  filter(!is.na(Label..for.mult.whales.per.image.))%>%
+  left_join(ID_alt_merge, by = c("Filename" = "vlc_filename", "Label..for.mult.whales.per.image." = "ID"))%>%
+  bind_rows(length_ID_merge)
+
+}
+
+#has to go at end to work with both single and multi dolphins per image
+#removes TL measurement when it is not real
+length_ID_merge<-length_ID_merge%>%
+  arrange(Filename)%>%
+  mutate(trip = trip)%>%
+  dplyr::select(trip, ID, everything(), -Whale.ID)%>%
+  mutate(Total.Length..m. = case_when(
+    is.na(actual_length) ~ NA_real_,
+    TRUE ~ Total.Length..m.
+  ))
+
+# 0 is NA
+length_ID_merge[length_ID_merge == 0] <- NA
+
+length_ID_merge
+
+})
+
+length_ID_merge<-do.call(rbind, merge_trips)
+
+
+```
+```{r ggplot_ID, echo = F}
+
+# check to compare entered TL vs recorded TL in whalength csvs ----
+length_ID_merge%>%
+  mutate(length_diff = actual_length-Total.Length..m.)%>%
+  filter(abs(length_diff)>0.00005)%>%
+  dplyr::select(trip, ID, Filename, actual_length,Total.Length..m.,length_diff, png_datetime_nz)
+
+# obtaining the mean value for multiple measurements during the same trip
+morphs_trip<-length_ID_merge%>%
+  ungroup()%>%
+  filter(!is.na(ID))%>%
+  group_by(ID, trip)%>%
+  #do widths from these individuals as well
+  dplyr::summarise(mean_TL = mean(Total.Length..m., na.rm=TRUE), SD_TL = sd(Total.Length..m., na.rm=TRUE),
+                   mean_10W = mean(Width.at.10..TL, na.rm=TRUE), SD_10W = sd(Width.at.10..TL, na.rm=TRUE),
+                   mean_20W = mean(Width.at.20..TL, na.rm=TRUE), SD_20W = sd(Width.at.20..TL, na.rm=TRUE),
+                   mean_30W = mean(Width.at.30..TL, na.rm=TRUE), SD_30W = sd(Width.at.30..TL, na.rm=TRUE),
+                   mean_40W = mean(Width.at.40..TL, na.rm=TRUE), SD_40W = sd(Width.at.40..TL, na.rm=TRUE),
+                   mean_50W = mean(Width.at.50..TL, na.rm=TRUE), SD_50W = sd(Width.at.50..TL, na.rm=TRUE),
+                   mean_60W = mean(Width.at.60..TL, na.rm=TRUE), SD_60W = sd(Width.at.60..TL, na.rm=TRUE),
+                   mean_70W = mean(Width.at.70..TL, na.rm=TRUE), SD_70W = sd(Width.at.70..TL, na.rm=TRUE),
+                   mean_80W = mean(Width.at.80..TL, na.rm=TRUE), SD_80W = sd(Width.at.80..TL, na.rm=TRUE),
+                   mean_90W = mean(Width.at.90..TL, na.rm=TRUE), SD_90W = sd(Width.at.90..TL, na.rm=TRUE),
+                   mean_RBH = mean(Rostrum.BH, na.rm=TRUE), SD_RBH = sd(Rostrum.BH, na.rm=TRUE),
+                   mean_BHDF = mean(BH.DF.insertion, na.rm=TRUE), SD_BHDF = sd(BH.DF.insertion, na.rm=TRUE),
+                   mean_FW = mean(Fluke.width, na.rm = TRUE), SD_FW = sd(Fluke.width, na.rm = TRUE))
+
+#distribution of tl mean vs sd
+ggplot(morphs_trip)+
+  geom_point(aes(x = mean_TL, y = SD_TL))
+
+#individuals where sd of total length is greater than 10 cm
+morphs_trip%>%filter(SD_TL > 0.12)
+morphs_trip%>%filter(SD_RBH > 0.1 | SD_BHDF > 0.1)
+length_ID_merge%>%filter(ID == 'BIVALVE')
+```
+# rostrum to bh and bh to df for anyone who had it done
+bh_tl<-bh_trip%>%
+  left_join(tl_trip, by = "ID")%>%
+  filter(!is.na(mean_TL))%>%
+  mutate(trip = trip)
+
+#mean
+write.csv(bh_tl, paste0(path,"./bh_tl_",trip,".csv"), row.names = F)
+
+#measurement per photo
+write.csv(length_ID_merge, paste0(path,"./length_ID_merge_",trip,".csv"), row.names = F)
+
+#tl_bhdf_regression(bh_tl)
+
+
+
+
+
+```
+```{r}
+
+  ggplot(length_ID_merge)+
+    geom_point(aes(x = Total.Length..m., y = BH.DF.insertion, color = trip))+
+    ggforce::facet_wrap_paginate(~ID, ncol = 3, page = 10)
+
+# # Remove measurements where ID is unknown
+# length_ID_merge<-length_ID_merge%>%
+#   filter(!is.na(ID))%>%
+# 
+# 
+# 
+
+# 
+
+```
