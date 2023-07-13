@@ -34,7 +34,8 @@ measurement_files_filter<-lapply(measurement_files, function(x)
     distinct(DATE, vlc_filename, ID, actual_length)%>% #avg_length_mean, avg_length_sd)
     mutate(trip = paste0(year(DATE),"_",month(DATE)))%>%
     mutate(trip = str_replace(trip, "_7", "_07"))%>%
-    mutate(trip = str_replace(trip, "2023_1", "2023_01"))
+    mutate(trip = str_replace(trip, "2023_1", "2023_01"))%>%
+    mutate(trip = str_replace(trip, "2023_5", "2023_05"))
   )
 
 measurement_merge <- bind_rows(measurement_files_filter)
@@ -70,9 +71,11 @@ measurement_ID_trip<-measurement_merge%>%
 ```{r demo, include = F}
 # life history update ----
 
-source('C:/Users/leahm/Documents/git_otago/Fiordland_reporting/scripts/life_history_ageclass update.R', local = TRUE, verbose = F)$value
-lifehist<-dbReadTable(con, "life_history_ageclass")
-
+source('C:/Users/leahm/Documents/git-otago/Fiordland_reporting/scripts/life_history_ageclass update.R', local = TRUE, verbose = F)$value
+#use below when you can write to db again
+#lifehist<-dbReadTable(con, "life_history_ageclass")
+#this created from life_history_ageclass update.R
+lifehist<-lifehist
 # merge lh with measurements ----
 
 measurements_demo_ind<-measurement_ID_trip%>%
@@ -83,8 +86,9 @@ measurements_demo_ind<-measurement_ID_trip%>%
     as.numeric(str_sub(trip,6,7)) >= 9 ~ as.numeric(str_sub(trip,1,4))+1,
   ))%>%
   mutate(month = as.numeric(str_sub(trip,6,7)))%>%
-  dplyr::select(trip, YEAR, ID, actual_length_mean, actual_length_sd, n, SEX, BIRTH_YEAR, FIRST_YEAR, ends_with('2022'), ends_with('2023'), POD, month)%>% 
-  tidyr::pivot_longer(cols = starts_with("X"), names_to = "AGECLASS_YEAR", values_to = "AGECLASS")%>%
+  dplyr::select(trip, YEAR, ID, actual_length_mean, actual_length_sd, n, SEX, BIRTH_YEAR, FIRST_YEAR, ends_with('2022'), ends_with('2023'), POD, month)%>%
+  #tidyr::pivot_longer(cols = starts_with("X"), names_to = "AGECLASS_YEAR", values_to = "AGECLASS")%>%
+  tidyr::pivot_longer(cols = starts_with("2"), names_to = "AGECLASS_YEAR", values_to = "AGECLASS")%>%
   mutate(AGECLASS_YEAR = str_replace(AGECLASS_YEAR, "X", ""))%>%
   filter(YEAR == AGECLASS_YEAR)%>%
   #dplyr::rename(AGECLASS = ends_with(YEAR))%>%
