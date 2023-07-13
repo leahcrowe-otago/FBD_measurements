@@ -18,7 +18,7 @@ tl_bhdf_regression<-function(x){
 
 # trip and day ----
 
-trip <- c('2022_07', '2022_10', '2023_01')
+trip <- c('2022_07', '2022_10', '2023_01', '2023_05')
 
 lapply(trip, function(x){
 
@@ -143,8 +143,8 @@ bh_tl_merge_Tt<-bh_tl_merge%>%
 
 length_mean_ID_demo<-bh_tl_merge_Tt%>%
   mutate(YEAR =  case_when(
-    as.numeric(str_sub(trip,6,7)) < 9 ~ as.numeric(str_sub(trip,1,4)),
-    as.numeric(str_sub(trip,6,7)) >= 9 ~ as.numeric(str_sub(trip,1,4))+1,
+    as.numeric(stringr::str_sub(trip,6,7)) < 9 ~ as.numeric(stringr::str_sub(trip,1,4)),
+    as.numeric(stringr::str_sub(trip,6,7)) >= 9 ~ as.numeric(stringr::str_sub(trip,1,4))+1,
   ))%>%
   left_join(ageclass_length_peryear, by = c("ID", "YEAR"))
 
