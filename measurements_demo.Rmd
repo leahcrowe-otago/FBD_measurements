@@ -62,8 +62,8 @@ measurement_ID_trip<-measurement_merge%>%
 #   filter(actual_length_sd > 0.1)%>%
 #   arrange(actual_length_sd)
 # 
-# measurement_merge%>%
-#   filter(ID == 'PONCHO')
+measurement_merge%>%
+  filter(ID == 'SUNSHINE')
 ```
 
 
@@ -71,11 +71,14 @@ measurement_ID_trip<-measurement_merge%>%
 ```{r demo, include = F}
 # life history update ----
 
-source('C:/Users/leahm/Documents/git-otago/Fiordland_reporting/scripts/life_history_ageclass update.R', local = TRUE, verbose = F)$value
+source('C:/Users/leahm/OneDrive - University of Otago/Documents/git-otago/Fiordland_reporting/scripts/life_history_ageclass update.R', local = TRUE, verbose = F)$value
 #use below when you can write to db again
 #lifehist<-dbReadTable(con, "life_history_ageclass")
 #this created from life_history_ageclass update.R
 lifehist<-lifehist
+
+lifehist%>%
+  filter(NAME == "SUNSHINE")
 # merge lh with measurements ----
 
 measurements_demo_ind<-measurement_ID_trip%>%
