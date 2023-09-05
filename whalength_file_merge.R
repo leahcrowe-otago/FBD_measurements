@@ -167,6 +167,7 @@ length_ID_merge <- do.call(rbind, length_ID_merge_read)
 
 length_ID_merge_Tt<-length_ID_merge%>%
   filter(ID != "calibration")%>%
+  filter(ID != "noodle")%>%
   mutate(YEAR =  case_when(
     as.numeric(str_sub(trip,6,7)) < 9 ~ as.numeric(str_sub(trip,1,4)),
     as.numeric(str_sub(trip,6,7)) >= 9 ~ as.numeric(str_sub(trip,1,4))+1,
@@ -320,7 +321,7 @@ length_ID_merge_Tt%>%
 # noodle ----
 
 noodle<-length_ID_merge%>%
-  filter(ID == "calibration")
+  filter(ID == "calibration" | ID == "noodle")
 
 noodle%>%
   mutate(diff_TL = mean(Total.Length..m.-1.947), ## noodle total length
