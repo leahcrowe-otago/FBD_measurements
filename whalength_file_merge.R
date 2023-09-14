@@ -139,7 +139,7 @@ bh_tl_read<-lapply(bh_tl_list, function(x) read.csv(x, header = T))
 bh_tl_merge <- do.call(rbind, bh_tl_read)
 
 bh_tl_merge_Tt<-bh_tl_merge%>%
-  filter(ID != "calibration")
+  filter(ID != "calibration" & ID != "noodle")
 
 length_mean_ID_demo<-bh_tl_merge_Tt%>%
   mutate(YEAR =  case_when(
@@ -169,8 +169,8 @@ length_ID_merge_Tt<-length_ID_merge%>%
   filter(ID != "calibration")%>%
   filter(ID != "noodle")%>%
   mutate(YEAR =  case_when(
-    as.numeric(str_sub(trip,6,7)) < 9 ~ as.numeric(str_sub(trip,1,4)),
-    as.numeric(str_sub(trip,6,7)) >= 9 ~ as.numeric(str_sub(trip,1,4))+1,
+    as.numeric(stringr::str_sub(trip,6,7)) < 9 ~ as.numeric(stringr::str_sub(trip,1,4)),
+    as.numeric(stringr::str_sub(trip,6,7)) >= 9 ~ as.numeric(stringr::str_sub(trip,1,4))+1,
   ))%>%
   left_join(ageclass_length_peryear, by = c("ID", "YEAR"))
 
@@ -211,7 +211,7 @@ ggsave("./Figures/bh_tl.png", bh_tl, dpi = 320, height = 100, width = 100, units
 
 length_mean_ID_demo%>%filter(mean_BHDF > 1 & mean_TL < 2.5)
 
-length_ID_merge_Tt%>%filter(ID == 'SHIVERS')
+length_ID_merge_Tt%>%filter(ID == 'SHIVERS')%>%dplyr::select(BH.DF.insertion)%>%as.data.frame()
 
 # width ----
 
