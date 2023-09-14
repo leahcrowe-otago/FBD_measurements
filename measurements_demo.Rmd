@@ -38,7 +38,11 @@ measurement_files_filter<-lapply(measurement_files, function(x)
     mutate(trip = str_replace(trip, "2023_5", "2023_05"))
   )
 
-measurement_merge <- bind_rows(measurement_files_filter)
+measurement_merge <- bind_rows(measurement_files_filter)%>%
+    mutate(ID = case_when(
+    ID == "noodle" ~ "calibration",
+    TRUE ~ ID
+  ))
 
 #number measurements
 nrow(measurement_merge)
@@ -55,6 +59,7 @@ measurement_ID_trip<-measurement_merge%>%
          n = n())%>%
   distinct(ID, actual_length_mean, actual_length_sd, n, trip)%>%
   mutate(actual_length_CV = actual_length_sd/actual_length_mean*100)
+
 
 #nrow(measurement_ID_trip)
           
@@ -328,7 +333,6 @@ hist<-ggplot(length_ID_merge_Tt%>%group_by(ID,trip)%>%tally())+
   ylab("Number of individuals")+
   xlab("Number of photographs measured")+
   theme_bw()
-
 
 hist
 
