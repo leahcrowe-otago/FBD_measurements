@@ -35,7 +35,9 @@ measurement_files_filter<-lapply(measurement_files, function(x)
     mutate(trip = paste0(year(DATE),"_",month(DATE)))%>%
     mutate(trip = str_replace(trip, "_7", "_07"))%>%
     mutate(trip = str_replace(trip, "2023_1", "2023_01"))%>%
-    mutate(trip = str_replace(trip, "2023_5", "2023_05"))
+    mutate(trip = str_replace(trip, "2023_5", "2023_05"))%>%
+    mutate(trip = str_replace(trip, "2023_6", "2023_06"))%>%
+    mutate(trip = str_replace(trip, "2022_5", "2022_05"))
   )
 
 measurement_merge <- bind_rows(measurement_files_filter)%>%
@@ -88,6 +90,7 @@ lifehist%>%
 
 measurements_demo_ind<-measurement_ID_trip%>%
   filter(ID != 'calibration')%>%
+  filter(ID != 'COMMON')%>%
   left_join(lifehist, by = c('ID' = 'NAME'))%>%
   mutate(YEAR = case_when(
     as.numeric(str_sub(trip,6,7)) < 9 ~ as.numeric(str_sub(trip,1,4)),
@@ -149,7 +152,7 @@ age_calc%>%distinct(ID, POD)%>%group_by(POD)%>%tally()
 
 ggsave("./Figures/length_trip.png", length_trip, dpi = 320, height = 100, units = 'mm')
 
-age_calc%>%filter(n>1)%>%mutate(CV = actual_length_sd/actual_length_mean)%>%group_by(trip)%>%summarise(min = min(CV),max=max(CV), mean_CV=mean(CV), n = n())
+#age_calc%>%filter(n>1)%>%mutate(CV = actual_length_sd/actual_length_mean)%>%group_by(trip)%>%summarise(min = min(CV),max=max(CV), mean_CV=mean(CV), n = n())
 
 # Individuals that have been measured on more than one trip ----
 ID_age<-age_calc%>%
@@ -285,12 +288,12 @@ sex<-ggplot(ageclass_length_peryear, aes(x=AGECLASS, y=actual_length_mean_mean))
 ageclass_length_peryear%>%
   filter(actual_length_mean_mean > 3)
 
-ageclass_length_peryear%>%
-  ungroup()%>%
-  distinct(ID, SEX, POD)%>%
-  group_by(SEX, POD)%>%
-  filter(SEX == "X")%>%
-   tally()
+# ageclass_length_peryear%>%
+#   ungroup()%>%
+#   distinct(ID, SEX, POD)%>%
+#   group_by(SEX, POD)%>%
+#   filter(SEX == "X")%>%
+#    tally()
 # 
 # agesex_length_peryear%>%
 #   filter(ID == "COMET")
@@ -336,8 +339,8 @@ hist<-ggplot(length_ID_merge_Tt%>%group_by(ID,trip)%>%tally())+
 
 hist
 
-length_ID_merge_Tt%>%
-  filter(is.na(actual_length))
+# length_ID_merge_Tt%>%
+#   filter(is.na(actual_length))
 
 ggsave("./Figures/hist.png", hist, dpi = 320, height = 75, units = 'mm')
 

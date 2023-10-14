@@ -18,10 +18,10 @@ tl_bhdf_regression<-function(x){
 
 # trip and day ----
 
-trip <- c('2022_07', '2022_10', '2023_01', '2023_05')
+trip <- c('2022_05','2022_07', '2022_10', '2023_01', '2023_05', '2023_06','2023_07')
 
 lapply(trip, function(x){
-
+  #x<-"2023_07"
   trip<-x
   print(x)
 
@@ -49,6 +49,7 @@ head(ID_alt_read)
 
 ID_alt_merge <- do.call(rbind, ID_alt_read)
 
+#names(ID_alt_read[[2]])
 names(whalength_merge)
 names(ID_alt_merge)
 
@@ -211,6 +212,8 @@ ggsave("./Figures/bh_tl.png", bh_tl, dpi = 320, height = 100, width = 100, units
 
 length_mean_ID_demo%>%filter(mean_BHDF > 1 & mean_TL < 2.5)
 
+length_mean_ID_demo%>%filter(is.na(AGECLASS))
+
 length_ID_merge_Tt%>%filter(ID == 'SHIVERS')%>%dplyr::select(BH.DF.insertion)%>%as.data.frame()
 
 # width ----
@@ -278,8 +281,11 @@ width_ageclass<-ggplot()+
   scale_x_continuous(breaks=seq(0, 100, 10))+
   theme(panel.grid.minor = element_blank())
 
-ggsave("./Figures/width_ageclass.png", width_ageclass, dpi = 320, height = 100, width = 100, units = 'mm')
-
+ggsave("./Figures/width_ageclass.png", width_ageclass, dpi = 320)
+dev.off()
+WIDTH<-width_mean_ID_demo%>%
+  filter(AGECLASS == "J")%>%
+  mutate(y = width_m/mean_TL)
 #the below will need reworked to investigate individual level things
 
 # ggplot(length_mean_ID_demo%>%filter(grepl("mean", widths) & 
@@ -315,13 +321,17 @@ ggplot()+
   #theme(panel.grid.minor = element_blank())
 
 
-length_ID_merge_Tt%>%
-  filter(Fluke.width > 0.9)
+length_mean_ID_demo%>%
+  filter(mean_FW > 0.9)
 
 # noodle ----
 
 noodle<-length_ID_merge%>%
-  filter(ID == "calibration" | ID == "noodle")
+  filter(ID == "calibration" | ID == "noodle")%>%
+  mutate(Total.Length..m. = case_when(
+    trip == "2023_07" ~ NA,
+    TRUE ~ Total.Length..m.
+  ))
 
 noodle%>%
   mutate(diff_TL = mean(Total.Length..m.-1.947), ## noodle total length
@@ -344,8 +354,8 @@ noodle%>%
   
 ggplot(noodle)+
   geom_point(mapping = aes(y = Total.Length..m., x = 1.947, color = "Total length"))+
-  geom_point(mapping = aes(y = Rostrum.BH, x = 0.462, color = "Purple"))+
-  geom_point(mapping = aes(y = BH.DF.insertion, x = 1.485, color = "Orange"))+
+  geom_point(mapping = aes(y = Rostrum.BH, x = 0.462, color = "Orange"))+
+  geom_point(mapping = aes(y = BH.DF.insertion, x = 1.485, color = "Purple"))+
   theme_bw()+
   xlab("Actual length (m)")+
   ylab("Estimated length (m)")+
