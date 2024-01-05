@@ -8,6 +8,7 @@ tl_bhdf_regression<-function(x){
   ggplot(x, aes(x = mean_BHDF, y = mean_TL))+
     geom_point()+
     geom_smooth(method="lm", formula = y ~ x, se=FALSE)+
+    geom_smooth(method="glm", formula = y ~ x, se=FALSE)+
     stat_cor(aes(label = paste(..rr.label..)), # adds R^2 value
              r.accuracy = 0.01,
              label.x = 0.5, label.y = 2.9, size = 4) +
@@ -149,6 +150,8 @@ length_mean_ID_demo<-bh_tl_merge_Tt%>%
   ))%>%
   left_join(ageclass_length_peryear, by = c("ID", "YEAR"))
 
+length_mean_ID_demo%>%
+  filter(mean_BHDF > 1 & mean_TL < 3.0)
 
 #####
 
@@ -181,6 +184,7 @@ length_ID_filter<-length_ID_merge_Tt%>%filter(!is.na(actual_length))
 ggplot(length_ID_filter, aes(x = BH.DF.insertion, y = Total.Length..m.))+
   geom_point(aes(color = AGECLASS), alpha = 0.5, size = 2)+
   geom_smooth(method="lm", formula = y ~ x, se=FALSE)+
+  geom_smooth(method="auto", se=T)+
   stat_cor(aes(label = paste(..rr.label..)), # adds R^2 value
            r.accuracy = 0.01,
            label.x = 0.5, label.y = 2.9, size = 4) +
@@ -191,6 +195,10 @@ ggplot(length_ID_filter, aes(x = BH.DF.insertion, y = Total.Length..m.))+
   ylab("Total length (m)")+
   scale_color_viridis_d(na.value="#000000")+
   theme(legend.position = "bottom")
+
+length_ID_filter%>%
+  filter(ID == "HIVE")%>%
+  mutate(tl_w40 = Width.at.40..TL/Total.Length..m.)
 
 ## mean bhdf to mean length
 
@@ -282,10 +290,14 @@ width_ageclass<-ggplot()+
   theme(panel.grid.minor = element_blank())
 
 ggsave("./Figures/width_ageclass.png", width_ageclass, dpi = 320)
-dev.off()
+# dev.off()
 WIDTH<-width_mean_ID_demo%>%
   filter(AGECLASS == "J")%>%
   mutate(y = width_m/mean_TL)
+
+width_mean_ID_demo%>%filter(widths == "mean_40W" & AGECLASS == "J" & width_m/mean_TL >0.2)
+width_ageclass+
+  facet_wrap(~AGECLASS)
 #the below will need reworked to investigate individual level things
 
 # ggplot(length_mean_ID_demo%>%filter(grepl("mean", widths) & 
@@ -303,6 +315,30 @@ WIDTH<-width_mean_ID_demo%>%
 # 
 length_mean_ID_demo%>%filter(SEX == 'F' & AGECLASS == 'S-A')%>%as.data.frame()
 length_mean_ID_demo%>%filter(ID == "SESAME" & YEAR == 2023)%>%as.data.frame()
+
+female_width<-width_mean_ID_demo_trip%>%filter(SEX == "F")%>%group_by(ID)%>%mutate(distinct_trip = n_distinct(trip))#%>%filter(distinct_trip > 1)
+
+ggplot(female_width)+
+  #mean individual points
+  geom_point(mapping = aes(color = trip, x = width, y = width_m), alpha = 0.5)+
+  geom_line(mapping = aes(x = width, y = width_m, color = trip), size = 0.75)+
+  facet_wrap(~ID)
+
+unk_width<-width_mean_ID_demo_trip%>%filter(SEX == "X")%>%group_by(ID)%>%mutate(distinct_trip = n_distinct(trip))%>%filter(distinct_trip > 0)
+
+ggplot(unk_width)+
+  #mean individual points
+  geom_point(mapping = aes(color = trip, x = width, y = width_m), alpha = 0.5)+
+  geom_line(mapping = aes(x = width, y = width_m, color = trip), size = 0.75)+
+  facet_wrap(~ID)
+
+male_width<-width_mean_ID_demo_trip%>%filter(SEX == "M")%>%group_by(ID)%>%mutate(distinct_trip = n_distinct(trip))%>%filter(distinct_trip > 0)
+
+ggplot(male_width)+
+  #mean individual points
+  geom_point(mapping = aes(color = trip, x = width, y = width_m), alpha = 0.5)+
+  geom_line(mapping = aes(x = width, y = width_m, color = trip), size = 0.75)+
+  facet_wrap(~ID)
 
 ## fluke
 
