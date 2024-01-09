@@ -152,6 +152,16 @@ age_calc%>%distinct(ID, POD)%>%group_by(POD)%>%tally()
 
 ggsave("./Figures/length_trip.png", length_trip, dpi = 320, height = 100, units = 'mm')
 
+## include each ID average per trip, but need to adjust for fractional age
+ggplot(age_calc, aes(x = age, y = actual_length_mean, color = POD))+
+  geom_point()+
+  geom_line(aes(group = ID))+
+  geom_errorbar(aes(ymin=actual_length_mean-actual_length_sd, ymax=actual_length_mean+actual_length_sd), alpha = 0.5)+
+  theme_bw()+
+  theme(legend.position = "bottom")+
+  xlab("Age")+
+  ylab("Length (m)")
+
 #age_calc%>%filter(n>1)%>%mutate(CV = actual_length_sd/actual_length_mean)%>%group_by(trip)%>%summarise(min = min(CV),max=max(CV), mean_CV=mean(CV), n = n())
 
 # Individuals that have been measured on more than one trip ----
@@ -203,14 +213,76 @@ ggplot(age_calc_year_mean, aes(x = age, y = actual_length_mean_mean, color = POD
 
 
 ## length per year age
-mean_year_age<-ggplot(age_calc_year_mean, aes(x = age, y = actual_length_mean_mean))+
+mean_year_age_noid<-ggplot(age_calc_year_mean, aes(x = age, y = actual_length_mean_mean))+
   geom_point()+
-  geom_line(aes(group = ID))+
   #geom_smooth()+
   theme(legend.position = "bottom")+
   xlab("Age")+
   ylab("Mean length (m)")+
   theme_bw()
+
+# fitting von Bertalanffy ----
+# https://rpubs.com/lacs/1123
+
+
+age_vbgc<-age_calc_year_mean%>%
+  ungroup()%>%
+  group_by(age)%>%
+  mutate(length = mean(actual_length_mean_mean))%>%
+  distinct(age, length)%>%
+  arrange(age)#%>%
+  # filter(age < 20)%>%
+  # mutate(age = age + 1)
+
+
+theta <- c(3, 0.2, -0.5)
+
+SSQ <- function(theta, x) {
+    Linf <- theta[1]
+    K <- theta[2]
+    t0 <- theta[3]
+    epsilon <- rep(0, nrow(age_vbgc))
+    lpred <- rep(0, nrow(age_vbgc))
+    for (i in 1:nrow(age_vbgc)) {
+        lpred[i] <- Linf * (1 - exp(-K * (age_vbgc$age[i] - t0)))
+        epsilon[i] <- (age_vbgc$length[i] - lpred[i])^2
+    }
+    ssq <- sum(epsilon)
+    return(ssq)
+}
+
+
+out <- optim(theta, fn = SSQ, method = "BFGS", x = age_vbgc$age, hessian = TRUE)
+out$V <- solve(out$hessian)  #solve the hessian
+out$S <- sqrt(diag(out$V))  #Standard Error
+out$R <- out$V/(out$S %o% out$S)  #Correlation
+
+out$par
+out$S
+
+lp <- out$par[1] * (1 - exp(-out$par[2] * (age_vbgc$age - out$par[3])))
+
+lpdf<-as.data.frame(lp)
+
+age_vbgc_curve<-age_vbgc%>%
+  bind_cols(curve = lpdf$lp)
+
+## length per year age
+ggplot(age_vbgc_curve)+
+  geom_point(mapping = aes(x = age, y = length))+
+  geom_path(mapping = aes(x = age, y = curve))+
+  theme(legend.position = "bottom")+
+  xlab("Age")+
+  ylab("Mean length (m)")+
+  theme_bw()+
+  ylim(c(0,3))
+
+```
+
+```{r, scotland_comparison, include = F}
+
+mean_year_age<-mean_year_age_noid+
+  geom_line(aes(group = ID))
 
 ##
 mean_year_age_scotland<-ggplot()+
