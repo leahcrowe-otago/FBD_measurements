@@ -1,7 +1,6 @@
 ---
 title: "FBD measurements"
 author: "Leah Crowe"
-date: 'Mar 2023'
 output: pdf_document
 bibliography: references.bib
 ---
@@ -122,14 +121,14 @@ age_calc<-age_length%>%
   ungroup()%>%
   mutate(age = case_when(
     !is.na(BIRTH_YEAR) ~ YEAR-BIRTH_YEAR,
-    is.na(BIRTH_YEAR) ~ YEAR-FIRST_YEAR
+    is.na(BIRTH_YEAR) ~ YEAR-FIRST_YEAR #min_age
   ))%>%
-  filter(!is.na(BIRTH_YEAR))
-  # mutate(age = case_when(
-  #   is.na(BIRTH_YEAR) ~ paste0(age,"+"),
-  #   !is.na(BIRTH_YEAR) ~ as.character(age)
-  # ))
-
+  mutate(age_value = case_when(
+    !is.na(BIRTH_YEAR) ~ "actual", #birth year known
+    is.na(BIRTH_YEAR) ~ "min" #birth year not known
+  ))%>%
+  #filter(!is.na(BIRTH_YEAR))
+  filter(!is.na(age))
 ```
 
 ```{r age_length, echo = F, message = F}
@@ -153,7 +152,7 @@ age_calc%>%distinct(ID, POD)%>%group_by(POD)%>%tally()
 ggsave("./Figures/length_trip.png", length_trip, dpi = 320, height = 100, units = 'mm')
 
 ## include each ID average per trip, but need to adjust for fractional age
-ggplot(age_calc, aes(x = age, y = actual_length_mean, color = POD))+
+ID_pertrip_pod<-ggplot(age_calc, aes(x = age, y = actual_length_mean, color = POD))+
   geom_point()+
   geom_line(aes(group = ID))+
   geom_errorbar(aes(ymin=actual_length_mean-actual_length_sd, ymax=actual_length_mean+actual_length_sd), alpha = 0.5)+
@@ -172,11 +171,13 @@ ID_age<-age_calc%>%
   arrange(ID,trip)%>%
   mutate(length_diff = lead(actual_length_mean) - actual_length_mean)
   
-ggplot(ID_age, aes(x = trip, y = actual_length_mean, color = SEX))+
+individuals_measuredmanytimes<-ggplot(ID_age, aes(x = trip, y = actual_length_mean, color = SEX))+
   geom_point()+
   geom_errorbar(aes(ymin=actual_length_mean-actual_length_sd, ymax=actual_length_mean+actual_length_sd))+
   facet_wrap(~ID)+
   theme(legend.position = "bottom")
+
+ggsave("./Figures/individuals_measuredmanytimes.png", individuals_measuredmanytimes, dpi = 320, height = 300, width = 500, units = 'mm')
 
 # one measurement for each individual for each of its ages ----
 age_calc_year_mean<-age_calc%>%
@@ -186,30 +187,30 @@ age_calc_year_mean<-age_calc%>%
          n = n())%>%
   distinct(ID, age, n, SEX, BIRTH_YEAR, FIRST_YEAR, POD, YEAR, actual_length_mean_mean, actual_length_mean_sd)  
 
-ggplot(age_calc_year_mean, aes(x = age, y = actual_length_mean_mean, color = POD))+
-  #geom_errorbar(aes(ymin=actual_length_mean_mean-actual_length_mean_sd, ymax=actual_length_mean_mean+actual_length_mean_sd))+
-  geom_point()+
-  geom_line(aes(group = ID))+
-  #geom_smooth()+
-  theme(legend.position = "bottom")+
-  xlab("Age")+
-  ylab("Mean length per individual (m)")
+# ggplot(age_calc_year_mean, aes(x = age, y = actual_length_mean_mean, color = POD))+
+#   #geom_errorbar(aes(ymin=actual_length_mean_mean-actual_length_mean_sd, ymax=actual_length_mean_mean+actual_length_mean_sd))+
+#   geom_point()+
+#   geom_line(aes(group = ID))+
+#   #geom_smooth()+
+#   theme(legend.position = "bottom")+
+#   xlab("Age")+
+#   ylab("Mean length per individual (m)")
 
-# age_calc_month<-age_calc%>%
-#   mutate(age = case_when(
-#     month == 9 ~ age + 0,
-#     month == 10 ~ age + 1/12,
-#     month == 11 ~ age + 2/12,
-#     month == 12 ~ age + 3/12,
-#     month == 1 ~ age + 4/12,
-#     month == 2 ~ age + 5/12,
-#     month == 3 ~ age + 6/12,
-#     month == 4 ~ age + 7/12,
-#     month == 5 ~ age + 8/12,
-#     month == 6 ~ age + 9/12,
-#     month == 7 ~ age + 10/12,
-#     month == 8 ~ age + 11/12,
-#   ))
+age_calc_month<-age_calc%>%
+  mutate(age = case_when(
+    month == 9 ~ age + 0,
+    month == 10 ~ age + 1/12,
+    month == 11 ~ age + 2/12,
+    month == 12 ~ age + 3/12,
+    month == 1 ~ age + 4/12,
+    month == 2 ~ age + 5/12,
+    month == 3 ~ age + 6/12,
+    month == 4 ~ age + 7/12,
+    month == 5 ~ age + 8/12,
+    month == 6 ~ age + 9/12,
+    month == 7 ~ age + 10/12,
+    month == 8 ~ age + 11/12,
+  ))
 
 
 ## length per year age
@@ -221,21 +222,51 @@ mean_year_age_noid<-ggplot(age_calc_year_mean, aes(x = age, y = actual_length_me
   ylab("Mean length (m)")+
   theme_bw()
 
+
+```
+```{r vbgc, include = T, warning=FALSE, message=FALSE}
+
+# data for VBGC
+
+#mean length per age
+# age_vbgc<-age_calc_year_mean%>%
+#   ungroup()%>%
+#   group_by(age)%>%
+#   mutate(length = mean(actual_length_mean_mean))%>%
+#   distinct(age, length)%>%
+#   arrange(age)
+
+#mean length per individual at distinct ages pooled by year, first year = 1
+# age_vbgc<-age_calc_year_mean%>%
+#   ungroup()%>%
+#   mutate(length = actual_length_mean_mean,
+#          age = age+1)%>%
+#   distinct(ID, age, length)%>%
+#   arrange(age)
+
+#decimal ages
+age_vbgc<-age_calc_month%>%
+  ungroup()%>%
+  group_by(age)%>%
+  mutate(length = mean(actual_length_mean))%>%
+  distinct(ID, age, length, age_value)%>%
+  arrange(age)%>%
+  left_join(lifehist, by = c("ID" = "NAME"))%>%
+  ungroup()%>%
+  #give a better approximation of age for older reproductive females?
+  mutate(age = case_when(
+    age_value == "min" & !is.na(FIRST_CALF) ~ age + (avg_primo_age - (as.numeric(FIRST_CALF) - as.numeric(FIRST_YEAR))),
+    TRUE ~ age
+  ))
+
+# age_vbgc%>%
+#   filter(ID == "ARROW")
+
 # fitting von Bertalanffy ----
 # https://rpubs.com/lacs/1123
 
-
-age_vbgc<-age_calc_year_mean%>%
-  ungroup()%>%
-  group_by(age)%>%
-  mutate(length = mean(actual_length_mean_mean))%>%
-  distinct(age, length)%>%
-  arrange(age)#%>%
-  # filter(age < 20)%>%
-  # mutate(age = age + 1)
-
-
-theta <- c(3, 0.2, -0.5)
+# van Bertalanffy
+theta <- c(3, 0.2, 1)
 
 SSQ <- function(theta, x) {
     Linf <- theta[1]
@@ -245,8 +276,8 @@ SSQ <- function(theta, x) {
     lpred <- rep(0, nrow(age_vbgc))
     for (i in 1:nrow(age_vbgc)) {
         lpred[i] <- Linf * (1 - exp(-K * (age_vbgc$age[i] - t0)))
-        epsilon[i] <- (age_vbgc$length[i] - lpred[i])^2
-    }
+        epsilon[i] <- (age_vbgc$length[i] - lpred[i])^2 #difference between estimate and measured, squared for logistic
+        }
     ssq <- sum(epsilon)
     return(ssq)
 }
@@ -257,8 +288,7 @@ out$V <- solve(out$hessian)  #solve the hessian
 out$S <- sqrt(diag(out$V))  #Standard Error
 out$R <- out$V/(out$S %o% out$S)  #Correlation
 
-out$par
-out$S
+out
 
 lp <- out$par[1] * (1 - exp(-out$par[2] * (age_vbgc$age - out$par[3])))
 
@@ -268,15 +298,32 @@ age_vbgc_curve<-age_vbgc%>%
   bind_cols(curve = lpdf$lp)
 
 ## length per year age
+
+Linf_o<-out$par[1]
+K_o<-out$par[2]
+t0_o<-out$par[3]
+
 ggplot(age_vbgc_curve)+
-  geom_point(mapping = aes(x = age, y = length))+
-  geom_path(mapping = aes(x = age, y = curve))+
+  geom_point(mapping = aes(x = age, y = length, color = age_value))+
+  stat_function(fun=function(x)(Linf_o * (1 - exp(-K_o * (x - t0_o)))))+
   theme(legend.position = "bottom")+
   xlab("Age")+
   ylab("Mean length (m)")+
   theme_bw()+
-  ylim(c(0,3))
+  ylim(c(-0.2,3.5))+
+  xlim(c(-6, max(age_vbgc_curve$age)))
 
+age_vbgc_curve%>%
+  filter(ID == "COMET")%>%
+  mutate(age_est = (1/-K_o)*log(1-(length/Linf_o))+ t0_o,
+  age_diff = age_est - age)%>%
+  arrange(age_diff)%>%
+  dplyr::select(ID, age, age_est, age_diff)
+
+#doesnt work when length > Linf_o
+#length<-Linf_o-0.00000001
+#solve for age from Length
+#(1/-K_o)*log(1-(length/Linf_o))+ t0_o
 ```
 
 ```{r, scotland_comparison, include = F}
@@ -308,6 +355,7 @@ age_calc_year_mean%>%
   filter(!is.na(growth))%>%
   arrange(age)
 ```
+\newpage
 
 Fig. 2: Each point represents the mean total length of an individual at its age for animals whose birth year is known.
 
