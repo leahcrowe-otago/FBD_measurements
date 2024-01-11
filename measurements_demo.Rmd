@@ -52,27 +52,45 @@ nrow(measurement_merge)
 
 measurement_ID_trip<-measurement_merge%>%
   ungroup()%>%
-  dplyr::select(ID, actual_length, trip)%>%
-  filter(ID != 'NA')%>%
-  group_by(ID, trip)%>%
-  mutate(actual_length_mean = mean(as.numeric(actual_length)), #mean of lengths measured using altitude at exact time
-         actual_length_sd = sd(as.numeric(actual_length)), #sd of lengths measured using altitude at exact time
-         #avg_length_mean = mean(avg_length), #mean of lengths measured using averaged altitude +/- 2 sec from exact time
-         #avg_length_sd = sd(avg_length), #sd of lengths measured using averaged altitude +/- 2 sec from exact time
-         n = n())%>%
-  distinct(ID, actual_length_mean, actual_length_sd, n, trip)%>%
-  mutate(actual_length_CV = actual_length_sd/actual_length_mean*100)
+  dplyr::select(ID, actual_length, trip)
 
-
-#nrow(measurement_ID_trip)
-          
-# measurement_ID_trip%>%
-#   filter(actual_length_sd > 0.1)%>%
-#   arrange(actual_length_sd)
-# 
 measurement_merge%>%
   filter(ID == 'SUNSHINE')
 ```
+
+```{r, whalength_file_merge}
+
+source('./whalength_file_merge.R', local = TRUE, verbose = F)$value
+head(length_ID_merge_Tt)
+
+measure_data<-length_ID_merge_Tt%>%
+  filter(issue == "N")%>%
+  dplyr::select(ID, trip, YEAR, DATE, Filename, "tilt_wl" = Tilt..degrees., "alt_corrected" = Corrected.height..m., "length_wl" = Total.Length..m.,
+                "w10" = Width.at.10..TL, "w20" = Width.at.20..TL, "w30" = Width.at.30..TL, "w40" = Width.at.40..TL, "w50" = Width.at.50..TL,
+                "w60" = Width.at.10..TL, "w70" = Width.at.20..TL, "w80" = Width.at.30..TL, "w90" = Width.at.40..TL, Rostrum.BH, Fluke.width, 
+                "BHDF" = BH.DF.insertion, COMMENTS, tilt_deg, laser_altitude_m, actual_length)
+
+
+length_data<-length_data%>%
+  filter(!is.na(length_wl))
+
+nrow(length_data)
+#checking that correct tilt was entered in whalength for measurement
+length_data%>%
+  filter(tilt_wl != tilt_deg)%>%
+  dplyr::select(ID, trip, DATE, Filename, tilt_wl, tilt_deg)
+
+#checking that length measured in whalength was the same that I entered
+length_data%>%
+  mutate(diff_tl = length_wl - actual_length)%>%
+  filter(diff_tl > 0.001)%>%
+  dplyr::select(ID, trip, DATE, Filename, length_wl, actual_length)
+
+# length_data%>%
+#   dplyr::select(alt_corrected, laser_altitude_m)
+
+```
+
 
 ```{r demo, include = F}
 # life history update ----
@@ -96,7 +114,7 @@ measurements_demo_ind<-measurement_ID_trip%>%
     as.numeric(str_sub(trip,6,7)) >= 9 ~ as.numeric(str_sub(trip,1,4))+1,
   ))%>%
   mutate(month = as.numeric(str_sub(trip,6,7)))%>%
-  dplyr::select(trip, YEAR, ID, actual_length_mean, actual_length_sd, n, SEX, BIRTH_YEAR, FIRST_YEAR, ends_with('2022'), ends_with('2023'), ends_with('2024'), POD, month)%>%
+  dplyr::select(trip, YEAR, ID, actual_length, SEX, BIRTH_YEAR, FIRST_YEAR, FIRST_CALF, ends_with('2022'), ends_with('2023'), ends_with('2024'), POD, month)%>%
   #tidyr::pivot_longer(cols = starts_with("X"), names_to = "AGECLASS_YEAR", values_to = "AGECLASS")%>%
   tidyr::pivot_longer(cols = starts_with("2"), names_to = "AGECLASS_YEAR", values_to = "AGECLASS")%>%
   mutate(AGECLASS_YEAR = str_replace(AGECLASS_YEAR, "X", ""))%>%
@@ -105,7 +123,13 @@ measurements_demo_ind<-measurement_ID_trip%>%
   mutate(AGECLASS = case_when(
     ID == "SUNSHINE" ~ "C",
     TRUE ~ AGECLASS
+  ))%>%
+  mutate(trip = case_when(
+    trip == "2023_06" & POD == "DOUBTFUL" ~ "2023_07",
+    TRUE ~ trip
   ))
+
+#measurements_demo_ind%>%filter(trip == "2023_06" & POD == "DOUBTFUL")
 
 measurements_demo_ind$AGECLASS<-factor(measurements_demo_ind$AGECLASS, levels = c("C","J","S-A","A"))
 
@@ -127,77 +151,18 @@ age_calc<-age_length%>%
     !is.na(BIRTH_YEAR) ~ "actual", #birth year known
     is.na(BIRTH_YEAR) ~ "min" #birth year not known
   ))%>%
-  #filter(!is.na(BIRTH_YEAR))
-  filter(!is.na(age))
+  filter(!is.na(age)) # gets ride of unmatched dolphin measurements
 ```
 
 ```{r age_length, echo = F, message = F}
 
-#ggplot(age_calc, aes(x = age, y = log(actual_length_mean)))+
-  #geom_point()+
-  #geom_smooth(se = FALSE, method = "gam", formula = y ~ s(x, bs = "cs"))
-
-# length per age per trip ----
-length_trip<-ggplot(age_calc, aes(x = age, y = actual_length_mean, color = POD))+
-  geom_point()+
-  geom_errorbar(aes(ymin=actual_length_mean-actual_length_sd, ymax=actual_length_mean+actual_length_sd), alpha = 0.5)+
-  facet_wrap(~trip)+
-  theme_bw()+
-  theme(legend.position = "bottom")+
-  xlab("Age")+
-  ylab("Length (m)")
-
-age_calc%>%distinct(ID, POD)%>%group_by(POD)%>%tally()
-
-ggsave("./Figures/length_trip.png", length_trip, dpi = 320, height = 100, units = 'mm')
-
-## include each ID average per trip, but need to adjust for fractional age
-ID_pertrip_pod<-ggplot(age_calc, aes(x = age, y = actual_length_mean, color = POD))+
-  geom_point()+
-  geom_line(aes(group = ID))+
-  geom_errorbar(aes(ymin=actual_length_mean-actual_length_sd, ymax=actual_length_mean+actual_length_sd), alpha = 0.5)+
-  theme_bw()+
-  theme(legend.position = "bottom")+
-  xlab("Age")+
-  ylab("Length (m)")
-
-#age_calc%>%filter(n>1)%>%mutate(CV = actual_length_sd/actual_length_mean)%>%group_by(trip)%>%summarise(min = min(CV),max=max(CV), mean_CV=mean(CV), n = n())
-
-# Individuals that have been measured on more than one trip ----
-ID_age<-age_calc%>%
-  group_by(ID)%>%
-  mutate(n = n())%>%
-  filter(n > 1)%>%
-  arrange(ID,trip)%>%
-  mutate(length_diff = lead(actual_length_mean) - actual_length_mean)
-  
-individuals_measuredmanytimes<-ggplot(ID_age, aes(x = trip, y = actual_length_mean, color = SEX))+
-  geom_point()+
-  geom_errorbar(aes(ymin=actual_length_mean-actual_length_sd, ymax=actual_length_mean+actual_length_sd))+
-  facet_wrap(~ID)+
-  theme(legend.position = "bottom")
-
-ggsave("./Figures/individuals_measuredmanytimes.png", individuals_measuredmanytimes, dpi = 320, height = 300, width = 500, units = 'mm')
-
-# one measurement for each individual for each of its ages ----
-age_calc_year_mean<-age_calc%>%
-  group_by(ID, YEAR)%>%
-  mutate(actual_length_mean_mean = mean(as.numeric(actual_length_mean)), #mean of lengths measured using altitude at exact time
-         actual_length_mean_sd = sd(as.numeric(actual_length_mean)), #sd of lengths measured using altitude at exact time
-         n = n())%>%
-  distinct(ID, age, n, SEX, BIRTH_YEAR, FIRST_YEAR, POD, YEAR, actual_length_mean_mean, actual_length_mean_sd)  
-
-# ggplot(age_calc_year_mean, aes(x = age, y = actual_length_mean_mean, color = POD))+
-#   #geom_errorbar(aes(ymin=actual_length_mean_mean-actual_length_mean_sd, ymax=actual_length_mean_mean+actual_length_mean_sd))+
-#   geom_point()+
-#   geom_line(aes(group = ID))+
-#   #geom_smooth()+
-#   theme(legend.position = "bottom")+
-#   xlab("Age")+
-#   ylab("Mean length per individual (m)")
-
-age_calc_month<-age_calc%>%
+age_calc<-age_calc%>%
+  #give a better approximation of age for older reproductive females?
   mutate(age = case_when(
+    age_value == "min" & !is.na(FIRST_CALF) ~ age + (avg_primo_age - (as.numeric(FIRST_CALF) - as.numeric(FIRST_YEAR))),
+    TRUE ~ age
+  ))%>%
+  mutate(age_month = case_when(
     month == 9 ~ age + 0,
     month == 10 ~ age + 1/12,
     month == 11 ~ age + 2/12,
@@ -212,55 +177,63 @@ age_calc_month<-age_calc%>%
     month == 8 ~ age + 11/12,
   ))
 
-
-## length per year age
-mean_year_age_noid<-ggplot(age_calc_year_mean, aes(x = age, y = actual_length_mean_mean))+
+# length per age all measurements ----
+length_all<-ggplot(age_calc, aes(x = age_month, y = actual_length, shape = POD, color = age_value))+
   geom_point()+
-  #geom_smooth()+
+  theme_bw()+
   theme(legend.position = "bottom")+
   xlab("Age")+
-  ylab("Mean length (m)")+
-  theme_bw()
+  ylab("Length (m)")
 
+length_all
 
+num_measurements<-nrow(age_calc)
+num_individuals_measured<-age_calc%>%
+  distinct(ID)%>%
+  nrow()
+
+## connect the dots for individual
+ID_pertrip_pod<-length_all+
+  geom_line(aes(group = ID))
+
+ID_pertrip_pod
+
+# length per age per trip ----
+length_trip<-ggplot(age_calc, aes(x = age_month, y = actual_length, color = POD))+
+  geom_point()+
+  facet_wrap(~trip)+
+  theme_bw()+
+  theme(legend.position = "bottom")+
+  xlab("Age")+
+  ylab("Length (m)")
+
+age_calc%>%distinct(ID, POD)%>%group_by(POD)%>%tally()
+
+ggsave("./Figures/length_trip.png", length_trip, dpi = 320, height = 100, units = 'mm')
+
+#age_calc%>%filter(n>1)%>%mutate(CV = actual_length_sd/actual_length_mean)%>%group_by(trip)%>%summarise(min = min(CV),max=max(CV), mean_CV=mean(CV), n = n())
+
+# Individuals that have been measured on more than one trip ----
+ID_age<-age_calc%>%
+  group_by(ID)%>%
+  mutate(n = n())%>%
+  filter(n > 1)%>%
+  arrange(ID,trip)%>%
+  mutate(length_diff = lead(actual_length) - actual_length)
+  
+individuals_measuredmanytimes<-ggplot(ID_age, aes(x = trip, y = actual_length, color = SEX))+
+  geom_point()+
+  facet_wrap(~ID, ncol = 7)+
+  theme(legend.position = "bottom")
+
+ggsave("./Figures/individuals_measuredmanytimes.png", individuals_measuredmanytimes, dpi = 320, height = 500, width = 500, units = 'mm')                                                                                                                                         
 ```
 ```{r vbgc, include = T, warning=FALSE, message=FALSE}
 
 # data for VBGC
 
-#mean length per age
-# age_vbgc<-age_calc_year_mean%>%
-#   ungroup()%>%
-#   group_by(age)%>%
-#   mutate(length = mean(actual_length_mean_mean))%>%
-#   distinct(age, length)%>%
-#   arrange(age)
-
-#mean length per individual at distinct ages pooled by year, first year = 1
-# age_vbgc<-age_calc_year_mean%>%
-#   ungroup()%>%
-#   mutate(length = actual_length_mean_mean,
-#          age = age+1)%>%
-#   distinct(ID, age, length)%>%
-#   arrange(age)
-
 #decimal ages
-age_vbgc<-age_calc_month%>%
-  ungroup()%>%
-  group_by(age)%>%
-  mutate(length = mean(actual_length_mean))%>%
-  distinct(ID, age, length, age_value)%>%
-  arrange(age)%>%
-  left_join(lifehist, by = c("ID" = "NAME"))%>%
-  ungroup()%>%
-  #give a better approximation of age for older reproductive females?
-  mutate(age = case_when(
-    age_value == "min" & !is.na(FIRST_CALF) ~ age + (avg_primo_age - (as.numeric(FIRST_CALF) - as.numeric(FIRST_YEAR))),
-    TRUE ~ age
-  ))
-
-# age_vbgc%>%
-#   filter(ID == "ARROW")
+age_vbgc<-age_calc
 
 # fitting von Bertalanffy ----
 # https://rpubs.com/lacs/1123
@@ -324,6 +297,18 @@ age_vbgc_curve%>%
 #length<-Linf_o-0.00000001
 #solve for age from Length
 #(1/-K_o)*log(1-(length/Linf_o))+ t0_o
+```
+
+```{r, vbgc_bayes}
+library(brms);library(nimble)
+
+age_calc
+
+model<-nimble::nimbleCode({
+  
+  for(i in 1:nrow(age_calc))
+})
+
 ```
 
 ```{r, scotland_comparison, include = F}
@@ -438,11 +423,7 @@ measurement_ID_trip%>%
   filter(ID == 'MENTRY')
 
 ```
-```{r, whalength_file_merge}
 
-source('./whalength_file_merge.R', local = TRUE, verbose = F)$value
-
-```
 
 ```{r measure_per_individual, echo = F}
 
