@@ -312,7 +312,8 @@ age_vbgc_curve%>%
 ```
 
 ```{r, vbgc_bayes}
-##leah's attempt at coding
+##leah's attempt at building models in Nimble
+# https://r-nimble.org/html_manual/cha-writing-models.html
 library(nimble);library(rstan)
 
 age_vbgc<-age_calc%>%
@@ -328,45 +329,47 @@ model<-nimble::nimbleCode({
   for(i in 1:n){
     #likelihood
     #y = expected length (L_t)
-    #x = Linf
     
-    # y = y[i](t[j]) eq. 1 observed length
-    # x = g[i](t) = predicted length
-    y[i] ~ T(dnorm(x[i], sd = sigma), 0, Inf)
+    # x = y[i](t[j]) eq. 1 observed length
+    # y = g[i](t) = predicted length
+    #log(Linf) ~ T(dnorm(mu, sd = sigma), 0, Inf)
+    #log(K) ~ T(dnorm(mu, sd = sigma), 0, Inf)
+    #log(to+10) ~ T(dnorm(mu, sd = sigma), 0, Inf)
+    
+    #Schofield et al. 2013 eq. 1
+    #sigma = sigma^2[y]
+    Linf ~ T(dnorm(x[i], sigma), 0, Inf)    
     #E[i] ~ dnorm(0, sigma)
-    x[i] <- Linf[i]*(1 - k^(age[i] - t0)) #+ E
-    #E[i] <- (y[i] - x[i])^2  
+    #Schofield et al. 2013 eq. 3
     
-               
+    y[i] <- Linf*(1 - K^(age[i] - t0)) # + E[i]
+   
   }
   
   #prior
-  sigma ~ dnorm(0.2, 0.2)
-  k ~ dnorm(0.5, 0.5)
-  t0 ~ dnorm(-2, -2)
+  sigma ~ dunif(0,1)
   
-
 
 })
 
 inits_fun = function(){
   
-  sigma =  rlnorm(1)
-  k_init = rlnorm(1)
+  K_init = rlnorm(1)
   t0_init = rlnorm(1)
   
-  return(list(k = k_init, t0 = t0_init))
+  return(list(K = K_init, t0 = t0_init))
 
 }
 
-params = c("Linf","k","t0")
+params = c("Linf")
 
 samples<-nimble::nimbleMCMC(code = model,
                             constants = list(n = n),
-                            data = list(y = age_vbgc$length, age = age_vbgc$age_month),
+                            data = list(x = as.numeric(age_vbgc$length), 
+                                        age = as.numeric(age_vbgc$age_month)),
                             inits = inits_fun(),
-                            niter = 1000,
-                            nburnin = 200, 
+                            niter = 10000,
+                            nburnin = 1000, 
                             nchains = 3,
                             monitors = params,
                             samplesAsCodaMCMC = T
@@ -384,15 +387,17 @@ coda::gelman.diag(coda.samples)
 
 
 ggplot()+
-  geom_histogram(mapping = aes(x = as.matrix(samples), y=..density..), bins = 30, color = "black", alpha = 0.8)+
+  geom_histogram(mapping = aes(x = as.matrix(samples), y=..density..), bins = 100, color = "black", alpha = 0.8)+
   geom_density(mapping = aes(x = as.matrix(samples)), color = "black")+
   theme_bw()+
-  xlab("phi")
+  xlab("Linf")+
+  xlim(c(0,10))
 
 
 ```
 ```{r, BayesGrowth}
 #Leah using assists
+#https://github.com/jonathansmart/BayesGrowth
 library(BayesGrowth)
 
 age_vbgc<-age_calc%>%
@@ -415,7 +420,7 @@ age_vbgc%>%
 
 max_size <- max(age_vbgc$Length)
 max_size_se <- sd(age_vbgc$Length)/sqrt(length(age_vbgc$Length))
-birth_size <- 0.5
+birth_size <- 0
 birth_size_se <- 0.015
 
 # Use the function to estimate the rstan model
