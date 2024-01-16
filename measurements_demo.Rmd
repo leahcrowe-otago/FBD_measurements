@@ -310,7 +310,6 @@ age_vbgc_curve%>%
 #solve for age from Length
 #(1/-K_o)*log(1-(length/Linf_o))+ t0_o
 ```
-
 ```{r, vbgc_bayes}
 ##leah's attempt at building models in Nimble
 # https://r-nimble.org/html_manual/cha-writing-models.html
@@ -323,49 +322,57 @@ age_vbgc<-age_calc%>%
 head(age_vbgc)
 
 n = nrow(age_vbgc)
+g<-seq(0,max(age_vbgc$age_month), 1/12)
 
 model<-nimble::nimbleCode({
+
+for (i in 1:n){ 
   
-  for(i in 1:n){
     #likelihood
-    #y = expected length (L_t)
+
+    # y = y[i](t[j]) eq. 1 observed length
+    # x = g[i](t[j]) = predicted length/growth curve
     
-    # x = y[i](t[j]) eq. 1 observed length
-    # y = g[i](t) = predicted length
     #log(Linf) ~ T(dnorm(mu, sd = sigma), 0, Inf)
     #log(K) ~ T(dnorm(mu, sd = sigma), 0, Inf)
     #log(to+10) ~ T(dnorm(mu, sd = sigma), 0, Inf)
     
     #Schofield et al. 2013 eq. 1
-    #sigma = sigma^2[y]
-    Linf ~ T(dnorm(x[i], sigma), 0, Inf)    
-    #E[i] ~ dnorm(0, sigma)
-    #Schofield et al. 2013 eq. 3
+    #y[i] ~ T(dnorm(x[i], sigma_y), 0, Inf)    
     
-    y[i] <- Linf*(1 - K^(age[i] - t0)) # + E[i]
+    #Schofield et al. 2013 eq. 3
+    #x[i] <- Linf*(1 - K^(age[i] - t0))
    
-  }
-  
+    #Midway et al. 2015
+    y[i] ~ dnorm(y.hat[i], tau.y)
+    y.hat[i] <- Linf *(1 - exp(-K *(age[i] - t0)))
+
+}  
   #prior
-  sigma ~ dunif(0,1)
+  tau.y <- pow(sigma_y, -2)
+  sigma_y ~ dunif(0, 100)
   
+  Linf ~ dnorm(3.5, 0.5)
+  K ~ dunif(0, 1)
+  t0 ~ dnorm(-2.5, 0.5)
+
 
 })
 
 inits_fun = function(){
   
-  K_init = rlnorm(1)
-  t0_init = rlnorm(1)
+  K_init = 0.5
+  t0_init = -2.5
   
   return(list(K = K_init, t0 = t0_init))
 
 }
 
-params = c("Linf")
+params = c("Linf", "K", "t0", "sigma_y")
 
 samples<-nimble::nimbleMCMC(code = model,
                             constants = list(n = n),
-                            data = list(x = as.numeric(age_vbgc$length), 
+                            data = list(y = as.numeric(age_vbgc$length), 
                                         age = as.numeric(age_vbgc$age_month)),
                             inits = inits_fun(),
                             niter = 10000,
@@ -391,8 +398,159 @@ ggplot()+
   geom_density(mapping = aes(x = as.matrix(samples)), color = "black")+
   theme_bw()+
   xlab("Linf")+
-  xlim(c(0,10))
+  xlim(c(0,1))
 
+
+samples.df<-as.data.frame(as.matrix(samples))
+               
+ggplot()+
+  geom_histogram(mapping = aes(x = samples.df$Linf, y=..density..), bins = 30, color = "black", alpha = 0.8)+
+  geom_density(mapping = aes(x = samples.df$Linf), color = "black")+
+  theme_bw()
+
+ggplot()+
+  geom_histogram(mapping = aes(x = samples.df$K, y=..density..), bins = 30, color = "black", alpha = 0.8)+
+  geom_density(mapping = aes(x = samples.df$K), color = "black")+
+  theme_bw()
+
+ggplot()+
+  geom_histogram(mapping = aes(x = samples.df$t0, y=..density..), bins = 30, color = "black", alpha = 0.8)+
+  geom_density(mapping = aes(x = samples.df$t0), color = "black")+
+  theme_bw()
+```
+```{r, vbgc_bayes_heir}
+##leah's attempt at building models in Nimble
+# https://r-nimble.org/html_manual/cha-writing-models.html
+library(nimble);library(rstan)
+
+age_vbgc<-age_calc%>%
+  filter(!is.na(length_use))%>%
+  dplyr::rename("length" = "length_use")%>%
+  mutate(m_1 = case_when(
+    SEX == "M" ~ 1,
+    TRUE ~ 0
+  ))%>%
+  group_by(ID)%>%
+  mutate(n = n())
+
+head(age_vbgc)
+
+age_vbgc_IDlist<-split(age_vbgc, age_vbgc$ID)
+length(age_vbgc_IDlist)
+
+
+model<-nimble::nimbleCode({
+  
+for(i in 1:length(age_vbgc_IDlist)){
+  
+  for(j in 1:nrow(age_vbgc_IDlist[i])){
+    #likelihood
+
+    # y = y[i](t[j]) eq. 1 observed length
+    # x = g[i](t[j]) = predicted length/growth curve
+    
+    #log(Linf) ~ T(dnorm(mu, sd = sigma), 0, Inf)
+    #log(K) ~ T(dnorm(mu, sd = sigma), 0, Inf)
+    #log(to+10) ~ T(dnorm(mu, sd = sigma), 0, Inf)
+    
+    #Schofield et al. 2013 eq. 1
+    y[j] ~ T(dnorm(x[j], sigma_y), 0, Inf)    
+    
+    #heirarchical
+    Linf[i] ~ T(dnorm(beta_l0 + (beta_l1 * m_1[i]), sigma_l), 0, Inf)
+    logit(k[i]) ~ dnorm(beta_k0 * (1 - m_1[i]) + beta_k1*m_1[i], sigma_k) 
+    
+    #E[i] ~ dnorm(0, sigma)
+    #Schofield et al. 2013 eq. 3
+    x[j] <- Linf[i]*(1 - K^(age[j] - t0)) #+ E[i]
+   
+  }
+}
+
+  #prior
+  sigma_y ~ T(dt(mu = 0, tau = 2500), 0, Inf) #truncated student t distribution
+  beta_l0 ~ dnorm(0, 1000^2)
+  beta_l1 ~ dnorm(0, 1000^2)
+  sigma_l ~ T(dt(mu = 0, tau = 2500), 0, Inf) #truncated student t distribution
+  beta_k0 ~ dlogis(0, 1)
+  beta_k1 ~ dlogis(0, 1)
+  sigma_k ~ T(dt(mu = 0, tau = 25), 0, Inf) #truncated student t distribution
+
+})
+
+inits_fun = function(){
+  
+  K_init = rlnorm(1)
+  t0_init = rlnorm(1)
+  
+  return(list(K = K_init, t0 = t0_init))
+
+}
+
+params = c("Linf", "K", "t0")
+
+samples<-nimble::nimbleMCMC(code = model,
+                            #constants = list(n = n),
+                            data = list(y = as.numeric(age_vbgc_IDlist[[i]]$length), 
+                                        age = as.numeric(age_vbgc_IDlist[[i]]$age_month),
+                                        m_1 = as.numeric(age_vbgc_IDlist[[i]]$m_1)),
+                            inits = inits_fun(),
+                            niter = 10000,
+                            nburnin = 1000, 
+                            nchains = 3,
+                            monitors = params,
+                            samplesAsCodaMCMC = T
+                            )
+
+coda.samples<-coda::mcmc(samples)
+
+summ<-summary(samples)
+summ
+summ$statistics[1]
+summ$quantiles[c(1,5)]
+
+bayesplot::mcmc_trace(coda.samples)
+coda::gelman.diag(coda.samples)
+
+bayesplot::mcmc_areas(as.matrix(samples),
+           pars = params,
+           prob = 0.8) 
+
+samples.df<-as.data.frame(as.matrix(samples))
+               
+ggplot()+
+  geom_histogram(mapping = aes(x = samples.df$Linf, y=..density..), bins = 30, color = "black", alpha = 0.8)+
+  geom_density(mapping = aes(x = samples.df$Linf), color = "black")+
+  theme_bw()
+
+## need to write this for NIMBLE specifically: https://r-nimble.org/nimbleExamples/posterior_predictive.html
+
+as.data.frame(as.matrix(samples))
+
+nSamp <- nrow(as.matrix(samples))
+ppSamples <- matrix(0, nSamp, n)
+
+set.seed(1)
+for(i in 1:nSamp){
+  model[["Linf"]] <- samples[i, "Linf"]             ## or cmodel$mu <- samples[i, "mu"]
+  model[["K"]] <- samples[i, "K"]
+  model$simulate(simNodes, includeData = TRUE)
+  ppSamples[i, ] <- model[["y"]]
+}
+
+
+ppSamples <- matrix(0, nrow = nSamp, ncol =
+          length(model$expandNodeNames(dataNodes, returnScalarComponents = TRUE)))
+postNames <- colnames(samples)
+
+set.seed(1)
+system.time({
+for(i in seq_len(nSamp)) {
+    values(cmodel, postNames) <- samples[i, ]  # assign 'flattened' values
+    cmodel$simulate(simNodes, includeData = TRUE)
+    ppSamples[i, ] <- values(cmodel, dataNodes)
+}
+})
 
 ```
 ```{r, BayesGrowth}
