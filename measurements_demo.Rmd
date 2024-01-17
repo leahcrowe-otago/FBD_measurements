@@ -322,7 +322,6 @@ age_vbgc<-age_calc%>%
 head(age_vbgc)
 
 n = nrow(age_vbgc)
-g<-seq(0,max(age_vbgc$age_month), 1/12)
 
 model<-nimble::nimbleCode({
 
@@ -338,14 +337,13 @@ for (i in 1:n){
     #log(to+10) ~ T(dnorm(mu, sd = sigma), 0, Inf)
     
     #Schofield et al. 2013 eq. 1
-    #y[i] ~ T(dnorm(x[i], sigma_y), 0, Inf)    
-    
+    y[i] ~ T(dnorm(x[i], tau.y), 0, Inf)    
     #Schofield et al. 2013 eq. 3
-    #x[i] <- Linf*(1 - K^(age[i] - t0))
+    x[i] <- Linf*(1 - K^(age[i] - t0))
    
     #Midway et al. 2015
-    y[i] ~ dnorm(y.hat[i], tau.y)
-    y.hat[i] <- Linf *(1 - exp(-K *(age[i] - t0)))
+     #y[i] ~ dnorm(y.hat[i], tau.y)
+     #y.hat[i] <- Linf *(1 - exp(-K *(age[i] - t0)))
 
 }  
   #prior
@@ -354,7 +352,7 @@ for (i in 1:n){
   tau.y <- pow(sigma_y, -2)
   sigma_y ~ dunif(0, 100)
   
-  Linf ~ dnorm(3.5, 0.5)
+  Linf ~ dnorm(3, 0.4)
   K ~ dunif(0, 1)
   t0 ~ dnorm(-2.5, 0.5)
 
@@ -369,8 +367,10 @@ inits_fun = function(){
   return(list(K = K_init, t0 = t0_init))
 
 }
-
-params = c("Linf", "K", "t0", "sigma_y", "y.hat")
+#Midway
+#params = c("Linf", "K", "t0", "sigma_y", "y.hat")
+#Schofield
+params = c("Linf", "K", "t0", "sigma_y")
 
 data = list(y = as.numeric(age_vbgc$length), 
             age = as.numeric(age_vbgc$age_month))
@@ -388,16 +388,16 @@ samples<-nimble::nimbleMCMC(code = model,
 
 coda.samples<-coda::mcmc(samples)
 #### ppm ----- 
-
-Rmodel <- nimble::nimbleModel(code = model, 
-                              constants = list(n = n),
-                              data = data, 
-                              inits = inits_fun())
-
-cmodel<-nimble::compileNimble(Rmodel)
-mcmc<-buildMCMC(Rmodel, monitors = params)
-cmcmc   <- compileNimble(mcmc, project = Rmodel)
-samples <- runMCMC(cmcmc, niter = 10000, nburnin = 1000, nchains = 3, samplesAsCodaMCMC = T)
+#another way to code the above
+# Rmodel <- nimble::nimbleModel(code = model, 
+#                               constants = list(n = n),
+#                               data = data, 
+#                               inits = inits_fun())
+# 
+# cmodel<-nimble::compileNimble(Rmodel)
+# mcmc<-buildMCMC(Rmodel, monitors = params)
+# cmcmc   <- compileNimble(mcmc, project = Rmodel)
+# samples <- runMCMC(cmcmc, niter = 10000, nburnin = 1000, nchains = 3, samplesAsCodaMCMC = T)
 
 ### -----
 
