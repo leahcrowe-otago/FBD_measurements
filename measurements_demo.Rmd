@@ -349,6 +349,8 @@ for (i in 1:n){
 
 }  
   #prior
+  
+  #Midway et al. 2015
   tau.y <- pow(sigma_y, -2)
   sigma_y ~ dunif(0, 100)
   
@@ -368,12 +370,14 @@ inits_fun = function(){
 
 }
 
-params = c("Linf", "K", "t0", "sigma_y")
+params = c("Linf", "K", "t0", "sigma_y", "y.hat")
+
+data = list(y = as.numeric(age_vbgc$length), 
+            age = as.numeric(age_vbgc$age_month))
 
 samples<-nimble::nimbleMCMC(code = model,
                             constants = list(n = n),
-                            data = list(y = as.numeric(age_vbgc$length), 
-                                        age = as.numeric(age_vbgc$age_month)),
+                            data = data,
                             inits = inits_fun(),
                             niter = 10000,
                             nburnin = 1000, 
@@ -383,6 +387,19 @@ samples<-nimble::nimbleMCMC(code = model,
                             )
 
 coda.samples<-coda::mcmc(samples)
+#### ppm ----- 
+
+Rmodel <- nimble::nimbleModel(code = model, 
+                              constants = list(n = n),
+                              data = data, 
+                              inits = inits_fun())
+
+cmodel<-nimble::compileNimble(Rmodel)
+mcmc<-buildMCMC(Rmodel, monitors = params)
+cmcmc   <- compileNimble(mcmc, project = Rmodel)
+samples <- runMCMC(cmcmc, niter = 10000, nburnin = 1000, nchains = 3, samplesAsCodaMCMC = T)
+
+### -----
 
 summ<-summary(samples)
 summ
@@ -417,6 +434,64 @@ ggplot()+
   geom_histogram(mapping = aes(x = samples.df$t0, y=..density..), bins = 30, color = "black", alpha = 0.8)+
   geom_density(mapping = aes(x = samples.df$t0), color = "black")+
   theme_bw()
+
+#### https://r-nimble.org/nimbleExamples/posterior_predictive.html ----
+samples.df<-as.data.frame(as.matrix(samples))
+
+dataNodes <- Rmodel$getNodeNames(dataOnly = TRUE)
+parentNodes <- Rmodel$getParents(dataNodes, stochOnly = TRUE)  # `getParents` is new in nimble 0.11.0
+## Ensure we have both data nodes and deterministic intermediates (e.g., lifted nodes)
+simNodes <- Rmodel$getDependencies(parentNodes, self = FALSE)
+
+
+nSamp <- nrow(samples.df)
+ppSamples <- matrix(0, nSamp, n)
+
+ppSamples <- matrix(0, nrow = nSamp, ncol =
+          length(Rmodel$expandNodeNames(dataNodes, returnScalarComponents = TRUE)))
+
+postNames <- colnames(samples$chain1)
+
+# posterior predictive sampling takes ages
+
+# set.seed(1)
+# system.time({
+# for(i in 1:nSamp) {
+#   
+#     values(cmodel, postNames) <- samples.df[i, ]  # assign 'flattened' values
+#     cmodel$simulate(simNodes, includeData = TRUE)
+#     ppSamples[i, ] <- values(cmodel, dataNodes)
+# }
+# })
+
+#obsMin <- min(data$y)
+#ppMin <- apply(ppSamples, 1, min)
+
+# ## Check with plot in Gelman et al. (3rd edition), Figure 6.3
+# hist(ppMin, xlim = c(-50, 20),
+#     main = "Discrepancy = min(y)", 
+#     xlab = "min(y_rep)")
+# abline(v = obsMin, col = 'red')
+# 
+# ppSamples
+
+summ$statistics
+
+K_mean<-summ$statistics[1]
+Linf_mean<-summ$statistics[2]
+t0_mean<-summ$statistics[4]
+
+ggplot(age_vbgc)+
+  geom_point(mapping = aes(x = age_month, y = length, color = age_value))+
+  stat_function(fun=function(x)(Linf_mean * (1 - exp(-K_mean * (x - t0_mean)))))+
+  theme(legend.position = "bottom")+
+  xlab("Age")+
+  ylab("Mean length (m)")+
+  theme_bw()+
+  ylim(c(-0.2,3.5))+
+  xlim(c(-6, max(age_vbgc_curve$age)))
+
+
 ```
 ```{r, vbgc_bayes_heir}
 ##leah's attempt at building models in Nimble
@@ -615,7 +690,8 @@ growth_curve <- Calculate_MCMC_growth_curve(fit, Model = "VB",
 
 
 ggplot()+
-  stat_function(age_vbgc_curve, mapping = aes(x = age_month, y = length), color = "red", fun=function(x)(Linf_o * (1 - exp(-K_o * (x - t0_o)))))+
+  stat_function(age_vbgc_curve, mapping = aes(x = age_month, y = length), color = "red", size = 2, fun=function(x)(Linf_o * (1 - exp(-K_o * (x - t0_o)))))+
+  stat_function(age_vbgc, mapping = aes(x = Age, y = Length), color = "blue", fun=function(x)(Linf_mean * (1 - exp(-K_mean * (x - t0_mean)))))+
   geom_point(data = age_vbgc, aes(Age, Length), alpha = .3)+
   geom_lineribbon(growth_curve,mapping =  aes(x = Age, y = LAA, ymin = .lower, ymax = .upper, fill = factor(.width)), size = .8) +
   labs(y = "Total Length (mm)", x = "Age (yrs)")+
