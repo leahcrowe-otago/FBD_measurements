@@ -310,6 +310,7 @@ age_vbgc_curve%>%
 #solve for age from Length
 #(1/-K_o)*log(1-(length/Linf_o))+ t0_o
 ```
+
 ```{r, vbgc_bayes}
 ##leah's attempt at building models in Nimble
 # https://r-nimble.org/html_manual/cha-writing-models.html
@@ -337,13 +338,13 @@ for (i in 1:n){
     #log(to+10) ~ T(dnorm(mu, sd = sigma), 0, Inf)
     
     #Schofield et al. 2013 eq. 1
-    y[i] ~ T(dnorm(x[i], tau.y), 0, Inf)    
+    #y[i] ~ T(dnorm(x[i], tau.y), 0, Inf)    
     #Schofield et al. 2013 eq. 3
-    x[i] <- Linf*(1 - K^(age[i] - t0))
+    #x[i] <- Linf*(1 - K^(age[i] - t0))
    
     #Midway et al. 2015
-     #y[i] ~ dnorm(y.hat[i], tau.y)
-     #y.hat[i] <- Linf *(1 - exp(-K *(age[i] - t0)))
+     y[i] ~ dnorm(x[i], tau.y)
+     x[i] <- Linf *(1 - exp(-K *(age[i] - t0))) + E[i]
 
 }  
   #prior
@@ -438,19 +439,19 @@ ggplot()+
 #### https://r-nimble.org/nimbleExamples/posterior_predictive.html ----
 samples.df<-as.data.frame(as.matrix(samples))
 
-dataNodes <- Rmodel$getNodeNames(dataOnly = TRUE)
-parentNodes <- Rmodel$getParents(dataNodes, stochOnly = TRUE)  # `getParents` is new in nimble 0.11.0
+#dataNodes <- Rmodel$getNodeNames(dataOnly = TRUE)
+#parentNodes <- Rmodel$getParents(dataNodes, stochOnly = TRUE)  # `getParents` is new in nimble 0.11.0
 ## Ensure we have both data nodes and deterministic intermediates (e.g., lifted nodes)
-simNodes <- Rmodel$getDependencies(parentNodes, self = FALSE)
+#simNodes <- Rmodel$getDependencies(parentNodes, self = FALSE)
 
 
-nSamp <- nrow(samples.df)
-ppSamples <- matrix(0, nSamp, n)
+#nSamp <- nrow(samples.df)
+#ppSamples <- matrix(0, nSamp, n)
 
-ppSamples <- matrix(0, nrow = nSamp, ncol =
-          length(Rmodel$expandNodeNames(dataNodes, returnScalarComponents = TRUE)))
-
-postNames <- colnames(samples$chain1)
+# ppSamples <- matrix(0, nrow = nSamp, ncol =
+#           length(Rmodel$expandNodeNames(dataNodes, returnScalarComponents = TRUE)))
+# 
+# postNames <- colnames(samples$chain1)
 
 # posterior predictive sampling takes ages
 
@@ -493,7 +494,7 @@ ggplot(age_vbgc)+
 
 
 ```
-```{r, vbgc_bayes_heir}
+```{r, vbgc_bayes_heir, warning=FALSE}
 ##leah's attempt at building models in Nimble
 # https://r-nimble.org/html_manual/cha-writing-models.html
 library(nimble);library(rstan)
@@ -560,20 +561,22 @@ model<-nimble::nimbleCode({
     # y = y[i](t[j]) eq. 1 observed length
     # x = g[i](t[j]) = mean distribution specified in terms of the VB growth curve
     
-     #Schofield et al. 2013 eq. 1
-    y[i,j] ~ T(dnorm(x[i,j], tau.y), 0, Inf)
-    #y[i] ~ T(dnorm(x[i], tau.y), 0, Inf)
-     #Schofield heirarchical
+    #Schofield et al. 2013 eq. 1
+    #y[i,j] ~ T(dnorm(x[i,j], tau.y), 0, Inf)
+    #Midway et al. 2015
+    y[i,j] ~ dnorm(x[i,j], tau.y)
+    
+    #Schofield heirarchical
     Linf[i] ~ T(dnorm(beta_l, tau.Linf), 0, Inf)
     logit(K[i]) ~ dnorm(beta_k, tau.K)
     t0 ~ dnorm(beta_t0, tau.t0) #not log because t0 is a negative number
-      #Schofield et al. 2013 eq. 3
-    x[i,j] <- Linf[i]*(1 - K[i]^(age[i,j] - t0))
-    #x[i] <- Linf[i]*(1 - K[i]^(age[i] - t0))
     
+    #Schofield et al. 2013 eq. 3
+    #x[i,j] <- Linf[i]*(1 - K[i]^(age[i,j] - t0))
     #Midway et al. 2015
-    #y[i] ~ dnorm(y.hat[i], tau.y)
-    #y.hat[i] <- Linf *(1 - exp(-K *(age[i] - t0)))
+    x[i,j] <- Linf[i] *(1 - exp(-K[i] *(age[i,j] - t0)))
+     
+
     }
   }
   #prior
@@ -633,24 +636,162 @@ cmcmc   <- compileNimble(mcmc, project = Rmodel)
 print(Sys.time())
 samples <- runMCMC(cmcmc, niter = 10000, nburnin = 1000, nchains = 3, samplesAsCodaMCMC = T)
 print(Sys.time())
+
 coda.samples<-coda::mcmc(samples)
+bayesplot::mcmc_trace(coda.samples)
+coda::gelman.diag(coda.samples)
+
 
 summ<-summary(samples)
-summ
+head(summ$statistics)
+
+mean_summ_df<-as.data.frame(summ$statistics)
+head(mean_summ_df)
+
+mean_summ_df_rn<-mean_summ_df %>% 
+  mutate(output = row.names(mean_summ_df),
+         index = as.numeric(stringr::str_extract(row.names(mean_summ_df), pattern = "(?<=\\[).*(?=\\])")),
+         variable = stringr::str_extract(row.names(mean_summ_df), pattern = ".*(?=\\[)")
+         )
+  
+ij$i
+
+mean_K_Linf_ind<-mean_summ_df_rn%>%
+  filter(!is.na(index))%>%
+  dplyr::select(Mean, index, variable)%>%
+  #group_by(index)%>%
+  tidyr::pivot_wider(names_from = variable, values_from = Mean)
+
+vb_bayes_ind<-ij%>%
+  left_join(mean_K_Linf_ind, by = c("i" = "index"))%>%
+  dplyr::rename("index" = "i")%>%
+  left_join(lifehist, by = c("ID" = "NAME"))%>%
+  dplyr::select(ID, index, ind, j, J, age_month, length, K, Linf, POD, SEX, FIRST_CALF)
+
+summary(vb_bayes_ind)
+
+mean_sigma_y_t0<-mean_summ_df_rn%>%
+  filter(is.na(index))%>%
+  dplyr::select(Mean, index, output)%>%
+  dplyr::rename("variable" = "output")%>%
+  tidyr::pivot_wider(names_from = variable, values_from = Mean)
+
+###
+
+g<-ggplot(vb_bayes_ind, aes(x = age_month, y = length, colour = as.factor(SEX)))+
+  geom_point()+
+  xlim(c(-2, max(ij$age_month)))+
+  theme(legend.position = "none")
+g
+
+data_first<-vb_bayes_ind%>%filter(j == 1)
+
+
+for (i in 1:max(data_first$ind)){
+#for (i in 1:25){
+ 
+  #print(data_first[i,])
+
+  new_layer <- expr(
+    stat_function(mapping = aes(x = data_first$age_month[!!i], y = data_first$length[!!i], color = as.factor(data_first$SEX[!!i])), fun=function(x)(data_first$Linf[!!i] * (1 - exp(-data_first$K[!!i] * (x - mean_sigma_y_t0$t0))))) #bayes ind
+  )
+  
+  #print(new_layer)
+  
+  g <- expr(!!g + !!new_layer)
+  
+}
+
+
+g<-eval(g)
+
+g
+
+ggsave("./Figures/ind_bayes_vbgc.png", g, dpi = 320, height = 250, width = 500, units = 'mm')
+
+ggplot(vb_bayes_ind, aes(x = K, y = Linf, color = as.factor(SEX)))+
+  geom_point()+
+  facet_wrap(~SEX)
+
+summary(vb_bayes_ind)
+
+vb_bayes_ind%>%
+  ungroup()%>%
+  group_by(SEX)%>%
+  mutate(K_mean = mean(K), K_sd = sd(K), Linf_mean = mean(Linf), Linf_sd = sd(Linf))%>%
+  distinct(SEX, K_mean, K_sd, Linf_mean, Linf_sd)%>%
+  arrange(SEX)
+
+ggplot(vb_bayes_ind, aes(x = as.factor(SEX), y = Linf, color = as.factor(SEX)))+
+  geom_boxplot()+
+  geom_point()
+
+ggplot(vb_bayes_ind, aes(x = as.factor(SEX), y = K, color = as.factor(SEX)))+
+  geom_boxplot()+
+  geom_point()
+
+
+vb_bayes_ind%>%
+  distinct(ID, SEX)%>%
+  filter(SEX == "X")
+
+```
+
+g<-g+
+  stat_function(mapping = aes(x = data_first$age_month[1], y = data_first$length[1], color = as.factor(data_first$index[1])), fun=function(x)(data_first$Linf[1] * (1 - exp(-data_first$K[1] * (x - mean_sigma_y_t0$t0)))))+
+  stat_function(mapping = aes(x = data_first$age_month[2], y = data_first$length[2], color = as.factor(data_first$index[2])), fun=function(x)(data_first$Linf[2] * (1 - exp(-data_first$K[2] * (x - mean_sigma_y_t0$t0)))))+
+  stat_function(mapping = aes(x = data_first$age_month[3], y = data_first$length[3], color = as.factor(data_first$index[3])), fun=function(x)(data_first$Linf[3] * (1 - exp(-data_first$K[3] * (x - mean_sigma_y_t0$t0)))))+
+  stat_function(mapping = aes(x = data_first$age_month[4], y = data_first$length[4], color = as.factor(data_first$index[4])), fun=function(x)(data_first$Linf[4] * (1 - exp(-data_first$K[4] * (x - mean_sigma_y_t0$t0)))))+
+  stat_function(mapping = aes(x = data_first$age_month[5], y = data_first$length[5], color = as.factor(data_first$index[5])), fun=function(x)(data_first$Linf[5] * (1 - exp(-data_first$K[5] * (x - mean_sigma_y_t0$t0)))))+
+  stat_function(mapping = aes(x = data_first$age_month[6], y = data_first$length[6], color = as.factor(data_first$index[6])), fun=function(x)(data_first$Linf[6] * (1 - exp(-data_first$K[6] * (x - mean_sigma_y_t0$t0)))))+
+  stat_function(mapping = aes(x = data_first$age_month[7], y = data_first$length[7], color = as.factor(data_first$index[7])), fun=function(x)(data_first$Linf[7] * (1 - exp(-data_first$K[7] * (x - mean_sigma_y_t0$t0)))))+
+  stat_function(mapping = aes(x = data_first$age_month[8], y = data_first$length[8], color = as.factor(data_first$index[8])), fun=function(x)(data_first$Linf[8] * (1 - exp(-data_first$K[8] * (x - mean_sigma_y_t0$t0)))))
+
+g  
+
+
+library(tidyverse)
+library(rlang)
+
+intercept <- c(0.23, 0.53, 0.41)
+linear <- c(0.02, 0.05, 0.04)
+quad <- c(-0.01, 0.01, 0.01)
+limit <- c(5, 18, 27)
+color <- c('#1400E5', '#800C74', '#EC1804')
+data <- data.frame(intercept, linear, quad, limit, color)
+
+p <- expr(ggplot(data=data.frame(x=c(0,0))) +
+  ylim(c(0,1)) +
+  xlim(c(0,28)))
+
+for (i in 1:length(data$quad)){
+  new_layer <- expr(
+    stat_function(
+      aes(y=0), 
+      fun=function(x) data[!!i,'quad']*x^2 + data[!!i,'linear']*x + data[!!i,'intercept'], 
+      xlim=c(0, data[!!i,'limit']), 
+      colour=data[!!i,'color'])
+    )
+  p <- expr(!!p + !!new_layer)
+}
+
+eval(p)
+
+
+```
+
+
 samples.df<-as.data.frame(as.matrix(samples))
 samples.df
 summ$statistics[137]
 summ$quantiles[c(1,5)]
 
-bayesplot::mcmc_trace(coda.samples[2])
-coda::gelman.diag(coda.samples)
+
 
 bayesplot::mcmc_areas(as.matrix(samples),
            pars = params,
            prob = 0.8) 
 
-samples.df<-as.data.frame(as.matrix(samples))
-               
 ggplot()+
   geom_histogram(mapping = aes(x = samples.df$Linf, y=..density..), bins = 30, color = "black", alpha = 0.8)+
   geom_density(mapping = aes(x = samples.df$Linf), color = "black")+
@@ -721,10 +862,10 @@ growth_curve <- Calculate_MCMC_growth_curve(fit, Model = "VB",
 
 
 ggplot()+
-  stat_function(age_vbgc_curve, mapping = aes(x = age_month, y = length), color = "red", size = 2, fun=function(x)(Linf_o * (1 - exp(-K_o * (x - t0_o)))))+
-  stat_function(age_vbgc, mapping = aes(x = Age, y = Length), color = "blue", fun=function(x)(Linf_mean * (1 - exp(-K_mean * (x - t0_mean)))))+
-  geom_point(data = age_vbgc, aes(Age, Length), alpha = .3)+
-  geom_lineribbon(growth_curve,mapping =  aes(x = Age, y = LAA, ymin = .lower, ymax = .upper, fill = factor(.width)), size = .8) +
+  stat_function(age_vbgc_curve, mapping = aes(x = age_month, y = length), color = "red", size = 2, fun=function(x)(Linf_o * (1 - exp(-K_o * (x - t0_o)))))+ #frequentist
+  stat_function(age_vbgc, mapping = aes(x = age_month, y = length), color = "blue", fun=function(x)(Linf_mean * (1 - exp(-K_mean * (x - t0_mean)))))+ #bayes
+  geom_point(data = age_vbgc, aes(age_month, length), alpha = .3)+
+  geom_lineribbon(growth_curve,mapping =  aes(x = Age, y = LAA, ymin = .lower, ymax = .upper, fill = factor(.width)), size = .8) + #growth bayes
   labs(y = "Total Length (mm)", x = "Age (yrs)")+
   scale_fill_brewer(palette="YlOrRd", direction=-1,name = "Credibility interval")+
   scale_y_continuous(expand = c(0,0))+
