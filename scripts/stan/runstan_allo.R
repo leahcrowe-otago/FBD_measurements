@@ -105,7 +105,7 @@ model {
   
   gamma_0 ~ std_normal();
   gamma_1 ~ std_normal();
-  sigma_g ~ student_t(3, 0, 50);
+  sigma_g ~ student_t(3, 0, 5);
 
   t0p ~ lognormal(0, 10);
 
@@ -133,11 +133,11 @@ init_vb = function(){
   sigma_z = rlnorm(1)
 
   alpha_0 = rnorm(1, 0, 0.2)
-  alpha_1 = rlnorm(1)
+  alpha_1 = rnorm(1,mean(obsNA_tl, na.rm = TRUE)/mean(obsNA_bhdf, na.rm = TRUE), 0.2)
   sigma_a = rlnorm(1)
   
   gamma_0 = rnorm(1, 0, 0.2)
-  gamma_1 = rlnorm(1)
+  gamma_1 = rnorm(1,mean(obsNA_tl, na.rm = TRUE)/mean(obsNA_bhdf, na.rm = TRUE), 0.2)
   sigma_g = rlnorm(1)
   
   t0p = rlnorm(1)
