@@ -55,11 +55,12 @@ parameters {
   real<lower=0> sigma_z;
   real alpha_0;
   real gamma_0;
-  real<lower=0> alpha_1;
-  real<lower=0> gamma_1;
+  real alpha_1;
+  real gamma_1;
   real<lower=0> sigma_a;
   real<lower=0> sigma_g;
   real<lower=0> t0p;
+
 }
 
 transformed parameters {
@@ -71,14 +72,14 @@ transformed parameters {
   for(i in 1:n){
     Ly[i] = beta_Ly + eps_Ly[i]*sigma_Ly;
     ky[i] = inv_logit(beta_ky + eps_ky[i]*sigma_ky);
+    Lz[i] = alpha_0 + alpha_1*Ly[i]*sigma_a;
+    kz[i] = inv_logit(gamma_0 + gamma_1*ky[i]*sigma_g);
  }
 }
 
 model {
 
   for (i in 1:n) {
-    Lz[i] ~ normal(alpha_0 + alpha_1*Ly[i], sigma_a);
-    kz[i] ~ normal(gamma_0 + gamma_1*ky[i], sigma_g);
     
     for(j in 1:max_ind[i]){
       y[i,j] ~ normal(Ly[i]*(1-ky[i]^(age[i,j] + t0p)), sigma_y);
@@ -121,7 +122,7 @@ file = file.path(cmdstan_path(), "/thesis/vb/vb_mod_allo.stan")
 stan_fit = cmdstan_model(file)
 
 init_vb = function(){
-  
+    
   beta_Ly = rnorm(1,mean(obsNA_tl, na.rm = TRUE), 0.2)
   beta_ky = rnorm(1, 0, 0.2)
   eps_Ly = rnorm(n)
@@ -159,7 +160,7 @@ fit_vb <- stan_fit$sample(
     age = ageuse
   ),
   init = init_vb,
-  chains = 1,
+  chains = 4,
   iter_warmup = 1000,
   iter_sampling = 5000,
   thin = 1,
@@ -169,14 +170,17 @@ fit_vb <- stan_fit$sample(
   refresh = 100
 )
 
-parout = as_draws_df(fit_vb$draws(c("beta_L", "beta_k", "t0p","sigma_y","sigma_L","sigma_k","alpha_0","alpha_1")))
+library(ggplot2)
+parout = as_draws_df(fit_vb$draws(c("beta_Ly", "beta_ky", "t0p","sigma_y","sigma_Ly","sigma_ky","alpha_0","alpha_1","sigma_a", "gamma_0", "gamma_1", "sigma_g")))
 mcmc_trace(parout)+theme_bw()
 ggplot2::ggsave("traceplot_allo.png", device = "png")
 
 summary(parout)
 
-Lout = as_draws_df(fit_vb$draws(c("L")))
-kout = as_draws_df(fit_vb$draws(c("k")))
+Lyout = as_draws_df(fit_vb$draws(c("Ly")))
+kyout = as_draws_df(fit_vb$draws(c("ky")))
+Lzout = as_draws_df(fit_vb$draws(c("Lz")))
+kzout = as_draws_df(fit_vb$draws(c("kz")))
 #bout = as_draws_df(fit_vb$draws(c("b")))
 
 ### plot a couple of individuals
@@ -187,11 +191,11 @@ nind = length(induse)
 pdf('indplots_bhdf.pdf', height = 8, width = 8)
 par(mfrow = c(2,2), mar = c(4, 4, 1, 1))
 for(i in 1:nind){
-  plot(ageNA[induse[i],], obsNA[induse[i],], pch = 20, xlim = c(0,max(ageuse)), ylim = c(0, max(obsuse)), xlab = "Age", ylab = "Length")
+  plot(ageNA[induse[i],], obsNA_tl[induse[i],], pch = 20, xlim = c(0,max(ageuse)), ylim = c(0, max(obsuse_tl)), xlab = "Age", ylab = "Length")
   
-  tmp = matrix(NA,nrow(Lout), ngrid)
+  tmp = matrix(NA,nrow(Lyout), ngrid)
   for(j in 1:ngrid){
-    tmp[,j] = Lout[[induse[i]]]*(1-kout[[induse[i]]]^(parout[["t0p"]] + agegrid[j]))
+    tmp[,j] = Lyout[[induse[i]]]*(1-kyout[[induse[i]]]^(parout[["t0p"]] + agegrid[j]))
   }  
   quan = apply(tmp, 2, quantile, c(0.05, 0.5, 0.95))
   
@@ -206,33 +210,33 @@ dev.off()
 ageNA[induse[4],]
 
 ## BHDF ----
-kout_bhdf<-summary(kout)
-Lout_bhdf<-summary(Lout)
+kyout_bhdf<-summary(kyout)
+Lyout_bhdf<-summary(Lyout)
 ID_i<-readRDS("BHDF_ij_ID.rds")
 
-nrow(kout_bhdf)
-nrow(Lout_bhdf)
+nrow(kyout_bhdf)
+nrow(Lyout_bhdf)
 nrow(ID_i)
-
-k_bhdf<-kout_bhdf%>%
+library(dplyr)
+ky_bhdf<-kyout_bhdf%>%
   bind_cols(ID = ID_i)
 
-L_bhdf<-Lout_bhdf%>%
+Ly_bhdf<-Lyout_bhdf%>%
   bind_cols(ID = ID_i)
 
 ## TL ----
-kout_tl<-summary(kout)
-Lout_tl<-summary(Lout)
+kyout_tl<-summary(kyout)
+Lyout_tl<-summary(Lyout)
 ID_i<-readRDS("length_ij_ID.rds")
 
-nrow(kout_tl)
-nrow(Lout_tl)
+nrow(kyout_tl)
+nrow(Lyout_tl)
 nrow(ID_i)
 
-k_tl<-kout_tl%>%
+ky_tl<-kyout_tl%>%
   bind_cols(ID = ID_i)
 
-L_tl<-Lout_tl%>%
+Ly_tl<-Lyout_tl%>%
   bind_cols(ID = ID_i)
 
 
@@ -240,9 +244,9 @@ L_tl<-Lout_tl%>%
 
 young_birthyear<-2019
 
-kcompare<-k_tl%>%
+kcompare<-ky_tl%>%
   left_join(lifehist, by = c(ID = 'NAME'))%>%
-  left_join(k_bhdf, by = "ID")%>%
+  left_join(ky_bhdf, by = "ID")%>%
   mutate(k_diff = mean.x/mean.y)%>%
   mutate(AGE = case_when(
     BIRTH_YEAR >= young_birthyear ~ "Young",
