@@ -4,21 +4,25 @@ library(bayesplot)
 library(latex2exp)
 
 ### get data
+i = 52
 
-age = readRDS(file = 'age_ij.rds')
+age = readRDS(file = 'age_ijboth.rds')
 ageNA = as.matrix(age)
 ageuse = ageNA
 ageuse[is.na(ageNA)] = 0
+ageuse[i,]
 
-obs_bhdf = readRDS(file = 'bhdf_ij.rds')
+obs_bhdf = readRDS(file = 'bhdf_ijboth.rds')
 obsNA_bhdf = as.matrix(obs_bhdf)
 obsuse_bhdf = obsNA_bhdf
 obsuse_bhdf[is.na(obsNA_bhdf)] = 0
+obsuse_bhdf[i, ]
 
-obs_tl = readRDS(file = 'length_ij.rds')
+obs_tl = readRDS(file = 'length_ijboth.rds')
 obsNA_tl = as.matrix(obs_tl)
 obsuse_tl = obsNA_tl
 obsuse_tl[is.na(obsNA_tl)] = 0
+obsuse_tl[i, ]
 
 n = nrow(age)
 m = ncol(age)
@@ -26,11 +30,15 @@ o = ncol(age)
 m
 o
 
+
+
 max_ind = rep(NA,n)
 for(i in 1:n){
   max_ind[i] = max(which(!is.na(age[i,])))
 }
 
+obsuse_tl[1:max_ind[i]]
+max_ind[i]
 # ----
 
 a = '
@@ -45,10 +53,12 @@ data {
 }
 
 parameters {
-  real beta_Ly; 
+  real beta_Ly;
   real beta_ky;
-  vector[n] eps_Ly;  
+  vector[n] eps_Ly;
   vector[n] eps_ky;
+  vector[n] eps_Lz;
+  vector[n] eps_kz;
   real<lower=0> sigma_Ly;
   real<lower=0> sigma_ky;
   real<lower=0> sigma_y;
@@ -60,26 +70,34 @@ parameters {
   real<lower=0> sigma_a;
   real<lower=0> sigma_g;
   real<lower=0> t0p;
+  //real<lower=0> t0p_z;
+
 
 }
 
 transformed parameters {
-  vector[n] ky;
+  vector[n] ky_logit;
   vector[n] Ly;
-  vector[n] kz;
+  vector[n] kz_logit;
   vector[n] Lz;
   
   for(i in 1:n){
     Ly[i] = beta_Ly + eps_Ly[i]*sigma_Ly;
-    ky[i] = inv_logit(beta_ky + eps_ky[i]*sigma_ky);
-    Lz[i] = alpha_0 + alpha_1*Ly[i]*sigma_a;
-    kz[i] = inv_logit(gamma_0 + gamma_1*ky[i]*sigma_g);
- }
+    ky_logit[i] = beta_ky + eps_ky[i]*sigma_ky;
+    Lz[i] = alpha_0 + alpha_1*Ly[i] + eps_Lz[i]*sigma_a;
+    kz_logit[i] = gamma_0 + gamma_1*ky_logit[i] + eps_kz[i]*sigma_g;
+  }
+
 }
 
 model {
+  vector[n] ky;
+  vector[n] kz;
 
   for (i in 1:n) {
+    
+    ky[i] = inv_logit(ky_logit[i]);
+    kz[i] = inv_logit(kz_logit[i]);
     
     for(j in 1:max_ind[i]){
       y[i,j] ~ normal(Ly[i]*(1-ky[i]^(age[i,j] + t0p)), sigma_y);
@@ -92,7 +110,9 @@ model {
   beta_ky ~ logistic(0, 1);
   
   eps_Ly ~ std_normal();
+  eps_Lz ~ std_normal();
   eps_ky ~ std_normal();
+  eps_kz ~ std_normal();
   
   sigma_Ly ~ student_t(3, 0, 50);
   sigma_ky ~ student_t(3, 0, 5);
@@ -106,9 +126,10 @@ model {
   
   gamma_0 ~ std_normal();
   gamma_1 ~ std_normal();
-  sigma_g ~ student_t(3, 0, 5);
+  sigma_g ~ student_t(3, 0, 50);
 
   t0p ~ lognormal(0, 10);
+  //t0p_z ~ lognormal(0, 10);
 
 }
 '
@@ -122,32 +143,41 @@ file = file.path(cmdstan_path(), "/thesis/vb/vb_mod_allo.stan")
 stan_fit = cmdstan_model(file)
 
 init_vb = function(){
-    
+  
   beta_Ly = rnorm(1,mean(obsNA_tl, na.rm = TRUE), 0.2)
+  #beta_Lz = rnorm(1,mean(obsNA_bhdf, na.rm = TRUE), 0.2)
   beta_ky = rnorm(1, 0, 0.2)
+  #beta_kz = rnorm(1, 0, 0.2)
   eps_Ly = rnorm(n)
   eps_ky = rnorm(n)
+  eps_Lz = rnorm(n)
+  eps_kz = rnorm(n)
   sigma_Ly = rlnorm(1)
   sigma_ky = rlnorm(1)
+  sigma_Lz = rlnorm(1)
+  sigma_kz = rlnorm(1)
   
   sigma_y = rlnorm(1)
   sigma_z = rlnorm(1)
 
   alpha_0 = rnorm(1, 0, 0.2)
-  alpha_1 = rnorm(1,mean(obsNA_tl, na.rm = TRUE)/mean(obsNA_bhdf, na.rm = TRUE), 0.2)
+  alpha_1 = rnorm(1,mean(obsNA_bhdf, na.rm = TRUE)/mean(obsNA_tl, na.rm = TRUE), 0.2)
   sigma_a = rlnorm(1)
   
   gamma_0 = rnorm(1, 0, 0.2)
-  gamma_1 = rnorm(1,mean(obsNA_tl, na.rm = TRUE)/mean(obsNA_bhdf, na.rm = TRUE), 0.2)
+  gamma_1 = rnorm(1, 0, 0.2)
   sigma_g = rlnorm(1)
   
   t0p = rlnorm(1)
-  
-  return(list(beta_Ly = beta_Ly, beta_ky = beta_ky, eps_Ly = eps_Ly, eps_ky = eps_ky, sigma_ky = sigma_ky, sigma_Ly = sigma_Ly, 
+  #t0p_z = rlnorm(1)
+
+  return(list(beta_Ly = beta_Ly, beta_ky = beta_ky, 
+              eps_Ly = eps_Ly, eps_ky = eps_ky, eps_Lz = eps_Lz, eps_kz = eps_kz, 
+              sigma_Ly = sigma_Ly, sigma_ky = sigma_ky, sigma_Lz = sigma_Lz, sigma_kz = sigma_kz,
               sigma_y = sigma_y, sigma_z = sigma_z, 
               alpha_0 = alpha_0, alpha_1 = alpha_1, sigma_a = sigma_a, 
               gamma_0 = gamma_0, gamma_1 = gamma_1, sigma_g = sigma_g, 
-              t0p = t0p))
+              t0p = t0p))#, t0p_z = t0p_z))
 }
 
 fit_vb <- stan_fit$sample(
@@ -170,17 +200,18 @@ fit_vb <- stan_fit$sample(
   refresh = 100
 )
 
+
 library(ggplot2)
-parout = as_draws_df(fit_vb$draws(c("beta_Ly", "beta_ky", "t0p","sigma_y","sigma_Ly","sigma_ky","alpha_0","alpha_1","sigma_a", "gamma_0", "gamma_1", "sigma_g")))
+parout = as_draws_df(fit_vb$draws(c("beta_Ly", "beta_ky","t0p","sigma_y","sigma_Ly","sigma_ky","alpha_0","alpha_1","sigma_a", "gamma_0", "gamma_1", "sigma_g")))
 mcmc_trace(parout)+theme_bw()
 ggplot2::ggsave("traceplot_allo.png", device = "png")
 
 summary(parout)
 
 Lyout = as_draws_df(fit_vb$draws(c("Ly")))
-kyout = as_draws_df(fit_vb$draws(c("ky")))
+kyout_logit = as_draws_df(fit_vb$draws(c("ky_logit")))
 Lzout = as_draws_df(fit_vb$draws(c("Lz")))
-kzout = as_draws_df(fit_vb$draws(c("kz")))
+kzout_logit = as_draws_df(fit_vb$draws(c("kz_logit")))
 #bout = as_draws_df(fit_vb$draws(c("b")))
 
 ### plot a couple of individuals
@@ -191,17 +222,27 @@ nind = length(induse)
 pdf('indplots_bhdf.pdf', height = 8, width = 8)
 par(mfrow = c(2,2), mar = c(4, 4, 1, 1))
 for(i in 1:nind){
+
   plot(ageNA[induse[i],], obsNA_tl[induse[i],], pch = 20, xlim = c(0,max(ageuse)), ylim = c(0, max(obsuse_tl)), xlab = "Age", ylab = "Length")
+  points(ageNA[induse[i],], obsNA_bhdf[induse[i],], pch = 20, xlim = c(0,max(ageuse)), ylim = c(0, max(obsuse_tl)), xlab = "Age", ylab = "Length")
   
-  tmp = matrix(NA,nrow(Lyout), ngrid)
+  tmp_y = matrix(NA,nrow(Lyout), ngrid)
+  tmp_z = matrix(NA,nrow(Lzout), ngrid)
   for(j in 1:ngrid){
-    tmp[,j] = Lyout[[induse[i]]]*(1-kyout[[induse[i]]]^(parout[["t0p"]] + agegrid[j]))
-  }  
-  quan = apply(tmp, 2, quantile, c(0.05, 0.5, 0.95))
+    #inverse logit kyout/kzout #exp(x)/(1+exp(x))
+    tmp_y[,j] = Lyout[[induse[i]]]*(1-(exp(kyout_logit[[induse[i]]])/(1+exp(kyout_logit[[induse[i]]])))^(parout[["t0p"]] + agegrid[j]))
+    tmp_z[,j] = Lzout[[induse[i]]]*(1-(exp(kzout_logit[[induse[i]]])/(1+exp(kzout_logit[[induse[i]]])))^(parout[["t0p"]] + agegrid[j]))
+      }  
+  quan_y = apply(tmp_y, 2, quantile, c(0.05, 0.5, 0.95))
+  quan_z = apply(tmp_z, 2, quantile, c(0.05, 0.5, 0.95))
   
-  lines(agegrid, quan[2,], col = "blue", lty = 1)  
-  lines(agegrid, quan[1,], col = "blue", lty = 2)
-  lines(agegrid, quan[3,], col = "blue", lty = 2)
+  lines(agegrid, quan_y[2,], col = "blue", lty = 1)  
+  lines(agegrid, quan_y[1,], col = "blue", lty = 2)
+  lines(agegrid, quan_y[3,], col = "blue", lty = 2)
+  
+  lines(agegrid, quan_z[2,], col = "red", lty = 1)  
+  lines(agegrid, quan_z[1,], col = "red", lty = 2)
+  lines(agegrid, quan_z[3,], col = "red", lty = 2)
 }
 dev.off()
 
@@ -299,4 +340,6 @@ ggplot(lcompare)+
   geom_boxplot(aes(x = AGE, y = L_diff, color = AGE))+
   geom_point(aes(x = AGE, y = L_diff, color = AGE))
 
-         
+
+dnorm(-0.0599714+(2.86325*2.70193), 1.28604)
+log(-0.06)
