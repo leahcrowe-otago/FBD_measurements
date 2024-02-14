@@ -1,6 +1,7 @@
 ---
-title: "FBD measurements"
+title: "FBD measurements - vbgc"
 author: "Leah Crowe"
+date: "2024-01-28"
 output: pdf_document
 bibliography: references.bib
 ---
@@ -58,11 +59,12 @@ measurement_merge%>%
   filter(ID == 'SUNSHINE')
 ```
 
-```{r, whalength_file_merge}
+```{r, whalength_file_merge, include=FALSE}
 
 source('./whalength_file_merge.R', local = TRUE, verbose = F)$value
 head(length_ID_merge_Tt)
 
+#wl below stands for Whalelength to signify that those were measurement results from WL, not the ones I manually entered during the process in the ID spreadsheet to signify that the total length was actual measured, not just the hack to only measure BHDF for some individuals 
 measure_data<-length_ID_merge_Tt%>%
   filter(issue == "N")%>%
   dplyr::select(ID, trip, YEAR, DATE, Filename, "tilt_wl" = Tilt..degrees., "alt_corrected" = Corrected.height..m., "length_wl" = Total.Length..m.,
@@ -96,8 +98,12 @@ length_data<-length_data%>%
     TRUE ~ NA
   ))
 
-```
+prop_bh<-length_data%>%
+  filter(!is.na(length_use))%>%
+  mutate(prop_rostrum_tl = Rostrum.BH/length_use)
 
+summary(prop_bh)
+```
 
 ```{r demo, include = F}
 # life history update ----
@@ -121,7 +127,7 @@ measurements_demo_ind<-length_data%>%
     as.numeric(str_sub(trip,6,7)) >= 9 ~ as.numeric(str_sub(trip,1,4))+1,
   ))%>%
   mutate(month = as.numeric(str_sub(trip,6,7)))%>%
-  dplyr::select(trip, YEAR, ID, length_use, SEX, BIRTH_YEAR, FIRST_YEAR, FIRST_CALF, ends_with('2022'), ends_with('2023'), ends_with('2024'), POD, month)%>%
+  dplyr::select(trip, YEAR, ID, length_use, BHDF, SEX, BIRTH_YEAR, FIRST_YEAR, FIRST_CALF, ends_with('2022'), ends_with('2023'), ends_with('2024'), POD, month)%>%
   #tidyr::pivot_longer(cols = starts_with("X"), names_to = "AGECLASS_YEAR", values_to = "AGECLASS")%>%
   tidyr::pivot_longer(cols = starts_with("2"), names_to = "AGECLASS_YEAR", values_to = "AGECLASS")%>%
   mutate(AGECLASS_YEAR = str_replace(AGECLASS_YEAR, "X", ""))%>%
@@ -159,6 +165,7 @@ age_calc<-age_length%>%
     is.na(BIRTH_YEAR) ~ "min" #birth year not known
   ))%>%
   filter(!is.na(age)) # gets ride of unmatched dolphin measurements
+
 ```
 
 ```{r age_length, echo = F, message = F}
@@ -192,7 +199,7 @@ length_all<-ggplot(age_calc%>%filter(!is.na(length_use)), aes(x = age_month, y =
   xlab("Age")+
   ylab("Length (m)")
 
-length_all
+#length_all
 
 num_measurements<-nrow(age_calc)
 num_individuals_measured<-age_calc%>%
@@ -235,12 +242,85 @@ individuals_measuredmanytimes<-ggplot(ID_age, aes(x = trip, y = length_use, colo
   facet_wrap(~ID, ncol = 7)+
   theme(legend.position = "bottom")
 
-individuals_measuredmanytimes
+#individuals_measuredmanytimes
 
-ggsave("./Figures/individuals_measuredmanytimes.png", individuals_measuredmanytimes, dpi = 320, height = 500, width = 500, units = 'mm')                                                                                                                                         
+ggsave("./Figures/individuals_measuredmanytimes.png", individuals_measuredmanytimes, dpi = 320, height = 500, width = 500, units = 'mm')
+
+age_calc%>%distinct(POD, ID)%>%group_by(POD)%>%tally()
+
+ggplot(age_calc)+
+  geom_point(mapping = aes(x = length_use, y = BHDF, color = POD))
+
 ```
-```{r vbgc, include = T, warning=FALSE, message=FALSE}
+```{r vbgc_data, include = T, warning = F, message = F}
 
+#both
+age_vbgc_both<-age_calc%>%
+  filter(!is.na(length_use) & !is.na(BHDF))%>% #filter for tl modeling
+  dplyr::rename("length" = "length_use")  
+nrow(age_vbgc_both)
+
+#only bhdf
+age_vbgc_bhdf<-age_calc%>%
+  filter(is.na(length_use) & !is.na(BHDF))%>% 
+  dplyr::rename("length" = "length_use")  
+nrow(age_vbgc_bhdf)
+
+#only tl, no bhdf
+age_vbgc_tl<-age_calc%>%
+  filter(!is.na(length_use) & is.na(BHDF))%>% 
+  dplyr::rename("length" = "length_use")
+nrow(age_vbgc_tl)
+# 1 = both, 2 = bhdf only, 3 = tl only
+age_vbgc<-list(age_vbgc_both, age_vbgc_bhdf, age_vbgc_tl)
+length(age_vbgc)
+age_vbgc[[1]]
+
+for(i in 1:length(age_vbgc)){
+
+ij<-age_vbgc[[i]]%>%
+  arrange(ID, age_month)%>%
+  ungroup()%>%
+  mutate(ind = 1:n())%>%
+  group_by(ID)%>%
+  mutate(j = 1:n(),
+         J = max(ind),
+         i = cur_group_id() 
+  )%>%
+  dplyr::select(ID, i, ind, j, J, age_month, length, BHDF)%>%
+  ungroup()
+
+age_ij<-ij%>%
+  dplyr::select(ID, j, age_month)%>%
+  group_by(ID)%>%
+  tidyr::pivot_wider(names_from = j, values_from = age_month)%>%
+  ungroup()%>%
+  dplyr::select(-ID)
+
+colnames(age_ij)<-NULL
+saveRDS(age_ij, file = paste0("age_ij_,",i,",.rds"))
+
+length_ij<-ij%>%
+  dplyr::select(ID, j, length)%>%
+  group_by(ID)%>%
+  tidyr::pivot_wider(names_from = j, values_from = length)%>%
+  ungroup()
+
+length_ij_noID<-length_ij%>%
+  dplyr::select(-ID)
+
+colnames(length_ij_noID)<-NULL
+saveRDS(length_ij_noID, file = paste0("length_ij_",i,".rds"))
+
+length_ij_ID<-length_ij%>%
+  dplyr::select(ID)
+saveRDS(length_ij_ID, file = paste0("length_ij_ID_",i,".rds"))
+
+}
+
+```
+```{r vbgc, include = F, warning=FALSE, message=FALSE}
+# VBGC frequ
 # data for VBGC
 
 age_vbgc<-age_calc%>%
@@ -311,7 +391,153 @@ age_vbgc_curve%>%
 #(1/-K_o)*log(1-(length/Linf_o))+ t0_o
 ```
 
-```{r, vbgc_bayes}
+```{r, scotland_comparison, include = F}
+
+age_calc%>%
+  filter(age == 1 & !is.na(length_use))%>%
+  group_by(age)%>%
+  mutate(mean = mean(length_use))
+
+# mean_year_age<-mean_year_age_noid+
+#   geom_line(aes(group = ID))
+
+##
+# mean_year_age_scotland<-ggplot()+
+#   geom_point(data = age_calc_year_mean, mapping = aes(x = age, y = actual_length_mean_mean))+
+#   #geom_smooth()+
+#   theme(legend.position = "bottom")+
+#   theme_bw()+
+#   xlab("Age")+
+#   ylab("Mean length (m)")+
+#   geom_vline(xintercept = c(1,3,5,9), color = "orange")+
+#   geom_point(mapping = aes(x=c(0.5,2,4,7,20), y=c(1.39,2.43,2.75,2.86,3.06)), color = "orange", size = 3, shape = 17)
+
+#age_calc_month%>%filter(ID == 'SPLASH')
+
+# ggsave("./Figures/mean_year_age.png", mean_year_age, dpi = 320, height = 100, units = 'mm')
+# ggsave("./Figures/mean_year_age_scotland.png", mean_year_age_scotland, dpi = 320, height = 100, units = 'mm')
+
+#growth/shrinking
+# age_calc_year_mean%>%
+#   arrange(ID, age)%>%
+#   group_by(ID)%>%
+#   mutate(growth = lead(actual_length_mean_mean)-actual_length_mean_mean)%>%
+#   filter(!is.na(growth))%>%
+#   arrange(age)
+```
+\newpage
+
+Fig. 2: Each point represents the mean total length of an individual at its age for animals whose birth year is known.
+
+```{r summary_stats_ageclass, include = F}
+# age_length%>%
+#   group_by(trip, AGECLASS)%>%
+#   mutate(actual_length_mean_agg = mean(actual_length_mean), #mean of lengths measured using altitude at exact time
+#          actual_length_sd_agg = sd(actual_length_mean), #sd of lengths measured using altitude at exact time
+#          actual_length_range = paste0(round(min(actual_length_mean),2),'–',round(max(actual_length_mean), 2)),
+#          num_ind = n())%>%
+#   distinct(trip, AGECLASS, actual_length_mean_agg, actual_length_sd_agg, actual_length_range, num_ind)
+```
+
+```{r ageclass_boxplots, echo = F}
+# 
+# ageclass_length_peryear<-age_length%>%
+#   filter(!is.na(AGECLASS))%>%
+#   group_by(ID, YEAR)%>%
+#   mutate(actual_length_mean_mean = mean(as.numeric(actual_length_mean), na.rm = T), #mean of lengths measured using altitude at exact time
+#          actual_length_mean_sd = sd(as.numeric(actual_length_mean), na.rm = T), #sd of lengths measured using altitude at exact time
+#          n = n())%>%
+#   distinct(ID, AGECLASS, n, SEX, BIRTH_YEAR, FIRST_YEAR, POD, YEAR, actual_length_mean_mean, actual_length_mean_sd) 
+# 
+# 
+# ageclass<-ggplot(ageclass_length_peryear, aes(x=AGECLASS, y=actual_length_mean_mean))+
+#   geom_boxplot(aes(fill = AGECLASS), color = "black", alpha = 0.5)+
+#   #geom_boxplot(aes(x=AGECLASS, y = actual_length_mean_mean, color = POD, fill = POD), alpha = 0.5, varwidth = T)+
+#   theme(legend.position = "bottom")+
+#   xlab("Age class")+
+#   ylab("Length (m)")+
+#   theme_bw()+
+#   scale_fill_viridis_d()
+
+```
+
+Fig. 3: Summary of total lengths (m) per age-class. C = calf of the year, J = 1-2 y, S-A = 3-8, A = 9+.
+
+```{r agesex_boxplots, echo = F}
+
+# sex<-ggplot(ageclass_length_peryear, aes(x=AGECLASS, y=actual_length_mean_mean))+
+#   geom_boxplot(aes(fill = AGECLASS),color = "black", alpha = 0.5)+
+#   #geom_boxplot(aes(x=AGECLASS, y=actual_length_mean_mean, color = POD, fill = POD), alpha = 0.5, varwidth = T)+
+#   facet_wrap(~SEX)+
+#   theme(legend.position = "bottom")+
+#   xlab("Age class")+
+#   ylab("")+
+#   theme_bw()+
+#   scale_fill_viridis_d()
+# 
+# ageclass_length_peryear%>%
+#   filter(actual_length_mean_mean > 3)
+# 
+# # ageclass_length_peryear%>%
+# #   ungroup()%>%
+# #   distinct(ID, SEX, POD)%>%
+# #   group_by(SEX, POD)%>%
+# #   filter(SEX == "X")%>%
+# #    tally()
+# # 
+# # agesex_length_peryear%>%
+# #   filter(ID == "COMET")
+# 
+# 
+# box_plot<-ggpubr::ggarrange(ageclass,sex, common.legend = T, widths = c(0.3, 0.7), legend = "bottom")
+# 
+# ggsave("./Figures/box_plot.png", box_plot, dpi = 320, height = 100, width = 250, units = 'mm')
+
+```
+
+Fig. 4: Summary of total lengths (m) per sex and age-class. C = calf of the year, J = 1-2 y, S-A = 3-8, A = 9+. F = female, M = male, X = unknown.
+
+```{r, stats}
+# 
+# ageclass_length_peryear%>%
+#   filter(actual_length_mean_mean>3)%>%
+#   arrange(actual_length_mean_mean)
+# 
+# 
+# measurement_ID_trip%>%
+#   filter(ID == 'MENTRY')
+
+```
+
+
+```{r measure_per_individual, echo = F}
+
+# # sluething suspect measurements
+# ggplot(length_ID_merge_Tt)+
+#   geom_point(aes(x = actual_length_mean_mean, y = actual_length_mean_sd))
+# 
+# hist<-ggplot(length_ID_merge_Tt%>%group_by(ID,trip)%>%tally())+
+#   geom_histogram(aes(x = n), binwidth = 1, color = "black")+
+#   facet_wrap(~trip)+
+#   ylab("Number of individuals")+
+#   xlab("Number of photographs measured")+
+#   theme_bw()
+# 
+# hist
+# 
+# # length_ID_merge_Tt%>%
+# #   filter(is.na(actual_length))
+# 
+# ggsave("./Figures/hist.png", hist, dpi = 320, height = 75, units = 'mm')
+# 
+# length_ID_merge_Tt%>%ungroup()%>%distinct(ID, POD)%>%filter(!is.na(POD))%>%group_by(POD)%>%tally()
+
+```
+
+Fig. 1: number of times individuals were measured per trip
+
+\newpage
+```{r vbgc_bayes, include = T, warning=FALSE, message=FALSE}
 ##leah's attempt at building models in Nimble
 # https://r-nimble.org/html_manual/cha-writing-models.html
 library(nimble);library(rstan)
@@ -329,14 +555,7 @@ model<-nimble::nimbleCode({
 for (i in 1:n){ 
   
     #likelihood
-
-    # y = y[i](t[j]) eq. 1 observed length
-    # x = g[i](t[j]) = predicted length/growth curve
-    
-    #log(Linf) ~ T(dnorm(mu, sd = sigma), 0, Inf)
-    #log(K) ~ T(dnorm(mu, sd = sigma), 0, Inf)
-    #log(to+10) ~ T(dnorm(mu, sd = sigma), 0, Inf)
-    
+  
     #Schofield et al. 2013 eq. 1
     #y[i] ~ T(dnorm(x[i], tau.y), 0, Inf)    
     #Schofield et al. 2013 eq. 3
@@ -344,7 +563,11 @@ for (i in 1:n){
    
     #Midway et al. 2015
      y[i] ~ dnorm(x[i], tau.y)
-     x[i] <- Linf *(1 - exp(-K *(age[i] - t0))) + E[i]
+     #x[i] <- Linf *(1 - exp(-K *(age[i] + t0))) #+ E[i]
+    
+    
+    #Schofield et al. 2013 eq. 3
+    x[i] <- Linf*(1 - K^(age[i] + t0))
 
 }  
   #prior
@@ -355,7 +578,7 @@ for (i in 1:n){
   
   Linf ~ dnorm(3, 0.4)
   K ~ dunif(0, 1)
-  t0 ~ dnorm(-2.5, 0.5)
+  t0 ~ dnorm(2.5, 0.5)
 
 
 })
@@ -363,7 +586,7 @@ for (i in 1:n){
 inits_fun = function(){
   
   K_init = 0.5
-  t0_init = -2.5
+  t0_init = 2.5
   
   return(list(K = K_init, t0 = t0_init))
 
@@ -403,13 +626,9 @@ coda.samples<-coda::mcmc(samples)
 ### -----
 
 summ<-summary(samples)
-summ
-summ$statistics[1]
-summ$quantiles[c(1,5)]
 
 bayesplot::mcmc_trace(coda.samples)
 coda::gelman.diag(coda.samples)
-
 
 ggplot()+
   geom_histogram(mapping = aes(x = as.matrix(samples), y=..density..), bins = 100, color = "black", alpha = 0.8)+
@@ -427,8 +646,8 @@ ggplot()+
   theme_bw()
 
 ggplot()+
-  geom_histogram(mapping = aes(x = samples.df$K, y=..density..), bins = 30, color = "black", alpha = 0.8)+
-  geom_density(mapping = aes(x = samples.df$K), color = "black")+
+  geom_histogram(mapping = aes(x = log(samples.df$K), y=..density..), bins = 30, color = "black", alpha = 0.8)+
+  geom_density(mapping = aes(x = log(samples.df$K)), color = "black")+
   theme_bw()
 
 ggplot()+
@@ -437,8 +656,6 @@ ggplot()+
   theme_bw()
 
 #### https://r-nimble.org/nimbleExamples/posterior_predictive.html ----
-samples.df<-as.data.frame(as.matrix(samples))
-
 #dataNodes <- Rmodel$getNodeNames(dataOnly = TRUE)
 #parentNodes <- Rmodel$getParents(dataNodes, stochOnly = TRUE)  # `getParents` is new in nimble 0.11.0
 ## Ensure we have both data nodes and deterministic intermediates (e.g., lifted nodes)
@@ -484,189 +701,53 @@ t0_mean<-summ$statistics[4]
 
 ggplot(age_vbgc)+
   geom_point(mapping = aes(x = age_month, y = length, color = age_value))+
-  stat_function(fun=function(x)(Linf_mean * (1 - exp(-K_mean * (x - t0_mean)))))+
+  #stat_function(fun=function(x)(Linf_mean * (1 - exp(-K_mean) * (x + t0_mean))))+
+  stat_function(fun=function(x)Linf_mean*(1 - K_mean^(x + t0_mean)))+
   theme(legend.position = "bottom")+
   xlab("Age")+
   ylab("Mean length (m)")+
   theme_bw()+
   ylim(c(-0.2,3.5))+
-  xlim(c(-6, max(age_vbgc_curve$age)))
+  xlim(c(-6, 45))
 
+log(K_mean)
 
 ```
-```{r, vbgc_bayes_heir, warning=FALSE}
-##leah's attempt at building models in Nimble
-# https://r-nimble.org/html_manual/cha-writing-models.html
-library(nimble);library(rstan)
+```{r vbgc_bayes_heir, echo = T, warning=FALSE, message=FALSE}
+##individuals level heirarchical modeling
 
-head(age_vbgc)
+## called in measurements_demo.Rmd file
+# L. Crowe Jan 2024
 
-ij<-age_vbgc%>%
-    arrange(ID, age_month)%>%
-  ungroup()%>%
-    mutate(ind = 1:n())%>%
-    group_by(ID)%>%
-    mutate(j = 1:n(),
-           J = max(ind),
-           i = cur_group_id() 
-           )%>%
-    #arrange(ID)%>%
-    #group_by(ID)%>%
-    #mutate(i = cur_group_id())%>%
-    #mutate(J = max(j))%>%
-    dplyr::select(ID, i, ind, j, J, age_month, length)%>%
-  ungroup()
-
-head(ij)
-tail(ij)
-summary(ij)
-
-age_ij<-ij%>%
-  dplyr::select(ID, j, age_month)%>%
-  group_by(ID)%>%
-  tidyr::pivot_wider(names_from = j, values_from = age_month)%>%
-  ungroup()%>%
-  dplyr::select(-ID)
-
-colnames(age_ij)<-NULL
-as.matrix(age_ij)
-
-length_ij<-ij%>%
-  dplyr::select(ID, j, length)%>%
-  group_by(ID)%>%
-  tidyr::pivot_wider(names_from = j, values_from = length)%>%
-  ungroup()%>%
-  dplyr::select(-ID)
-
-colnames(length_ij)<-NULL
-as.matrix(length_ij)
-
-#number of individuals
-#n = max(ij$i)
-n = nrow(age_ij)
-n
-nrow(length_ij)
-
-J = max(ij$j)
-J
-
-model<-nimble::nimbleCode({
-  
-  for (i in 1:n){ 
-
-    for(j in 1:J){
-    
-    #likelihood
-    
-    # y = y[i](t[j]) eq. 1 observed length
-    # x = g[i](t[j]) = mean distribution specified in terms of the VB growth curve
-    
-    #Schofield et al. 2013 eq. 1
-    #y[i,j] ~ T(dnorm(x[i,j], tau.y), 0, Inf)
-    #Midway et al. 2015
-    y[i,j] ~ dnorm(x[i,j], tau.y)
-    
-    #Schofield heirarchical
-    Linf[i] ~ T(dnorm(beta_l, tau.Linf), 0, Inf)
-    logit(K[i]) ~ dnorm(beta_k, tau.K)
-    t0 ~ dnorm(beta_t0, tau.t0) #not log because t0 is a negative number
-    
-    #Schofield et al. 2013 eq. 3
-    #x[i,j] <- Linf[i]*(1 - K[i]^(age[i,j] - t0))
-    #Midway et al. 2015
-    x[i,j] <- Linf[i] *(1 - exp(-K[i] *(age[i,j] - t0)))
-     
-
-    }
-  }
-  #prior
-  
-  beta_l ~ dnorm(0, 10)
-  #beta_l1 ~ dnorm(0, 1000)
-  beta_k ~ dlogis(0, 1)
-  #beta_k1 ~ dlogis(0,1)
-  beta_t0 ~ dnorm(0, 5)
-  
-  #Midway et al. 2015
-  tau.y <- pow(sigma_y, -2)
-  sigma_y ~ dunif(0, 50)
-  
-  tau.Linf <- pow(sigma_Linf, -2)
-  sigma_Linf ~ dunif(0, 50)
-  
-  tau.K <- pow(sigma_K, -2)
-  sigma_K ~ dunif(0, 5)
-  
-  tau.t0 <- pow(sigma_t0, -2)
-  sigma_t0 ~ dunif(0, 5)
-  
-  #remove Linf and K from priors for heirarchical model
-  #Linf ~ dnorm(3, 0.4)
-  #K ~ dunif(0, 1)
-  #t0 ~ dnorm(-2.5, 1)
-  
-  })
-
-inits_fun = function(){
-  
-  #K_init = 0.5
-  #t0_init = -2.5
-  
-  
-  return(list(beta_1 = 0, beta_k = 0, beta_t0 = 0))
-  
-}
-#Midway
-#params = c("Linf", "K", "t0", "sigma_y", "y.hat")
-#Schofield
-params = c("Linf", "K", "t0", "sigma_y")
-
-data = list(y = as.matrix(length_ij), 
-            age = as.matrix(age_ij))
-
-
-Rmodel <- nimble::nimbleModel(code = model,
-                              constants = list(n = n, J = J),
-                              data = data,
-                              inits = inits_fun())
-
-cmodel  <- nimble::compileNimble(Rmodel)
-mcmc    <- buildMCMC(Rmodel, monitors = params)
-cmcmc   <- compileNimble(mcmc, project = Rmodel)
-print(Sys.time())
-samples <- runMCMC(cmcmc, niter = 10000, nburnin = 1000, nchains = 3, samplesAsCodaMCMC = T)
-print(Sys.time())
-
-coda.samples<-coda::mcmc(samples)
-bayesplot::mcmc_trace(coda.samples)
-coda::gelman.diag(coda.samples)
-
-
-summ<-summary(samples)
-head(summ$statistics)
-
-mean_summ_df<-as.data.frame(summ$statistics)
-head(mean_summ_df)
+source('./scripts/individuals_vbgc.R', local = TRUE, verbose = F)$value
 
 mean_summ_df_rn<-mean_summ_df %>% 
   mutate(output = row.names(mean_summ_df),
          index = as.numeric(stringr::str_extract(row.names(mean_summ_df), pattern = "(?<=\\[).*(?=\\])")),
          variable = stringr::str_extract(row.names(mean_summ_df), pattern = ".*(?=\\[)")
-         )
-  
-ij$i
+         )%>%
+  mutate(
+    Mean = case_when(
+      variable == "K" ~ log(Mean) * -1,
+      TRUE ~ Mean),
+    SD = case_when(
+      variable == "K" ~ log(SD) * -1,
+      TRUE ~ Mean)
+    )
 
-mean_K_Linf_ind<-mean_summ_df_rn%>%
+#ij$i
+
+mean_K_Linf_t0p_ind<-mean_summ_df_rn%>%
   filter(!is.na(index))%>%
   dplyr::select(Mean, index, variable)%>%
   #group_by(index)%>%
   tidyr::pivot_wider(names_from = variable, values_from = Mean)
 
 vb_bayes_ind<-ij%>%
-  left_join(mean_K_Linf_ind, by = c("i" = "index"))%>%
+  left_join(mean_K_Linf_t0p_ind, by = c("i" = "index"))%>%
   dplyr::rename("index" = "i")%>%
   left_join(lifehist, by = c("ID" = "NAME"))%>%
-  dplyr::select(ID, index, ind, j, J, age_month, length, K, Linf, POD, SEX, FIRST_CALF)
+  dplyr::select(ID, index, ind, j, J, age_month, length, K, Linf, POD, SEX, FIRST_CALF, BIRTH_YEAR, FIRST_YEAR)
 
 summary(vb_bayes_ind)
 
@@ -674,26 +755,29 @@ mean_sigma_y_t0<-mean_summ_df_rn%>%
   filter(is.na(index))%>%
   dplyr::select(Mean, index, output)%>%
   dplyr::rename("variable" = "output")%>%
-  tidyr::pivot_wider(names_from = variable, values_from = Mean)
+  tidyr::pivot_wider(names_from = variable, values_from = Mean)%>%
+  mutate(t0p = t0p*-1)
+
+mean_sigma_y_t0
 
 ###
 
 g<-ggplot(vb_bayes_ind, aes(x = age_month, y = length, colour = as.factor(SEX)))+
   geom_point()+
   xlim(c(-2, max(ij$age_month)))+
-  theme(legend.position = "none")
+  theme(legend.position = "bottom")
 g
 
 data_first<-vb_bayes_ind%>%filter(j == 1)
 
 
 for (i in 1:max(data_first$ind)){
-#for (i in 1:25){
+#for (i in 1:5){
  
   #print(data_first[i,])
 
   new_layer <- expr(
-    stat_function(mapping = aes(x = data_first$age_month[!!i], y = data_first$length[!!i], color = as.factor(data_first$SEX[!!i])), fun=function(x)(data_first$Linf[!!i] * (1 - exp(-data_first$K[!!i] * (x - mean_sigma_y_t0$t0))))) #bayes ind
+    stat_function(mapping = aes(x = data_first$age_month[!!i], y = data_first$length[!!i], color = as.factor(data_first$SEX[!!i])), fun=function(x)(data_first$Linf[!!i] * (1 - exp(-data_first$K[!!i] * (x - mean_sigma_y_t0$t0p))))) #bayes ind
   )
   
   #print(new_layer)
@@ -709,9 +793,9 @@ g
 
 ggsave("./Figures/ind_bayes_vbgc.png", g, dpi = 320, height = 250, width = 500, units = 'mm')
 
-ggplot(vb_bayes_ind, aes(x = K, y = Linf, color = as.factor(SEX)))+
-  geom_point()+
-  facet_wrap(~SEX)
+# ggplot(vb_bayes_ind, aes(x = K, y = Linf, color = as.factor(SEX)))+
+#   geom_point()+
+#   facet_wrap(~SEX)
 
 summary(vb_bayes_ind)
 
@@ -722,85 +806,40 @@ vb_bayes_ind%>%
   distinct(SEX, K_mean, K_sd, Linf_mean, Linf_sd)%>%
   arrange(SEX)
 
+#Linf by sex
 ggplot(vb_bayes_ind, aes(x = as.factor(SEX), y = Linf, color = as.factor(SEX)))+
   geom_boxplot()+
   geom_point()
-
+#K by sex
 ggplot(vb_bayes_ind, aes(x = as.factor(SEX), y = K, color = as.factor(SEX)))+
   geom_boxplot()+
   geom_point()
-
 
 vb_bayes_ind%>%
   distinct(ID, SEX)%>%
   filter(SEX == "X")
 
-```
+####
 
-g<-g+
-  stat_function(mapping = aes(x = data_first$age_month[1], y = data_first$length[1], color = as.factor(data_first$index[1])), fun=function(x)(data_first$Linf[1] * (1 - exp(-data_first$K[1] * (x - mean_sigma_y_t0$t0)))))+
-  stat_function(mapping = aes(x = data_first$age_month[2], y = data_first$length[2], color = as.factor(data_first$index[2])), fun=function(x)(data_first$Linf[2] * (1 - exp(-data_first$K[2] * (x - mean_sigma_y_t0$t0)))))+
-  stat_function(mapping = aes(x = data_first$age_month[3], y = data_first$length[3], color = as.factor(data_first$index[3])), fun=function(x)(data_first$Linf[3] * (1 - exp(-data_first$K[3] * (x - mean_sigma_y_t0$t0)))))+
-  stat_function(mapping = aes(x = data_first$age_month[4], y = data_first$length[4], color = as.factor(data_first$index[4])), fun=function(x)(data_first$Linf[4] * (1 - exp(-data_first$K[4] * (x - mean_sigma_y_t0$t0)))))+
-  stat_function(mapping = aes(x = data_first$age_month[5], y = data_first$length[5], color = as.factor(data_first$index[5])), fun=function(x)(data_first$Linf[5] * (1 - exp(-data_first$K[5] * (x - mean_sigma_y_t0$t0)))))+
-  stat_function(mapping = aes(x = data_first$age_month[6], y = data_first$length[6], color = as.factor(data_first$index[6])), fun=function(x)(data_first$Linf[6] * (1 - exp(-data_first$K[6] * (x - mean_sigma_y_t0$t0)))))+
-  stat_function(mapping = aes(x = data_first$age_month[7], y = data_first$length[7], color = as.factor(data_first$index[7])), fun=function(x)(data_first$Linf[7] * (1 - exp(-data_first$K[7] * (x - mean_sigma_y_t0$t0)))))+
-  stat_function(mapping = aes(x = data_first$age_month[8], y = data_first$length[8], color = as.factor(data_first$index[8])), fun=function(x)(data_first$Linf[8] * (1 - exp(-data_first$K[8] * (x - mean_sigma_y_t0$t0)))))
+vb_Linf_K_demo<-vb_bayes_ind%>%distinct(ID, K, Linf, POD, FIRST_YEAR, BIRTH_YEAR)
 
-g  
+# k per birth year per pod
+# ggplot(vb_Linf_K_demo, aes(x = as.factor(BIRTH_YEAR), y = K, color = POD))+
+#   geom_boxplot()+
+#   geom_point()
 
+#comparing theoretical max length per birth year
+ggplot(vb_Linf_K_demo, aes(x = as.factor(BIRTH_YEAR), y = Linf))+
+  geom_boxplot()+
+  geom_point()
 
-library(tidyverse)
-library(rlang)
-
-intercept <- c(0.23, 0.53, 0.41)
-linear <- c(0.02, 0.05, 0.04)
-quad <- c(-0.01, 0.01, 0.01)
-limit <- c(5, 18, 27)
-color <- c('#1400E5', '#800C74', '#EC1804')
-data <- data.frame(intercept, linear, quad, limit, color)
-
-p <- expr(ggplot(data=data.frame(x=c(0,0))) +
-  ylim(c(0,1)) +
-  xlim(c(0,28)))
-
-for (i in 1:length(data$quad)){
-  new_layer <- expr(
-    stat_function(
-      aes(y=0), 
-      fun=function(x) data[!!i,'quad']*x^2 + data[!!i,'linear']*x + data[!!i,'intercept'], 
-      xlim=c(0, data[!!i,'limit']), 
-      colour=data[!!i,'color'])
-    )
-  p <- expr(!!p + !!new_layer)
-}
-
-eval(p)
-
+ggplot(vb_Linf_K_demo, aes(x = as.factor(BIRTH_YEAR), y = Linf))+
+  geom_boxplot()+
+  geom_point()+
+  facet_wrap(~POD)
 
 ```
-
-
-samples.df<-as.data.frame(as.matrix(samples))
-samples.df
-summ$statistics[137]
-summ$quantiles[c(1,5)]
-
-
-
-bayesplot::mcmc_areas(as.matrix(samples),
-           pars = params,
-           prob = 0.8) 
-
-ggplot()+
-  geom_histogram(mapping = aes(x = samples.df$Linf, y=..density..), bins = 30, color = "black", alpha = 0.8)+
-  geom_density(mapping = aes(x = samples.df$Linf), color = "black")+
-  theme_bw()
-
-
-
-```
-```{r, BayesGrowth}
+```{r, BayesGrowth, include=TRUE}
 #Leah using assists
 #https://github.com/jonathansmart/BayesGrowth
 library(BayesGrowth)
@@ -808,7 +847,7 @@ library(BayesGrowth)
 age_vbgc<-age_calc%>%
   filter(!is.na(length_use))%>%
   dplyr::rename("length" = "length_use")%>%
-  dplyr::select("Age" = "age_month", "Length" = "length")%>%
+  dplyr::select("age_month", "length")%>%
   #mutate(Length = as.integer(Length*1000))%>%
   as.data.frame(row_number())
   
@@ -817,14 +856,14 @@ head(age_vbgc)
 summary(age_vbgc)
 
 age_vbgc%>%
-  filter(is.na(Length))
+  filter(is.na(length))
 
 #data("example_data")
 #head(example_data)
 #summary(example_data)
 
-max_size <- max(age_vbgc$Length)
-max_size_se <- sd(age_vbgc$Length)/sqrt(length(age_vbgc$Length))
+max_size <- max(age_vbgc$length)
+max_size_se <- sd(age_vbgc$length)/sqrt(length(age_vbgc$length))
 birth_size <- 0
 birth_size_se <- 0.015
 
@@ -858,7 +897,7 @@ library(tidybayes)
 
 # Return a growth curve with 50th and 95th percentiles
 growth_curve <- Calculate_MCMC_growth_curve(fit, Model = "VB",
-                                            max.age = max(age_vbgc$Age), probs = c(.5,.95))
+                                            max.age = max(age_vbgc$age_month), probs = c(.5,.95))
 
 
 ggplot()+
@@ -888,143 +927,3 @@ ggplot()+
   xlim(c(-6, max(age_vbgc_curve$age)))
 
 ```
-
-```{r, scotland_comparison, include = F}
-
-mean_year_age<-mean_year_age_noid+
-  geom_line(aes(group = ID))
-
-##
-mean_year_age_scotland<-ggplot()+
-  geom_point(data = age_calc_year_mean, mapping = aes(x = age, y = actual_length_mean_mean))+
-  #geom_smooth()+
-  theme(legend.position = "bottom")+
-  theme_bw()+
-  xlab("Age")+
-  ylab("Mean length (m)")+
-  geom_vline(xintercept = c(1,3,5,9), color = "orange")+
-  geom_point(mapping = aes(x=c(0.5,2,4,7,20), y=c(1.39,2.43,2.75,2.86,3.06)), color = "orange", size = 3, shape = 17)
-
-#age_calc_month%>%filter(ID == 'SPLASH')
-
-ggsave("./Figures/mean_year_age.png", mean_year_age, dpi = 320, height = 100, units = 'mm')
-ggsave("./Figures/mean_year_age_scotland.png", mean_year_age_scotland, dpi = 320, height = 100, units = 'mm')
-
-#growth/shrinking
-age_calc_year_mean%>%
-  arrange(ID, age)%>%
-  group_by(ID)%>%
-  mutate(growth = lead(actual_length_mean_mean)-actual_length_mean_mean)%>%
-  filter(!is.na(growth))%>%
-  arrange(age)
-```
-\newpage
-
-Fig. 2: Each point represents the mean total length of an individual at its age for animals whose birth year is known.
-
-```{r summary_stats_ageclass, include = F}
-age_length%>%
-  group_by(trip, AGECLASS)%>%
-  mutate(actual_length_mean_agg = mean(actual_length_mean), #mean of lengths measured using altitude at exact time
-         actual_length_sd_agg = sd(actual_length_mean), #sd of lengths measured using altitude at exact time
-         actual_length_range = paste0(round(min(actual_length_mean),2),'–',round(max(actual_length_mean), 2)),
-         num_ind = n())%>%
-  distinct(trip, AGECLASS, actual_length_mean_agg, actual_length_sd_agg, actual_length_range, num_ind)
-```
-
-```{r ageclass_boxplots, echo = F}
-
-ageclass_length_peryear<-age_length%>%
-  filter(!is.na(AGECLASS))%>%
-  group_by(ID, YEAR)%>%
-  mutate(actual_length_mean_mean = mean(as.numeric(actual_length_mean), na.rm = T), #mean of lengths measured using altitude at exact time
-         actual_length_mean_sd = sd(as.numeric(actual_length_mean), na.rm = T), #sd of lengths measured using altitude at exact time
-         n = n())%>%
-  distinct(ID, AGECLASS, n, SEX, BIRTH_YEAR, FIRST_YEAR, POD, YEAR, actual_length_mean_mean, actual_length_mean_sd) 
-
-
-ageclass<-ggplot(ageclass_length_peryear, aes(x=AGECLASS, y=actual_length_mean_mean))+
-  geom_boxplot(aes(fill = AGECLASS), color = "black", alpha = 0.5)+
-  #geom_boxplot(aes(x=AGECLASS, y = actual_length_mean_mean, color = POD, fill = POD), alpha = 0.5, varwidth = T)+
-  theme(legend.position = "bottom")+
-  xlab("Age class")+
-  ylab("Length (m)")+
-  theme_bw()+
-  scale_fill_viridis_d()
-
-```
-
-Fig. 3: Summary of total lengths (m) per age-class. C = calf of the year, J = 1-2 y, S-A = 3-8, A = 9+.
-
-```{r agesex_boxplots, echo = F}
-
-sex<-ggplot(ageclass_length_peryear, aes(x=AGECLASS, y=actual_length_mean_mean))+
-  geom_boxplot(aes(fill = AGECLASS),color = "black", alpha = 0.5)+
-  #geom_boxplot(aes(x=AGECLASS, y=actual_length_mean_mean, color = POD, fill = POD), alpha = 0.5, varwidth = T)+
-  facet_wrap(~SEX)+
-  theme(legend.position = "bottom")+
-  xlab("Age class")+
-  ylab("")+
-  theme_bw()+
-  scale_fill_viridis_d()
-
-ageclass_length_peryear%>%
-  filter(actual_length_mean_mean > 3)
-
-# ageclass_length_peryear%>%
-#   ungroup()%>%
-#   distinct(ID, SEX, POD)%>%
-#   group_by(SEX, POD)%>%
-#   filter(SEX == "X")%>%
-#    tally()
-# 
-# agesex_length_peryear%>%
-#   filter(ID == "COMET")
-
-
-box_plot<-ggpubr::ggarrange(ageclass,sex, common.legend = T, widths = c(0.3, 0.7), legend = "bottom")
-
-ggsave("./Figures/box_plot.png", box_plot, dpi = 320, height = 100, width = 250, units = 'mm')
-
-```
-
-Fig. 4: Summary of total lengths (m) per sex and age-class. C = calf of the year, J = 1-2 y, S-A = 3-8, A = 9+. F = female, M = male, X = unknown.
-
-```{r, stats}
-
-ageclass_length_peryear%>%
-  filter(actual_length_mean_mean>3)%>%
-  arrange(actual_length_mean_mean)
-
-
-measurement_ID_trip%>%
-  filter(ID == 'MENTRY')
-
-```
-
-
-```{r measure_per_individual, echo = F}
-
-# sluething suspect measurements
-ggplot(length_ID_merge_Tt)+
-  geom_point(aes(x = actual_length_mean_mean, y = actual_length_mean_sd))
-
-hist<-ggplot(length_ID_merge_Tt%>%group_by(ID,trip)%>%tally())+
-  geom_histogram(aes(x = n), binwidth = 1, color = "black")+
-  facet_wrap(~trip)+
-  ylab("Number of individuals")+
-  xlab("Number of photographs measured")+
-  theme_bw()
-
-hist
-
-# length_ID_merge_Tt%>%
-#   filter(is.na(actual_length))
-
-ggsave("./Figures/hist.png", hist, dpi = 320, height = 75, units = 'mm')
-
-length_ID_merge_Tt%>%ungroup()%>%distinct(ID, POD)%>%filter(!is.na(POD))%>%group_by(POD)%>%tally()
-
-```
-
-Fig. 1: number of times individuals were measured per trip
