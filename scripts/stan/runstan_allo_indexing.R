@@ -91,11 +91,11 @@ transformed parameters {
   vector[n_ind] kz_logit;
   vector[n_ind] Lz;
 
-for(i in 1:N_ij){
-    Ly[ind[i]] = beta_Ly + eps_Ly[ind[i]]*sigma_Ly;
-    ky_logit[ind[i]] = beta_ky + eps_ky[ind[i]]*sigma_ky;
-    Lz[ind[i]] = alpha_0 + alpha_1*Ly[ind[i]] + eps_Lz[ind[i]]*sigma_Lz;
-    kz_logit[ind[i]] = gamma_0 + gamma_1*ky_logit[ind[i]] + eps_kz[ind[i]]*sigma_kz;
+for(i in 1:n_ind){
+    Ly[i] = beta_Ly + eps_Ly[i]*sigma_Ly;
+    ky_logit[i] = beta_ky + eps_ky[i]*sigma_ky;
+    Lz[i] = alpha_0 + alpha_1*Ly[i] + eps_Lz[i]*sigma_Lz;
+    kz_logit[i] = gamma_0 + gamma_1*ky_logit[i] + eps_kz[i]*sigma_kz;
 }
 }
 
@@ -103,13 +103,13 @@ model {
   vector[n_ind] ky;
   vector[n_ind] kz;
 
-  for(i in 1:N_ij){    
-    
-    ky[ind[i]] = inv_logit(ky_logit[ind[i]]);
-    kz[ind[i]] = inv_logit(kz_logit[ind[i]]);
-
+ for(i in 1:n_ind){   
+    ky[i] = inv_logit(ky_logit[i]);
+    kz[i] = inv_logit(kz_logit[i]);
+ }
+  
+ for(i in 1:N_ij){
     if (i <= N_z) {
-
       z[i] ~ normal(Lz[ind[i]]*(1-kz[ind[i]]^(age[i] + t0p)), sigma_z);
     
     } else if (i > N_b+N_z){
@@ -145,7 +145,13 @@ model {
   sigma_kz ~ student_t(3, 0, 50);
 
   t0p ~ lognormal(0, 10);
-  //t0p_z ~ lognormal(0, 10);
+
+//for (j in 1:J){
+
+  //Ly = par[ind[i], 1]
+  
+//}
+
 
 }
 
@@ -272,106 +278,15 @@ for(i in 1:nind){
 }
 dev.off()
 
-# mcmc_intervals(kout, outer_size = 0.5, inner_size = 1, point_size = 2)
+
+kyout<-exp(kyout_logit)/(1+exp(kyout_logit))
+kyout$
+summary(kyout)
+
+mcmc_intervals(Lyout, outer_size = 0.5, inner_size = 1, point_size = 2)
+mcmc_intervals(Lzout, outer_size = 0.5, inner_size = 1, point_size = 2)
+mcmc_intervals(kyout_logit, outer_size = 0.5, inner_size = 1, point_size = 2)
+mcmc_intervals(kzout_logit, outer_size = 0.5, inner_size = 1, point_size = 2)
 
 ##########
 
-ageNA[induse[4],]
-
-## BHDF ----
-kyout_bhdf<-summary(kyout)
-Lyout_bhdf<-summary(Lyout)
-ID_i<-readRDS("BHDF_ij_ID.rds")
-
-nrow(kyout_bhdf)
-nrow(Lyout_bhdf)
-nrow(ID_i)
-library(dplyr)
-ky_bhdf<-kyout_bhdf%>%
-  bind_cols(ID = ID_i)
-
-Ly_bhdf<-Lyout_bhdf%>%
-  bind_cols(ID = ID_i)
-
-## TL ----
-kyout_tl<-summary(kyout)
-Lyout_tl<-summary(Lyout)
-ID_i<-readRDS("length_ij_ID.rds")
-
-nrow(kyout_tl)
-nrow(Lyout_tl)
-nrow(ID_i)
-
-ky_tl<-kyout_tl%>%
-  bind_cols(ID = ID_i)
-
-Ly_tl<-Lyout_tl%>%
-  bind_cols(ID = ID_i)
-
-
-## compare ----
-
-young_birthyear<-2019
-
-kcompare<-ky_tl%>%
-  left_join(lifehist, by = c(ID = 'NAME'))%>%
-  left_join(ky_bhdf, by = "ID")%>%
-  mutate(k_diff = mean.x/mean.y)%>%
-  mutate(AGE = case_when(
-    BIRTH_YEAR >= young_birthyear ~ "Young",
-    TRUE ~ "Old"
-  ))%>%
-  dplyr::select(ID, mean.x, mean.y, k_diff, SEX, AGE)%>%
-  mutate(mean_k_diff = mean(k_diff),
-         sd_k_diff = sd(k_diff))
-
-kcompare%>%
- 
-  dplyr::select(ID, mean.x, mean.y, k_diff, SEX)%>%
-  group_by(SEX)%>%
-  mutate(mean_k_diff_sex = mean(k_diff),
-         sd_k_diff_sex = sd(k_diff))
-
-kcompare%>%
-  arrange(k_diff)
-
-ggplot(kcompare)+
-  geom_boxplot(aes(x = AGE,y = k_diff, color = AGE))+
-  geom_point(aes(x = AGE, y = k_diff, color = AGE))
-
-## bhdf
-
-lcompare<-L_tl%>%
-  left_join(lifehist, by = c(ID = 'NAME'))%>%
-  left_join(L_bhdf, by = "ID")%>%
-  mutate(L_diff = mean.x/mean.y)%>%
-  mutate(AGE = case_when(
-    BIRTH_YEAR >= young_birthyear ~ "Young",
-    TRUE ~ "Old"
-  ))%>%
-  dplyr::select(ID, mean.x, mean.y, L_diff, SEX, AGE)%>%
-  mutate(mean_L_diff = mean(L_diff),
-         sd_L_diff = sd(L_diff))
-
-lcompare%>%
-  dplyr::select(ID, mean.x, mean.y, L_diff, SEX)%>%
-  group_by(SEX)%>%
-  mutate(mean_L_diff_sex = mean(L_diff),
-         sd_L_diff_sex = sd(L_diff))
-
-
-
-ggplot(lcompare)+
-  geom_boxplot(aes(x = "L_tl/L_bhdf", y = L_diff, color = SEX))
-
-ggplot(lcompare)+
-  geom_boxplot(aes(x = AGE, y = L_diff, color = AGE))+
-  geom_point(aes(x = AGE, y = L_diff, color = AGE))
-
-
-dnorm(-0.0599714+(2.86325*2.70193), 1.28604)
-log(-0.06)
-
-as.matrix[n, m]
-
-B[j,1:3]
