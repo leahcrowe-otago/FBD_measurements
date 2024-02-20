@@ -50,117 +50,69 @@ ij%>%
 
 # ----
 
-a = '
+a = "
 
 data {
   int<lower=0> n_ind; // number individuals
   int<lower=0> N_ij; // number of measurement rows
-  int<lower=0> N_b; // number of timse when tl and bhdf measurements were taken
+  int<lower=0> N_b; // number of times when tl and bhdf measurements were taken
   int<lower=0> N_z; // number of times when only bhdf measurements were taken
   int<lower=0> N_y; // number of times when only tl measurements were taken
-  array[N_ij] int ind;
-  vector [N_ij] age; // the age observations
-  vector [N_ij] y; // the total length observations
-  vector [N_ij] z; // the bh to df length observations
+  array[N_ij] int ind; //the individuals
+  vector[N_ij] age; // the age observations
+  vector[N_ij] y; // the total length observations
+  vector[N_ij] z; // the bhdf length observations
 }
 
 parameters {
-  real beta_Ly;
-  real beta_ky;
-  vector[n_ind] eps_Ly;
-  vector[n_ind] eps_ky;
-  vector[n_ind] eps_Lz;
-  vector[n_ind] eps_kz;
-  real<lower=0> sigma_Ly;
-  real<lower=0> sigma_ky;
-  real<lower=0> sigma_y;
-  real<lower=0> sigma_z;
-  real alpha_0;
-  real gamma_0;
-  real alpha_1;
-  real gamma_1;
-  real<lower=0> sigma_Lz;
-  real<lower=0> sigma_kz;
   real<lower=0> t0p;
+  matrix[n_ind, 4] par;
+  vector<lower=0>[n_ind] sigma;
+  cholesky_factor_corr[n_ind] L;
+  vector[n_ind] mu;
+
 
 }
 
-transformed parameters {
-  vector[n_ind] ky_logit;
-  vector[n_ind] Ly;
-  vector[n_ind] kz_logit;
-  vector[n_ind] Lz;
-
-for(i in 1:n_ind){
-    Ly[i] = beta_Ly + eps_Ly[i]*sigma_Ly;
-    ky_logit[i] = beta_ky + eps_ky[i]*sigma_ky;
-    Lz[i] = alpha_0 + alpha_1*Ly[i] + eps_Lz[i]*sigma_Lz;
-    kz_logit[i] = gamma_0 + gamma_1*ky_logit[i] + eps_kz[i]*sigma_kz;
-}
-}
 
 model {
-  vector[n_ind] ky;
-  vector[n_ind] kz;
 
- for(i in 1:n_ind){   
-    ky[i] = inv_logit(ky_logit[i]);
-    kz[i] = inv_logit(kz_logit[i]);
+ for(i in 1:n_ind){
+    
+    for (j in 1:4){
+      par[i,j] ~ multi_normal_cholesky(mu[i], diag_matrix(sigma[i])*L);
+    }
  }
+ 
   
  for(i in 1:N_ij){
     if (i <= N_z) {
-      z[i] ~ normal(Lz[ind[i]]*(1-kz[ind[i]]^(age[i] + t0p)), sigma_z);
+      z[i] ~ normal(par[ind[i],3]*(1-inv_logit(par[ind[i],4])^(age[i] + t0p)), sigma[ind[i]]);
     
     } else if (i > N_b+N_z){
-      y[i] ~ normal(Ly[ind[i]]*(1-ky[ind[i]]^(age[i] + t0p)), sigma_y);
+      y[i] ~ normal(par[ind[i],1]*(1-inv_logit(par[ind[i],2])^(age[i] + t0p)), sigma[ind[i]]);
       
     } else {
-      y[i] ~ normal(Ly[ind[i]]*(1-ky[ind[i]]^(age[i] + t0p)), sigma_y);
-      z[i] ~ normal(Lz[ind[i]]*(1-kz[ind[i]]^(age[i] + t0p)), sigma_z);
+      y[i] ~ normal(par[ind[i],1]*(1-inv_logit(par[ind[i],2])^(age[i] + t0p)), sigma[ind[i]]);
+      z[i] ~ normal(par[ind[i],3]*(1-inv_logit(par[ind[i],4])^(age[i] + t0p)), sigma[ind[i]]);
       
     }
     }
 
-  beta_Ly ~ normal(0, 1000);
-  beta_ky ~ logistic(0, 1);
-  
-  eps_Ly ~ std_normal();
-  eps_Lz ~ std_normal();
-  eps_ky ~ std_normal();
-  eps_kz ~ std_normal();
-  
-  sigma_Ly ~ student_t(3, 0, 50);
-  sigma_ky ~ student_t(3, 0, 5);
-
-  sigma_y ~ student_t(3, 0, 50);
-  sigma_z ~ student_t(3, 0, 50);
-
-  alpha_0 ~ std_normal();
-  alpha_1 ~ std_normal();
-  sigma_Ly ~ student_t(3, 0, 50);
-  
-  gamma_0 ~ std_normal();
-  gamma_1 ~ std_normal();
-  sigma_kz ~ student_t(3, 0, 50);
-
   t0p ~ lognormal(0, 10);
-
-//for (j in 1:J){
-
-  //Ly = par[ind[i], 1]
-  
-//}
-
+  mu ~ normal(0, 1000);
+  sigma ~ student_t(3, 0, 25);
+  L ~ lkj_corr_cholesky(1);
 
 }
+
 
 generated quantities {
 
 
 }
 
-'
+"
 
 set_cmdstan_path(path = "C:/Users/leahm/cmdstan-2.34.1")
 
@@ -197,6 +149,11 @@ init_vb = function(){
   sigma_g = rlnorm(1)
   
   t0p = rlnorm(1)
+  
+  mu = rnorm(n_ind, mean(ij_NA$length, na.rm = TRUE), 0.2)
+  sigma = rlnorm(n_ind)
+  L = diag(4)
+
 
   return(list(beta_Ly = beta_Ly, beta_ky = beta_ky, 
               eps_Ly = eps_Ly, eps_ky = eps_ky, eps_Lz = eps_Lz, eps_kz = eps_kz, 
@@ -204,7 +161,9 @@ init_vb = function(){
               sigma_y = sigma_y, sigma_z = sigma_z, 
               alpha_0 = alpha_0, alpha_1 = alpha_1, sigma_a = sigma_a, 
               gamma_0 = gamma_0, gamma_1 = gamma_1, sigma_g = sigma_g, 
-              t0p = t0p))
+              t0p = t0p, 
+              L = L, mu = mu, sigma = sigma
+              ))
 }
 
 fit_vb <- stan_fit$sample(
@@ -223,8 +182,8 @@ fit_vb <- stan_fit$sample(
   ),
   init = init_vb,
   chains = 4,
-  iter_warmup = 1000,
-  iter_sampling = 5000,
+  iter_warmup = 10,
+  iter_sampling = 50,
   thin = 1,
   save_warmup = FALSE,
   max_treedepth = 10,
