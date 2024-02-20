@@ -2,6 +2,7 @@ library(cmdstanr)
 library(posterior)
 library(bayesplot)
 library(latex2exp)
+library(dplyr)
 i = 785
 ### get data
 #both bhdf & tl
@@ -48,6 +49,8 @@ ij%>%
   distinct(ind)%>%
   tally()
 
+J=4
+
 # ----
 
 a = "
@@ -58,6 +61,7 @@ data {
   int<lower=0> N_b; // number of times when tl and bhdf measurements were taken
   int<lower=0> N_z; // number of times when only bhdf measurements were taken
   int<lower=0> N_y; // number of times when only tl measurements were taken
+  int<lower=0> J; // number of params (Ly, ky, Lz, kz), dim of multivariate matrix
   array[N_ij] int ind; //the individuals
   vector[N_ij] age; // the age observations
   vector[N_ij] y; // the total length observations
@@ -67,9 +71,15 @@ data {
 parameters {
   real<lower=0> t0p;
   matrix[n_ind, 4] par;
-  vector<lower=0>[n_ind] sigma;
-  cholesky_factor_corr[n_ind] L;
-  vector[n_ind] mu;
+  vector<lower=0>[J] sigma;
+  cholesky_factor_corr[J] L;
+  vector[J] mu;
+  vector<lower=0>[2] sigma_obs;
+
+}
+
+transformed parameters{
+
 
 
 }
@@ -78,27 +88,27 @@ parameters {
 model {
 
  for(i in 1:n_ind){
-    
-    for (j in 1:4){
-      par[i,j] ~ multi_normal_cholesky(mu[i], diag_matrix(sigma[i])*L);
-    }
+
+      par[i] ~ multi_normal_cholesky(mu,diag_pre_multiply(sigma,L));
+  
  }
  
   
  for(i in 1:N_ij){
     if (i <= N_z) {
-      z[i] ~ normal(par[ind[i],3]*(1-inv_logit(par[ind[i],4])^(age[i] + t0p)), sigma[ind[i]]);
+      z[i] ~ normal(par[ind[i],3]*(1-inv_logit(par[ind[i],4])^(age[i] + t0p)), sigma_obs[2]);
     
     } else if (i > N_b+N_z){
-      y[i] ~ normal(par[ind[i],1]*(1-inv_logit(par[ind[i],2])^(age[i] + t0p)), sigma[ind[i]]);
+      y[i] ~ normal(par[ind[i],1]*(1-inv_logit(par[ind[i],2])^(age[i] + t0p)), sigma_obs[1]);
       
     } else {
-      y[i] ~ normal(par[ind[i],1]*(1-inv_logit(par[ind[i],2])^(age[i] + t0p)), sigma[ind[i]]);
-      z[i] ~ normal(par[ind[i],3]*(1-inv_logit(par[ind[i],4])^(age[i] + t0p)), sigma[ind[i]]);
+      y[i] ~ normal(par[ind[i],1]*(1-inv_logit(par[ind[i],2])^(age[i] + t0p)), sigma_obs[1]);
+      z[i] ~ normal(par[ind[i],3]*(1-inv_logit(par[ind[i],4])^(age[i] + t0p)), sigma_obs[2]);
       
     }
     }
 
+//priors
   t0p ~ lognormal(0, 10);
   mu ~ normal(0, 1000);
   sigma ~ student_t(3, 0, 25);
@@ -124,45 +134,32 @@ stan_fit = cmdstan_model(file)
 
 init_vb = function(){
   
-  beta_Ly = rnorm(1,mean(ij_NA$length, na.rm = TRUE), 0.2)
-  beta_ky = rnorm(1, 0, 0.2)
-
-  eps_Ly = rnorm(n_ind)
-  eps_ky = rnorm(n_ind)
-  eps_Lz = rnorm(n_ind)
-  eps_kz = rnorm(n_ind)
-  
-  sigma_Ly = rlnorm(1)
-  sigma_ky = rlnorm(1)
-  sigma_Lz = rlnorm(1)
-  sigma_kz = rlnorm(1)
-  
-  sigma_y = rlnorm(1)
-  sigma_z = rlnorm(1)
-
-  alpha_0 = rnorm(1, 0, 0.2)
-  alpha_1 = rnorm(1,mean(ij_NA$BHDF, na.rm = TRUE)/mean(ij_NA$length, na.rm = TRUE), 0.2)
-  sigma_a = rlnorm(1)
-  
-  gamma_0 = rnorm(1, 0, 0.2)
-  gamma_1 = rnorm(1, 0, 0.2)
-  sigma_g = rlnorm(1)
-  
   t0p = rlnorm(1)
   
-  mu = rnorm(n_ind, mean(ij_NA$length, na.rm = TRUE), 0.2)
-  sigma = rlnorm(n_ind)
-  L = diag(4)
+  mu = c(rnorm(1,mean(ij_NA$length, na.rm = TRUE), 0.2),
+         rlnorm(1, 0, 0.1),
+         rnorm(1,mean(ij_NA$BHDF, na.rm = TRUE), 0.2),
+         rlnorm(1, 0, 0.1))
+  
+  sigma = rlnorm(J)
+  
+  L = diag(J)
+  
+  par = matrix(NA,n_ind, J)
+  for(j in 1:J){
+    if(j == 1 | j == 3){
+      par[,j] = rnorm(n_ind,mu[j], 0.2)  
+    } else {
+      par[,j] = rlnorm(n_ind, log(mu[j]), 0.1)
+    }
+  } 
+  
+  sigma_obs = rlnorm(2)
 
 
-  return(list(beta_Ly = beta_Ly, beta_ky = beta_ky, 
-              eps_Ly = eps_Ly, eps_ky = eps_ky, eps_Lz = eps_Lz, eps_kz = eps_kz, 
-              sigma_Ly = sigma_Ly, sigma_ky = sigma_ky, sigma_Lz = sigma_Lz, sigma_kz = sigma_kz,
-              sigma_y = sigma_y, sigma_z = sigma_z, 
-              alpha_0 = alpha_0, alpha_1 = alpha_1, sigma_a = sigma_a, 
-              gamma_0 = gamma_0, gamma_1 = gamma_1, sigma_g = sigma_g, 
-              t0p = t0p, 
-              L = L, mu = mu, sigma = sigma
+  return(list(t0p = t0p, 
+              L = L, mu = mu, sigma = sigma,
+              par = par, sigma_obs = sigma_obs
               ))
 }
 
@@ -177,13 +174,14 @@ fit_vb <- stan_fit$sample(
     N_y = N_y,
     N_ij = N_ij,
     n_ind = n_ind,
-    ind = ij$ind
+    ind = ij$ind,
+    J = J
     
   ),
   init = init_vb,
   chains = 4,
-  iter_warmup = 10,
-  iter_sampling = 50,
+  iter_warmup = 1000,
+  iter_sampling = 5000,
   thin = 1,
   save_warmup = FALSE,
   max_treedepth = 10,
@@ -193,7 +191,7 @@ fit_vb <- stan_fit$sample(
 
 
 library(ggplot2)
-parout = as_draws_df(fit_vb$draws(c("beta_Ly", "beta_ky","t0p","sigma_y","sigma_Ly","sigma_ky","alpha_0","alpha_1","sigma_Lz", "gamma_0", "gamma_1", "sigma_kz")))
+parout = as_draws_df(fit_vb$draws(c("mu","sigma","sigma_obs","t0p")))
 mcmc_trace(parout)+theme_bw()
 ggplot2::ggsave("traceplot_allo.png", device = "png", dpi = 300, height = 200, width = 300, units = 'mm')
 
@@ -203,7 +201,7 @@ Lyout = as_draws_df(fit_vb$draws(c("Ly")))
 kyout_logit = as_draws_df(fit_vb$draws(c("ky_logit")))
 Lzout = as_draws_df(fit_vb$draws(c("Lz")))
 kzout_logit = as_draws_df(fit_vb$draws(c("kz_logit")))
-#bout = as_draws_df(fit_vb$draws(c("b")))
+
 
 ### plot a couple of individuals
 induse = c(1, 12, 14, 50)
