@@ -69,7 +69,8 @@ parameters {
   cholesky_factor_corr[J] L;
   vector[J] mu;
   vector<lower=0>[2] sigma_obs;
-
+  //real<lower=0> rho_obs;
+  
 }
 
 transformed parameters{
@@ -114,8 +115,8 @@ model {
 
 generated quantities {
 
-  corr_matrix[J] Sigma;
-  Sigma = multiply_lower_tri_self_transpose(L);
+  corr_matrix[J] corr;
+  corr = multiply_lower_tri_self_transpose(L);
 
 }
 
@@ -152,9 +153,6 @@ init_vb = function(){
   } 
   
   sigma_obs = rlnorm(2)
-
-
-
 
   return(list(t0p = t0p, 
               L = L, mu = mu, sigma = sigma, par = par, 
@@ -199,11 +197,11 @@ fit_vb <- stan_fit$sample(
 
 
 library(ggplot2)
-parout = as_draws_df(fit_vb$draws(c("mu","sigma","sigma_obs","t0p")))
+parout = as_draws_df(fit_vb$draws(c("mu","sigma","sigma_obs","t0p","corr[1,2]","corr[1,3]","corr[1,4]","corr[2,3]","corr[2,4]","corr[3,4]")))
 mcmc_trace(parout)+theme_bw()
 ggplot2::ggsave("traceplot_allo.png", device = "png", dpi = 300, height = 200, width = 300, units = 'mm')
 
-summary(parout)
+as.data.frame(summary(parout))
 
 Lyout = as_draws_df(fit_vb$draws(c("Ly")))
 kyout_logit = as_draws_df(fit_vb$draws(c("ky_logit")))
@@ -254,4 +252,3 @@ mcmc_intervals(kyout_logit, outer_size = 0.5, inner_size = 1, point_size = 2)
 mcmc_intervals(kzout_logit, outer_size = 0.5, inner_size = 1, point_size = 2)
 
 ##########
-
