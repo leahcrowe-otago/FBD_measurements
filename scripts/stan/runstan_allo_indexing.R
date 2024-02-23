@@ -51,8 +51,7 @@ data {
   array[N_z] int ind_z; //the individuals
   
   vector[N_b] age_b; // the age observations when tl and bhdf measurements were both taken
-  vector[N_b] y_b; // the total length observations
-  vector[N_b] z_b; // the bhdf length observations
+  matrix[N_b, 2] data_b; // [1] = the total length observations, [2] = the bhdf length observations
   
   vector[N_y] age_y; // the age observations when only tl measurements were taken
   vector[N_y] y_y; // the total length observations when only tl measurements were taken
@@ -69,17 +68,28 @@ parameters {
   cholesky_factor_corr[J] L;
   vector[J] mu;
   vector<lower=0>[2] sigma_obs;
-  //real<lower=0> rho_obs;
+  real<lower=0,upper=1> rho_obs;
+
   
 }
 
 transformed parameters{
+
+  matrix[2,2] varcov;
+  cholesky_factor_cov[2] Lobs;
+
+  varcov[1,1] = sigma_obs[1]^2;
+  varcov[2,2] = sigma_obs[2]^2;
+  varcov[1,2] = sigma_obs[1]*sigma_obs[2]*rho_obs;
+  varcov[2,1] = varcov[1,2];
+  Lobs = cholesky_decompose(varcov);
 
 }
 
 
 model {
 
+ matrix[N_b,2] obs_mean;
 
  for(i in 1:n_ind){
       par[i] ~ multi_normal_cholesky(mu,diag_pre_multiply(sigma,L));
@@ -95,8 +105,14 @@ model {
       } 
     
  for (i in 1:N_b){
-      y_b[i] ~ normal(par[ind_b[i],1]*(1-inv_logit(par[ind_b[i],2])^(age_b[i] + t0p)), sigma_obs[1]);
-      z_b[i] ~ normal(par[ind_b[i],3]*(1-inv_logit(par[ind_b[i],4])^(age_b[i] + t0p)), sigma_obs[2]);
+      //y_b[i] ~ normal(par[ind_b[i],1]*(1-inv_logit(par[ind_b[i],2])^(age_b[i] + t0p)), sigma_obs[1]);
+      //z_b[i] ~ normal(par[ind_b[i],3]*(1-inv_logit(par[ind_b[i],4])^(age_b[i] + t0p)), sigma_obs[2]);
+      
+      
+    obs_mean[i,1] = par[ind_b[i],1]*(1-inv_logit(par[ind_b[i],2])^(age_b[i] + t0p));
+    obs_mean[i,2] = par[ind_b[i],3]*(1-inv_logit(par[ind_b[i],4])^(age_b[i] + t0p));
+    data_b[i] ~ multi_normal_cholesky (obs_mean[i], Lobs);
+
       }
 
 
@@ -116,6 +132,7 @@ model {
 generated quantities {
 
   corr_matrix[J] corr;
+  //below is L*L'
   corr = multiply_lower_tri_self_transpose(L);
 
 }
@@ -134,9 +151,9 @@ init_vb = function(){
   
   t0p = rlnorm(1)
   
-  mu = c(rnorm(1,mean(ij_NA$length, na.rm = TRUE), 0.2),
+  mu = c(rnorm(1,mean(ij_b$length, na.rm = TRUE), 0.2),
          rlnorm(1, 0, 0.1),
-         rnorm(1,mean(ij_NA$BHDF, na.rm = TRUE), 0.2),
+         rnorm(1,mean(ij_b$BHDF, na.rm = TRUE), 0.2),
          rlnorm(1, 0, 0.1))
   
   sigma = rlnorm(J)
@@ -146,13 +163,15 @@ init_vb = function(){
   par = matrix(NA,n_ind, J)
   for(j in 1:J){
     if(j == 1 | j == 3){
-      par[,j] = rnorm(n_ind,mu[j], 0.2)  
+      par[,j] = rnorm(n_ind, mu[j], 0.2)  
     } else {
       par[,j] = rlnorm(n_ind, log(mu[j]), 0.1)
     }
   } 
   
   sigma_obs = rlnorm(2)
+  
+  sigma_a = rlnorm(1)
 
   return(list(t0p = t0p, 
               L = L, mu = mu, sigma = sigma, par = par, 
@@ -164,8 +183,7 @@ fit_vb <- stan_fit$sample(
   data = list(
     
     ind_b = ij_b$ind,
-    y_b = ij_b$length,
-    z_b = ij_b$BHDF,
+    data_b = ij_b%>%dplyr::select(length, BHDF),
     age_b = ij_b$age,
     
     ind_y = ij_y$ind,
@@ -197,13 +215,38 @@ fit_vb <- stan_fit$sample(
 
 
 library(ggplot2)
-parout = as_draws_df(fit_vb$draws(c("mu","sigma","sigma_obs","t0p","corr[1,2]","corr[1,3]","corr[1,4]","corr[2,3]","corr[2,4]","corr[3,4]")))
+parout = as_draws_df(fit_vb$draws(c("mu","sigma","sigma_obs","t0p","rho_obs","corr[1,2]","corr[1,3]","corr[1,4]","corr[2,3]","corr[2,4]","corr[3,4]","Lobs[1,1]","Lobs[2,1]","Lobs[2,2]")))
 mcmc_trace(parout)+theme_bw()
 ggplot2::ggsave("traceplot_allo.png", device = "png", dpi = 300, height = 200, width = 300, units = 'mm')
 
 as.data.frame(summary(parout))
 
-Lyout = as_draws_df(fit_vb$draws(c("Ly")))
+#proportional relationship between z and y
+
+x<-sample(1:n_ind,1, replace=F) 
+
+### Ly given Lz
+
+Lz = ij_b$BHDF[x]
+
+rho_sigma_for_Ly = mean(parout$rho_obs)*(mean(parout$`sigma[1]`)/mean(parout$`sigma[3]`))
+
+alpha_0_for_Ly = mean(parout$`mu[1]`) - rho_sigma_for_Ly*mean(parout$`mu[3]`)
+alpha_1_for_Ly = rho_sigma_for_Ly*Lz
+
+alpha_0_for_Ly+alpha_1_for_Ly
+
+sd_for_Ly = (1-mean(parout$rho_obs)^2)*mean(parout$`sigma[1]`)^2 
+sd_for_Ly
+
+ij_b$length[x]
+
+
+
+
+### Lz given Ly
+
+par = as_draws_df(fit_vb$draws(c("par")))
 kyout_logit = as_draws_df(fit_vb$draws(c("ky_logit")))
 Lzout = as_draws_df(fit_vb$draws(c("Lz")))
 kzout_logit = as_draws_df(fit_vb$draws(c("kz_logit")))
