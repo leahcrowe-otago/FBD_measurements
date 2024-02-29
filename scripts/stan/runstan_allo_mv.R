@@ -1,0 +1,318 @@
+library(cmdstanr)
+library(posterior)
+library(bayesplot)
+library(latex2exp)
+library(dplyr)
+
+# data ----
+
+i = 18
+#both bhdf & tl
+ij_b = readRDS(file = 'ij_1.rds')
+#ij_b = as.matrix(ij_1)
+ij_b[i,]
+N_b = nrow(ij_b)
+N_b
+#bhdf only
+ij_z = readRDS(file = 'ij_2.rds')%>%
+  dplyr::select(-length)
+#ij_z = as.matrix(ij_z)
+ij_z[i,]
+N_z = nrow(ij_z)
+N_z
+
+#tl only
+ij_y = readRDS(file = 'ij_3.rds')%>%
+  dplyr::select(-BHDF)
+#ij_y = as.matrix(ij_y)
+ij_y[i,]
+N_y = nrow(ij_y)
+N_y
+
+#IDs
+ij_ID = readRDS(file = 'ij_ID.rds')
+
+n_ind<-nrow(ij_ID)
+
+#params matrix dims
+J=4
+
+# model ----
+
+a = "
+
+data {
+  int<lower=0> n_ind; // number individuals
+  int<lower=0> N_b; // number of times when tl and bhdf measurements were both taken
+  int<lower=0> N_z; // number of times when only bhdf measurements were taken
+  int<lower=0> N_y; // number of times when only tl measurements were taken
+  int<lower=0> J; // number of params (Ly, ky, Lz, kz), dim of multivariate matrix
+  
+  array[N_b] int ind_b; //the individuals
+  array[N_y] int ind_y; //the individuals
+  array[N_z] int ind_z; //the individuals
+  
+  vector[N_b] age_b; // the age observations when tl and bhdf measurements were both taken
+  matrix[N_b, 2] data_b; // [1] = the total length observations, [2] = the bhdf length observations
+  
+  vector[N_y] age_y; // the age observations when only tl measurements were taken
+  vector[N_y] y_y; // the total length observations when only tl measurements were taken
+  
+  vector[N_z] age_z; // the age observations when only bhdf measurements were taken
+  vector[N_z] z_z; // the bhdf length observationswhen only bhdf measurements were taken
+  
+ }
+
+parameters {
+  real<lower=0> t0p;
+  matrix[n_ind, 4] par;
+  vector<lower=0>[J] sigma;
+  cholesky_factor_corr[J] L;
+  vector[J] mu;
+  vector<lower=0>[2] sigma_obs;
+  real<lower=0,upper=1> rho_obs;
+
+  
+ }
+
+transformed parameters{
+
+  matrix[2,2] varcov;
+  cholesky_factor_cov[2] Lobs;
+
+  varcov[1,1] = sigma_obs[1]^2;
+  varcov[2,2] = sigma_obs[2]^2;
+  varcov[1,2] = sigma_obs[1]*sigma_obs[2]*rho_obs;
+  varcov[2,1] = varcov[1,2];
+  Lobs = cholesky_decompose(varcov);
+
+ }
+
+model {
+
+ matrix[N_b,2] obs_mean;
+
+ for(i in 1:n_ind){
+      par[i] ~ multi_normal_cholesky(mu,diag_pre_multiply(sigma,L));
+      }
+
+
+ for (i in 1:N_y){
+      y_y[i] ~ normal(par[ind_y[i],1]*(1-inv_logit(par[ind_y[i],2])^(age_y[i] + t0p)), sigma_obs[1]);
+      }
+      
+ for (i in 1:N_z) {
+      z_z[i] ~ normal(par[ind_z[i],3]*(1-inv_logit(par[ind_z[i],4])^(age_z[i] + t0p)), sigma_obs[2]);
+      } 
+    
+ for (i in 1:N_b){
+      obs_mean[i,1] = par[ind_b[i],1]*(1-inv_logit(par[ind_b[i],2])^(age_b[i] + t0p));
+      obs_mean[i,2] = par[ind_b[i],3]*(1-inv_logit(par[ind_b[i],4])^(age_b[i] + t0p));
+      data_b[i] ~ multi_normal_cholesky (obs_mean[i], Lobs);
+
+      }
+
+
+//priors
+  t0p ~ lognormal(0, 10);
+  mu ~ normal(0, 1000);
+  sigma ~ student_t(3, 0, 25);
+  L ~ lkj_corr_cholesky(1);
+  
+  for (i in 1:2){
+  sigma_obs[i] ~ student_t(3, 0, 50);
+  }
+
+ }
+
+
+generated quantities {
+
+  corr_matrix[J] corr;
+  //below is L*L'
+  corr = multiply_lower_tri_self_transpose(L);
+
+ }
+
+"
+
+set_cmdstan_path(path = "C:/Users/leahm/cmdstan-2.34.1")
+
+cat(a, file = paste0(cmdstan_path(),"/thesis/vb/vb_mod_allo.stan"))
+
+file = file.path(cmdstan_path(), "/thesis/vb/vb_mod_allo.stan")
+
+stan_fit = cmdstan_model(file)
+
+# initial values ----
+
+init_vb = function(){
+  
+  t0p = rlnorm(1)
+  
+  mu = c(rnorm(1,mean(ij_b$length, na.rm = TRUE), 0.2),
+         rlnorm(1, 0, 0.1),
+         rnorm(1,mean(ij_b$BHDF, na.rm = TRUE), 0.2),
+         rlnorm(1, 0, 0.1))
+  
+  sigma = rlnorm(J)
+  
+  L = diag(J)
+  
+  par = matrix(NA,n_ind, J)
+  for(j in 1:J){
+    if(j == 1 | j == 3){
+      par[,j] = rnorm(n_ind, mu[j], 0.2)  
+    } else {
+      par[,j] = rlnorm(n_ind, log(mu[j]), 0.1)
+    }
+  } 
+  
+  sigma_obs = rlnorm(2)
+  
+  sigma_a = rlnorm(1)
+  
+  rho_obs = runif(1)
+
+  return(list(t0p = t0p, 
+              L = L, mu = mu, sigma = sigma, par = par, 
+              sigma_obs = sigma_obs, rho_obs = rho_obs
+              ))
+}
+
+# run stan ----
+
+fit_vb <- stan_fit$sample(
+  data = list(
+    
+    ind_b = ij_b$ind,
+    data_b = ij_b%>%dplyr::select(length, BHDF),
+    age_b = ij_b$age,
+    
+    ind_y = ij_y$ind,
+    y_y = ij_y$length,
+    age_y = ij_y$age,
+    
+    ind_z = ij_z$ind,
+    z_z = ij_z$BHDF,
+    age_z = ij_z$age,
+    
+    N_b = N_b,
+    N_z = N_z,
+    N_y = N_y,
+    
+    n_ind = n_ind,
+    J = J
+    
+  ),
+  init = init_vb,
+  chains = 4,
+  iter_warmup = 1000,
+  iter_sampling = 10000,
+  thin = 1,
+  save_warmup = FALSE,
+  max_treedepth = 10,
+  parallel_chains = 4,
+  refresh = 100
+)
+
+saveRDS(fit_vb, file = paste0("fit_vb_",Sys.Date(),".rds"))
+
+# results -----
+
+library(ggplot2)
+parout = as_draws_df(fit_vb$draws(c("mu","sigma","sigma_obs","t0p","rho_obs","corr[1,2]","corr[1,3]","corr[1,4]","corr[2,3]","corr[2,4]","corr[3,4]","Lobs[1,1]","Lobs[2,1]","Lobs[2,2]")))
+mcmc_trace(parout)+theme_bw()
+ggplot2::ggsave("traceplot_allo.png", device = "png", dpi = 300, height = 200, width = 300, units = 'mm')
+
+as.data.frame(summary(parout))
+
+saveRDS(parout, file = paste0("parout_",Sys.Date(),".rds"))
+
+# read in results ----
+date = "2024-02-29"
+fit_vb = readRDS(file = paste0('fit_vb_',date,'.rds'))
+parout = readRDS(file = paste0('parout_',date,'.rds'))
+summary(parout)
+as.data.frame(parout)
+# report results ----
+
+## proportional relationship between z and y ----
+
+x<-sample(1:n_ind,1, replace=F) 
+x
+
+### Ly given Lz ----
+
+Lz = ij_b$BHDF[x]
+
+rho_sigma_for_Ly = mean(parout$rho_obs)*(mean(parout$`sigma[1]`)/mean(parout$`sigma[3]`))
+
+alpha_0_for_Ly = mean(parout$`mu[1]`) - rho_sigma_for_Ly*mean(parout$`mu[3]`)
+alpha_1_for_Ly = rho_sigma_for_Ly*Lz
+
+alpha_0_for_Ly+alpha_1_for_Ly
+
+sd_for_Ly = (1-mean(parout$rho_obs)^2)*mean(parout$`sigma[1]`)^2 
+sd_for_Ly
+
+ij_b$length[x]
+
+### 
+
+parindout = as_draws_df(fit_vb$draws(c("par")))
+
+parindout
+
+### plot a couple of individuals
+induse = c(1, 12, 14, 50)
+ngrid = 101
+agegrid = seq(from = 0, to = max(ij_b$age), length.out = ngrid)
+nind = length(induse)
+pdf('indplots_bhdf.pdf', height = 8, width = 8)
+par(mfrow = c(2,2), mar = c(4, 4, 1, 1))
+
+for(i in 10:13){
+
+  x = ij_b%>%filter(ind == i)%>%select(age)
+  y = ij_b%>%filter(ind == i)%>%select(length)
+  z = ij_b%>%filter(ind == i)%>%select(BHDF)
+  
+  plot(x$age, y$length, pch = 20, xlim = c(0,max(ij_b$age)), ylim = c(0, max(ij_b$length)), xlab = "Age", ylab = "Length", col = "blue")
+  points(x$age, z$BHDF, pch = 20, xlim = c(0,max(ij_b$age)), ylim = c(0, max(ij_b$length)), xlab = "Age", ylab = "Length", col = "red")
+
+  Ly = parindout[[paste0('par[',i,',1]')]]
+  ky = parindout[[paste0('par[',i,',2]')]]
+  Lz = parindout[[paste0('par[',i,',3]')]]
+  kz = parindout[[paste0('par[',i,',4]')]]
+  
+  tmp_y = matrix(NA,length(Ly),ngrid)
+  tmp_z = matrix(NA,length(Lz),ngrid)
+  
+  for(j in 1:ngrid){
+    #inverse logit kyout/kzout #exp(x)/(1+exp(x))
+    tmp_y[,j] = Ly*(1-(exp(ky)/(1+exp(ky))^(mean(parout[["t0p"]]) + agegrid[j])))
+    tmp_z[,j] = Lz*(1-(exp(kz)/(1+exp(kz))^(mean(parout[["t0p"]]) + agegrid[j])))
+  }  
+  
+  quan_y = apply(tmp_y, 2, quantile, c(0.05, 0.5, 0.95), na.rm = T)
+  quan_z = apply(tmp_z, 2, quantile, c(0.05, 0.5, 0.95), na.rm = T)
+  
+  lines(agegrid, quan_y[2,], col = "blue", lty = 1)  
+  lines(agegrid, quan_y[1,], col = "blue", lty = 2)
+  lines(agegrid, quan_y[3,], col = "blue", lty = 2)
+  
+  lines(agegrid, quan_z[2,], col = "red", lty = 1)  
+  lines(agegrid, quan_z[1,], col = "red", lty = 2)
+  lines(agegrid, quan_z[3,], col = "red", lty = 2)
+}
+dev.off()
+
+
+#### need to adjust for new model outputs above
+mcmc_intervals(Lyout, outer_size = 0.5, inner_size = 1, point_size = 2)
+mcmc_intervals(Lzout, outer_size = 0.5, inner_size = 1, point_size = 2)
+mcmc_intervals(kyout_logit, outer_size = 0.5, inner_size = 1, point_size = 2)
+mcmc_intervals(kzout_logit, outer_size = 0.5, inner_size = 1, point_size = 2)
+
+##########
