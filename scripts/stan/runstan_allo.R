@@ -2,10 +2,8 @@ library(cmdstanr)
 library(posterior)
 library(bayesplot)
 library(latex2exp)
-
-### get data
 i = 52
-
+### get data
 age = readRDS(file = 'age_ijboth.rds')
 ageNA = as.matrix(age)
 ageuse = ageNA
@@ -145,9 +143,8 @@ stan_fit = cmdstan_model(file)
 init_vb = function(){
   
   beta_Ly = rnorm(1,mean(obsNA_tl, na.rm = TRUE), 0.2)
-  #beta_Lz = rnorm(1,mean(obsNA_bhdf, na.rm = TRUE), 0.2)
   beta_ky = rnorm(1, 0, 0.2)
-  #beta_kz = rnorm(1, 0, 0.2)
+
   eps_Ly = rnorm(n)
   eps_ky = rnorm(n)
   eps_Lz = rnorm(n)
@@ -204,7 +201,7 @@ fit_vb <- stan_fit$sample(
 library(ggplot2)
 parout = as_draws_df(fit_vb$draws(c("beta_Ly", "beta_ky","t0p","sigma_y","sigma_Ly","sigma_ky","alpha_0","alpha_1","sigma_a", "gamma_0", "gamma_1", "sigma_g")))
 mcmc_trace(parout)+theme_bw()
-ggplot2::ggsave("traceplot_allo.png", device = "png")
+ggplot2::ggsave("traceplot_allo.png", device = "png", dpi = 300, height = 200, width = 300, units = 'mm')
 
 summary(parout)
 
@@ -213,6 +210,11 @@ kyout_logit = as_draws_df(fit_vb$draws(c("ky_logit")))
 Lzout = as_draws_df(fit_vb$draws(c("Lz")))
 kzout_logit = as_draws_df(fit_vb$draws(c("kz_logit")))
 #bout = as_draws_df(fit_vb$draws(c("b")))
+
+mcmc_intervals(Lyout) + theme_minimal()
+mcmc_intervals(Lyout[110]) + theme_minimal()
+mcmc_intervals(Lzout) + theme_minimal()
+mcmc_intervals(Lzout[110]) + theme_minimal()
 
 ### plot a couple of individuals
 induse = c(1, 12, 14, 50)
@@ -246,6 +248,8 @@ for(i in 1:nind){
 }
 dev.off()
 
+ggplot()
+
 # mcmc_intervals(kout, outer_size = 0.5, inner_size = 1, point_size = 2)
 
 ageNA[induse[4],]
@@ -268,8 +272,8 @@ Ly_bhdf<-Lyout_bhdf%>%
 ## TL ----
 kyout_tl<-summary(kyout)
 Lyout_tl<-summary(Lyout)
-ID_i<-readRDS("length_ij_ID.rds")
-
+ID_i<-readRDS("length_ij_IDboth.rds")
+ID_i[110,]
 nrow(kyout_tl)
 nrow(Lyout_tl)
 nrow(ID_i)
