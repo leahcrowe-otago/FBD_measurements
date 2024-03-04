@@ -13,6 +13,7 @@ ij_b = readRDS(file = 'ij_1.rds')
 ij_b[i,]
 N_b = nrow(ij_b)
 N_b
+length(unique(ij_b$ind))
 #bhdf only
 ij_z = readRDS(file = 'ij_2.rds')%>%
   dplyr::select(-length)
@@ -34,6 +35,8 @@ ij_ID = readRDS(file = 'ij_ID.rds')
 
 n_ind<-nrow(ij_ID)
 
+N_b+N_z+N_y
+N_b/(N_b+N_z+N_y)
 #params matrix dims
 J=4
 
@@ -216,25 +219,52 @@ fit_vb <- stan_fit$sample(
   refresh = 100
 )
 
-saveRDS(fit_vb, file = paste0("fit_vb_",Sys.Date(),".rds"))
+ #saveRDS(fit_vb, file = paste0("fit_vb_",Sys.Date(),".rds"))
+getwd()
+
+my_dir <- 'C:/Users/leahm/OneDrive - University of Otago/Documents/git-otago/FBD_measurements/stan_output/'
+fit_vb$save_output_files(basename = "fit_vb", random = FALSE)
+fit_vb$save_data_file(dir = ".", basename = "fit_vb", timestamp = TRUE, random = FALSE)
 
 # results -----
 
-library(ggplot2)
 parout = as_draws_df(fit_vb$draws(c("mu","sigma","sigma_obs","t0p","rho_obs","corr[1,2]","corr[1,3]","corr[1,4]","corr[2,3]","corr[2,4]","corr[3,4]","Lobs[1,1]","Lobs[2,1]","Lobs[2,2]")))
-mcmc_trace(parout)+theme_bw()
-ggplot2::ggsave("traceplot_allo.png", device = "png", dpi = 300, height = 200, width = 300, units = 'mm')
-
-as.data.frame(summary(parout))
-
 saveRDS(parout, file = paste0("parout_",Sys.Date(),".rds"))
 
+#trace plot
+library(ggplot2)
+mcmc_trace(parout)+theme_bw()
+ggplot2::ggsave("traceplot_allo.png", device = "png", dpi = 300, height = 200, width = 300, units = 'mm')
+#density plot
+bayesplot::mcmc_dens(parout)
+#summary
+as.data.frame(summary(parout))
+
+#draws of par from posterior
+parindout = as_draws_df(fit_vb$draws(c("par")))
+
+#save par for individual plotting
+saveRDS(parindout, file = paste0("parindout_",Sys.Date(),".rds"))
+
 # read in results ----
-date = "2024-02-29"
-fit_vb = readRDS(file = paste0('fit_vb_',date,'.rds'))
-parout = readRDS(file = paste0('parout_',date,'.rds'))
-summary(parout)
-as.data.frame(parout)
+date = "2024-03-04"
+parout_in = readRDS(file = paste0('parout_',date,'.rds'))
+summary(parout_in)
+as.data.frame(parout_in)
+parindout_in = readRDS(file = paste0('./parindout_',date,'.rds'))
+parindout_in_summ<-summary(parindout_in)
+
+### if 
+csv_files<-fit_vb$output_files()
+
+fit_vb_in<-read_cmdstan_csv(
+  csv_files,
+  variables = c("mu")
+  #sampler_diagnostics = NULL,
+  #format = getOption("cmdstanr_draws_format", NULL)
+)
+
+
 # report results ----
 
 ## proportional relationship between z and y ----
@@ -258,12 +288,6 @@ sd_for_Ly
 
 ij_b$length[x]
 
-### 
-
-parindout = as_draws_df(fit_vb$draws(c("par")))
-
-parindout
-
 ### plot a couple of individuals
 induse = c(1, 12, 14, 50)
 ngrid = 101
@@ -272,19 +296,19 @@ nind = length(induse)
 pdf('indplots_bhdf.pdf', height = 8, width = 8)
 par(mfrow = c(2,2), mar = c(4, 4, 1, 1))
 
-for(i in 10:13){
-
-  x = ij_b%>%filter(ind == i)%>%select(age)
-  y = ij_b%>%filter(ind == i)%>%select(length)
-  z = ij_b%>%filter(ind == i)%>%select(BHDF)
+for(i in 1:n_ind){
+i = 28
+  #x = ij_b%>%filter(ind == i)%>%select(age)
+  #y = ij_b%>%filter(ind == i)%>%select(length)
+  #z = ij_b%>%filter(ind == i)%>%select(BHDF)
   
-  plot(x$age, y$length, pch = 20, xlim = c(0,max(ij_b$age)), ylim = c(0, max(ij_b$length)), xlab = "Age", ylab = "Length", col = "blue")
-  points(x$age, z$BHDF, pch = 20, xlim = c(0,max(ij_b$age)), ylim = c(0, max(ij_b$length)), xlab = "Age", ylab = "Length", col = "red")
+  #plot(x$age, y$length, pch = 20, xlim = c(0,max(ij_b$age)), ylim = c(0, max(ij_b$length)), xlab = "Age", ylab = "Length", col = "blue")
+  #points(x$age, z$BHDF, pch = 20, xlim = c(0,max(ij_b$age)), ylim = c(0, max(ij_b$length)), xlab = "Age", ylab = "Length", col = "red")
 
-  Ly = parindout[[paste0('par[',i,',1]')]]
-  ky = parindout[[paste0('par[',i,',2]')]]
-  Lz = parindout[[paste0('par[',i,',3]')]]
-  kz = parindout[[paste0('par[',i,',4]')]]
+  Ly = parindout_in[[paste0('par[',i,',1]')]]
+  ky = parindout_in[[paste0('par[',i,',2]')]]
+  Lz = parindout_in[[paste0('par[',i,',3]')]]
+  kz = parindout_in[[paste0('par[',i,',4]')]]
   
   tmp_y = matrix(NA,length(Ly),ngrid)
   tmp_z = matrix(NA,length(Lz),ngrid)
@@ -296,23 +320,152 @@ for(i in 10:13){
   }  
   
   quan_y = apply(tmp_y, 2, quantile, c(0.05, 0.5, 0.95), na.rm = T)
-  quan_z = apply(tmp_z, 2, quantile, c(0.05, 0.5, 0.95), na.rm = T)
+  #quan_z = apply(tmp_z, 2, quantile, c(0.05, 0.5, 0.95), na.rm = T)
   
-  lines(agegrid, quan_y[2,], col = "blue", lty = 1)  
-  lines(agegrid, quan_y[1,], col = "blue", lty = 2)
-  lines(agegrid, quan_y[3,], col = "blue", lty = 2)
+  #matrix(NA, length(quan_y*n_ind), ngrid)
   
-  lines(agegrid, quan_z[2,], col = "red", lty = 1)  
-  lines(agegrid, quan_z[1,], col = "red", lty = 2)
-  lines(agegrid, quan_z[3,], col = "red", lty = 2)
-}
+  #lines(agegrid, quan_y[2,], col = "blue", lty = 1)  
+  #lines(agegrid, quan_y[1,], col = "blue", lty = 2)
+  #lines(agegrid, quan_y[3,], col = "blue", lty = 2)
+  
+  #lines(agegrid, quan_z[2,], col = "red", lty = 1)  
+  #lines(agegrid, quan_z[1,], col = "red", lty = 2)
+  #lines(agegrid, quan_z[3,], col = "red", lty = 2)
+
+
+  
+  }
+
+
+  
+
 dev.off()
 
-
+parindout
 #### need to adjust for new model outputs above
-mcmc_intervals(Lyout, outer_size = 0.5, inner_size = 1, point_size = 2)
-mcmc_intervals(Lzout, outer_size = 0.5, inner_size = 1, point_size = 2)
-mcmc_intervals(kyout_logit, outer_size = 0.5, inner_size = 1, point_size = 2)
-mcmc_intervals(kzout_logit, outer_size = 0.5, inner_size = 1, point_size = 2)
+mcmc_intervals(parindout[1:143], outer_size = 0.5, inner_size = 1, point_size = 2)
+mcmc_intervals(parindout[144:286], outer_size = 0.5, inner_size = 1, point_size = 2)
+mcmc_intervals(parindout[287:429], outer_size = 0.5, inner_size = 1, point_size = 2)
+mcmc_intervals(parindout[430:ncol(parindout)], outer_size = 0.5, inner_size = 1, point_size = 2)
 
-##########
+## L and k by birthyear----
+
+parindout_in_summ$variable
+
+id_parsumm<-parindout_in_summ%>%
+  mutate(param = as.factor(
+    case_when(
+    grepl(",1]", variable) ~ 'Ly',
+    grepl(",2]", variable) ~ 'ky',
+    grepl(",3]", variable) ~ 'Lz',
+    grepl(",4]", variable) ~ 'kz'
+  )))%>%
+  mutate(ind = as.numeric(stringr::str_extract(substr(variable, 5, nchar(variable)), '[^,]+')))%>%
+  left_join(ij_ID, by = 'ind')
+  
+
+  
+###
+
+ngrid = 101
+agegrid = seq(from = 0, to = max(ij_b$age), length.out = ngrid)
+
+
+ind_mean<-id_parsumm%>%
+  group_by(ind)%>%
+  tidyr::pivot_wider(names_from = "param", values_from = "mean")%>%
+  group_by(ind)%>%
+  tidyr::fill(Ly,ky,Lz,kz, .direction = "downup")%>%
+  mutate(ky = exp(ky)/(1+exp(ky)),
+         kz = exp(kz)/(1+exp(kz)))%>%
+  distinct(ind, ID, year_zero, age_value, SEX, POD, Ly, ky, Lz, kz)
+
+mean_t0p = mean(parout_in$t0p)
+
+age_vb_y = matrix(NA,nrow(ind_mean),ngrid)
+age_vb_byr = matrix(NA,nrow(ind_mean),ngrid)
+
+for (i in 1:nrow(ind_mean)){
+
+  for(j in 1:ngrid){
+    #inverse logit kyout/kzout #exp(x)/(1+exp(x))
+    age_vb_y[i,j] = ind_mean$Ly[i]*(1-(ind_mean$ky[i]^(mean_t0p + agegrid[j])))
+    age_vb_byr[i,j] = agegrid[j] + ind_mean$year_zero[i]
+    }  
+}
+
+by_df<-transform(expand.grid(i = seq(nrow(age_vb_byr)), j = seq(ncol(age_vb_byr))), year_by = c(age_vb_byr))
+y_est<-transform(expand.grid(i = seq(nrow(age_vb_y)), j = seq(ncol(age_vb_y))), y_est = c(age_vb_y))
+
+growest_plot<-by_df%>%
+  left_join(y_est)%>%
+  arrange(i,j)%>%
+  mutate(agegrid = rep(agegrid,143))%>%
+  left_join(ij_ID, by = c("i" = "ind"))%>%
+  group_by(ID)%>%
+  mutate(est_diff = lead(y_est)-y_est)
+
+
+ggplot(growest_plot)+
+  geom_histogram(mapping = aes(x = est_diff), binwidth = 0.001)
+
+growest_plot%>%
+  filter(est_diff <= 0.006)%>%
+  group_by(ID)%>%
+  mutate(rank = rank(j))%>%
+  filter(rank == 1)%>%
+  ungroup()%>%
+  mutate(mean_limit = mean(agegrid))%>%
+  distinct(mean_limit)
+
+ggplot(growest_plot)+
+  geom_line(aes(x = agegrid, y = y_est, group = as.factor(i)), alpha = 0.3)+
+  ylim(c(0,3.5))+
+  xlim(c(-1,45))+
+  facet_wrap(~POD)+
+  theme_bw()+
+  xlab("Age")+
+  ylab("Total length estimate (m)")
+
+ggplot2::ggsave("./Figures/pod_vbplot.png", device = "png", dpi = 300, height = 100, width = 200, units = 'mm')
+
+ggplot(growest_plot)+
+  geom_line(aes(x = agegrid, y = y_est, group = as.factor(i)), alpha = 0.3)+
+  ylim(c(0,3.5))+
+  xlim(c(-1,45))+
+  facet_wrap(~age_value)+
+  theme_bw()+
+  xlab("Age")+
+  ylab("Total length estimate (m)")
+
+ggplot(growest_plot)+
+  geom_line(aes(x = year_by, y = y_est, group = as.factor(i), color = age_value), alpha = 0.8)+
+  xlim(c(1980,2050))+
+  theme_bw()+
+  xlab("Birth year")+
+  ylab("Total length estimate (m)")+
+  theme(legend.position = "bottom",
+        legend.title = element_blank())+
+  scale_colour_grey()
+
+ggplot2::ggsave("./Figures/age_firstyear_vbplot.png", device = "png", dpi = 300, height = 100, width = 150, units = 'mm')
+
+ky_box<-ggplot(ind_mean)+
+  geom_boxplot(aes(x = as.factor(SEX), y = ky, fill = SEX), alpha = 0.6)+
+  theme_bw()+
+  xlab("")+
+  ylab("Estimated growth rate (K)")
+
+maxLy_box<-ggplot(ind_mean)+
+  geom_boxplot(aes(x = as.factor(SEX), y = Ly, fill = SEX), alpha = 0.6)+
+  theme_bw()+
+  xlab("")+
+  ylab("Estimated max length (m)")
+
+box<-ggpubr::ggarrange(maxLy_box, ky_box, common.legend = T, legend = "none", ncol = 1)
+
+ggplot2::ggsave("./Figures/box.png", device = "png", dpi = 300, height = 150, width = 75, units = 'mm')
+
+ind_mean%>%
+  group_by(POD)%>%
+  tally()
