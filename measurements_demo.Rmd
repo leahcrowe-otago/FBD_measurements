@@ -127,7 +127,7 @@ measurements_demo_ind<-length_data%>%
     as.numeric(str_sub(trip,6,7)) >= 9 ~ as.numeric(str_sub(trip,1,4))+1,
   ))%>%
   mutate(month = as.numeric(str_sub(trip,6,7)))%>%
-  dplyr::select(trip, YEAR, ID, length_use, BHDF, SEX, BIRTH_YEAR, FIRST_YEAR, FIRST_CALF, ends_with('2022'), ends_with('2023'), ends_with('2024'), POD, month)%>%
+  dplyr::select(trip, YEAR, ID, length_use, BHDF, SEX, MOM, BIRTH_YEAR, INUTERO, FIRST_DATE, FIRST_YEAR, FIRST_CALF, ends_with('2022'), ends_with('2023'), ends_with('2024'), POD, month)%>%
   #tidyr::pivot_longer(cols = starts_with("X"), names_to = "AGECLASS_YEAR", values_to = "AGECLASS")%>%
   tidyr::pivot_longer(cols = starts_with("2"), names_to = "AGECLASS_YEAR", values_to = "AGECLASS")%>%
   mutate(AGECLASS_YEAR = str_replace(AGECLASS_YEAR, "X", ""))%>%
@@ -165,6 +165,19 @@ age_calc<-age_length%>%
     is.na(BIRTH_YEAR) ~ "min" #birth year not known
   ))%>%
   filter(!is.na(age)) # gets ride of unmatched dolphin measurements
+
+ age_length%>%
+  ungroup()%>%
+  mutate(age = case_when(
+    !is.na(BIRTH_YEAR) ~ YEAR-BIRTH_YEAR,
+    is.na(BIRTH_YEAR) ~ YEAR-FIRST_YEAR #min_age
+  ))%>%
+  mutate(age_value = case_when(
+    !is.na(BIRTH_YEAR) ~ "actual", #birth year known
+    is.na(BIRTH_YEAR) ~ "min" #birth year not known
+  ))%>%
+  filter(is.na(age))%>%
+  arrange(length_use)
 
 ```
 
@@ -254,6 +267,15 @@ ggplot(age_calc)+
 ```
 ```{r vbgc_data, include = T, warning = F, message = F}
 
+ID_index<-age_calc%>%
+  arrange(length_use,ID)%>%
+  mutate(year_zero = as.numeric(AGECLASS_YEAR)-age)%>%
+  distinct(ID,year_zero,SEX,POD,age_value)%>%
+  mutate(ind = 1:n())
+
+ij_ID<-ID_index
+saveRDS(ij_ID, file = paste0("ij_ID.rds"))
+
 #both
 age_vbgc_both<-age_calc%>%
   filter(!is.na(length_use) & !is.na(BHDF))%>% #filter for tl modeling
@@ -271,6 +293,7 @@ age_vbgc_tl<-age_calc%>%
   filter(!is.na(length_use) & is.na(BHDF))%>% 
   dplyr::rename("length" = "length_use")
 nrow(age_vbgc_tl)
+
 # 1 = both, 2 = bhdf only, 3 = tl only
 age_vbgc<-list(age_vbgc_both, age_vbgc_bhdf, age_vbgc_tl)
 length(age_vbgc)
@@ -278,43 +301,38 @@ age_vbgc[[1]]
 
 for(i in 1:length(age_vbgc)){
 
-ij<-age_vbgc[[i]]%>%
-  arrange(ID, age_month)%>%
-  ungroup()%>%
-  mutate(ind = 1:n())%>%
-  group_by(ID)%>%
-  mutate(j = 1:n(),
-         J = max(ind),
-         i = cur_group_id() 
-  )%>%
-  dplyr::select(ID, i, ind, j, J, age_month, length, BHDF)%>%
-  ungroup()
+  ij<-age_vbgc[[i]]%>%
+    arrange(ID, age_month)%>%
+    ungroup()%>%
+    left_join(ID_index, by = "ID")%>%
+    #mutate(max_j = 1:n())%>%
+    group_by(ID)%>%
+    mutate(obs = 1:n(),
+           #J = max(max_j),
+           #ind = cur_group_id() 
+           age = age_month
+    )%>%
+    ungroup()
 
-age_ij<-ij%>%
-  dplyr::select(ID, j, age_month)%>%
-  group_by(ID)%>%
-  tidyr::pivot_wider(names_from = j, values_from = age_month)%>%
-  ungroup()%>%
+  if (i == 1){
+    ij<-ij%>%
+      dplyr::select(ID, ind, obs, age, length, BHDF)
+  }
+
+  if (i == 2){
+    ij<-ij%>%
+      dplyr::select(ID, ind, obs, age, length, BHDF)
+  }
+
+  if (i == 3){
+    ij<-ij%>%
+      dplyr::select(ID, ind, obs, age, length, BHDF)
+  }
+
+ij<-ij%>%
   dplyr::select(-ID)
 
-colnames(age_ij)<-NULL
-saveRDS(age_ij, file = paste0("age_ij_,",i,",.rds"))
-
-length_ij<-ij%>%
-  dplyr::select(ID, j, length)%>%
-  group_by(ID)%>%
-  tidyr::pivot_wider(names_from = j, values_from = length)%>%
-  ungroup()
-
-length_ij_noID<-length_ij%>%
-  dplyr::select(-ID)
-
-colnames(length_ij_noID)<-NULL
-saveRDS(length_ij_noID, file = paste0("length_ij_",i,".rds"))
-
-length_ij_ID<-length_ij%>%
-  dplyr::select(ID)
-saveRDS(length_ij_ID, file = paste0("length_ij_ID_",i,".rds"))
+saveRDS(ij, file = paste0("ij_",i,".rds"))
 
 }
 
