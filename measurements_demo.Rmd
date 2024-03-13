@@ -103,7 +103,11 @@ prop_bh<-length_data%>%
   mutate(prop_rostrum_tl = Rostrum.BH/length_use)
 
 summary(prop_bh)
+
 ```
+
+
+Fig. 1: number of times individuals were measured per trip
 
 ```{r demo, include = F}
 # life history update ----
@@ -261,8 +265,36 @@ ggsave("./Figures/individuals_measuredmanytimes.png", individuals_measuredmanyti
 
 age_calc%>%distinct(POD, ID)%>%group_by(POD)%>%tally()
 
-ggplot(age_calc)+
-  geom_point(mapping = aes(x = length_use, y = BHDF, color = POD))
+raw<-ggplot(age_calc)+
+  geom_point(mapping = aes(x = age, y = length_use, color = POD))+
+  geom_point(mapping = aes(x = age, y = BHDF, color = POD), shape = 21)+
+  theme_bw()+
+  ylab("Length (m)")+
+  theme(legend.position = "bottom")
+
+ggsave("./Figures/raw.png", raw, dpi = 320, height = 150, width = 200, units = 'mm')
+
+hist<-ggplot(age_calc%>%group_by(ID,trip, POD)%>%tally())+
+  geom_histogram(aes(x = n, fill = POD), binwidth = 1, color = "black", alpha = 0.6)+
+  facet_wrap(~trip*POD)+
+  ylab("Number of individuals")+
+  xlab("Number of snapshots measured")+
+  theme_bw()+theme(legend.position = "none")
+
+hist_all<-ggplot(age_calc%>%group_by(ID,POD)%>%tally())+
+  geom_histogram(aes(x = n, fill = POD), binwidth = 1, color = "black", alpha = 0.6)+
+  facet_wrap(~POD)+
+  ylab("Number of individuals")+
+  xlab("Number of snapshots measured")+
+  theme_bw()+
+  theme(legend.position = "none")
+
+age_calc%>%group_by(ID,POD)%>%tally()%>%arrange(-n)
+age_calc%>%group_by(ID,trip, POD)%>%tally()%>%arrange(-n)
+
+hist_fig<-ggpubr::ggarrange(hist_all, hist, ncol = 1, heights = c(1,2), labels = "auto")
+
+ggsave("./Figures/hist_fig.png", hist_fig, dpi = 320, height = 200, width = 150, units = 'mm')
 
 ```
 ```{r vbgc_data, include = T, warning = F, message = F}
@@ -527,32 +559,6 @@ Fig. 4: Summary of total lengths (m) per sex and age-class. C = calf of the year
 
 ```
 
-
-```{r measure_per_individual, echo = F}
-
-# # sluething suspect measurements
-# ggplot(length_ID_merge_Tt)+
-#   geom_point(aes(x = actual_length_mean_mean, y = actual_length_mean_sd))
-# 
-# hist<-ggplot(length_ID_merge_Tt%>%group_by(ID,trip)%>%tally())+
-#   geom_histogram(aes(x = n), binwidth = 1, color = "black")+
-#   facet_wrap(~trip)+
-#   ylab("Number of individuals")+
-#   xlab("Number of photographs measured")+
-#   theme_bw()
-# 
-# hist
-# 
-# # length_ID_merge_Tt%>%
-# #   filter(is.na(actual_length))
-# 
-# ggsave("./Figures/hist.png", hist, dpi = 320, height = 75, units = 'mm')
-# 
-# length_ID_merge_Tt%>%ungroup()%>%distinct(ID, POD)%>%filter(!is.na(POD))%>%group_by(POD)%>%tally()
-
-```
-
-Fig. 1: number of times individuals were measured per trip
 
 \newpage
 ```{r vbgc_bayes, include = T, warning=FALSE, message=FALSE}
