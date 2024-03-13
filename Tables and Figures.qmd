@@ -1,0 +1,14 @@
+---
+title: "Crowe et al. measurements"
+format: pdf
+editor: visual
+---
+
+# Figures
+
+```{r, Fig1, echo = F, out.height='80%'}
+knitr::include_graphics('./Figures/hist_fig.png')
+
+```
+
+Fig. 1. Number of snapshots where an individual dolphin measurement of TL and or BHDF was taken per pod identity a. over the whole course of the study and b. per sampling effort.
