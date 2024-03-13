@@ -249,7 +249,12 @@ saveRDS(parindout, file = paste0("parindout_",Sys.Date(),".rds"))
 # read in results ----
 date = "2024-03-04"
 parout_in = readRDS(file = paste0('parout_',date,'.rds'))
-summary(parout_in)
+bayesplot::mcmc_dens(parout_in)
+bayesplot::mcmc_trace(parout_in)+theme_bw()
+summ_paroutin<-as.data.frame(summary(parout_in))
+
+max(summ_paroutin$rhat)
+
 as.data.frame(parout_in)
 parindout_in = readRDS(file = paste0('./parindout_',date,'.rds'))
 parindout_in_summ<-summary(parindout_in)
