@@ -37,6 +37,7 @@ n_ind<-nrow(ij_ID)
 
 N_b+N_z+N_y
 N_b/(N_b+N_z+N_y)
+
 #params matrix dims
 J=4
 
@@ -173,8 +174,6 @@ init_vb = function(){
   
   sigma_obs = rlnorm(2)
   
-  sigma_a = rlnorm(1)
-  
   rho_obs = runif(1)
 
   return(list(t0p = t0p, 
@@ -210,8 +209,8 @@ fit_vb <- stan_fit$sample(
   ),
   init = init_vb,
   chains = 4,
-  iter_warmup = 1000,
-  iter_sampling = 10000,
+  iter_warmup = 100,
+  iter_sampling = 1000,
   thin = 1,
   save_warmup = FALSE,
   max_treedepth = 10,
@@ -229,7 +228,7 @@ fit_vb$save_data_file(dir = ".", basename = "fit_vb", timestamp = TRUE, random =
 # results -----
 
 parout = as_draws_df(fit_vb$draws(c("mu","sigma","sigma_obs","t0p","rho_obs","corr[1,2]","corr[1,3]","corr[1,4]","corr[2,3]","corr[2,4]","corr[3,4]","Lobs[1,1]","Lobs[2,1]","Lobs[2,2]")))
-saveRDS(parout, file = paste0("parout_",Sys.Date(),".rds"))
+saveRDS(parout, file = paste0("parout_",Sys.Date(),"_2.rds"))
 
 #trace plot
 library(ggplot2)
@@ -244,16 +243,20 @@ as.data.frame(summary(parout))
 parindout = as_draws_df(fit_vb$draws(c("par")))
 
 #save par for individual plotting
-saveRDS(parindout, file = paste0("parindout_",Sys.Date(),".rds"))
+saveRDS(parindout, file = paste0("parindout_",Sys.Date(),"_2.rds"))
 
 # read in results ----
-date = "2024-03-04"
+date = "2024-03-16"
 parout_in = readRDS(file = paste0('parout_',date,'.rds'))
 bayesplot::mcmc_dens(parout_in)
 bayesplot::mcmc_trace(parout_in)+theme_bw()
 summ_paroutin<-as.data.frame(summary(parout_in))
 
 max(summ_paroutin$rhat)
+min(summ_paroutin$ess_bulk)
+min(summ_paroutin$ess_tail)
+max(summ_paroutin$ess_bulk)
+max(summ_paroutin$ess_tail)
 
 as.data.frame(parout_in)
 parindout_in = readRDS(file = paste0('./parindout_',date,'.rds'))
@@ -348,10 +351,10 @@ dev.off()
 
 parindout
 #### need to adjust for new model outputs above
-mcmc_intervals(parindout[1:143], outer_size = 0.5, inner_size = 1, point_size = 2)
-mcmc_intervals(parindout[144:286], outer_size = 0.5, inner_size = 1, point_size = 2)
-mcmc_intervals(parindout[287:429], outer_size = 0.5, inner_size = 1, point_size = 2)
-mcmc_intervals(parindout[430:ncol(parindout)], outer_size = 0.5, inner_size = 1, point_size = 2)
+mcmc_intervals(parindout_in[1:143], outer_size = 0.5, inner_size = 1, point_size = 2)
+mcmc_intervals(parindout_in[144:286], outer_size = 0.5, inner_size = 1, point_size = 2)
+mcmc_intervals(parindout_in[287:429], outer_size = 0.5, inner_size = 1, point_size = 2)
+mcmc_intervals(parindout_in[430:ncol(parindout_in)], outer_size = 0.5, inner_size = 1, point_size = 2)
 
 ## L and k by birthyear----
 
@@ -371,31 +374,33 @@ id_parsumm<-parindout_in_summ%>%
 
   
 ###
-
+t0p = median(parout_in$t0p)
+quantile(parout_in$t0p)
 ngrid = 101
-agegrid = seq(from = 0, to = max(ij_b$age), length.out = ngrid)
+
+agegrid = seq(from = -2, to = max(ij_b$age), length.out = ngrid)
 
 
-ind_mean<-id_parsumm%>%
+ind_median<-id_parsumm%>%
   group_by(ind)%>%
-  tidyr::pivot_wider(names_from = "param", values_from = "mean")%>%
+  tidyr::pivot_wider(names_from = "param", values_from = "median")%>%
   group_by(ind)%>%
   tidyr::fill(Ly,ky,Lz,kz, .direction = "downup")%>%
-  mutate(ky = exp(ky)/(1+exp(ky)),
-         kz = exp(kz)/(1+exp(kz)))%>%
+  mutate(ky = -1*log(exp(ky)/(1+exp(ky))),
+         kz = -1*log(exp(kz)/(1+exp(kz))))#%>%
   distinct(ind, ID, year_zero, age_value, SEX, POD, Ly, ky, Lz, kz)
 
-mean_t0p = mean(parout_in$t0p)
 
-age_vb_y = matrix(NA,nrow(ind_mean),ngrid)
-age_vb_byr = matrix(NA,nrow(ind_mean),ngrid)
 
-for (i in 1:nrow(ind_mean)){
+age_vb_y = matrix(NA,nrow(ind_median),ngrid)
+age_vb_byr = matrix(NA,nrow(ind_median),ngrid)
+
+for (i in 1:nrow(ind_median)){
 
   for(j in 1:ngrid){
     #inverse logit kyout/kzout #exp(x)/(1+exp(x))
-    age_vb_y[i,j] = ind_mean$Ly[i]*(1-(ind_mean$ky[i]^(mean_t0p + agegrid[j])))
-    age_vb_byr[i,j] = agegrid[j] + ind_mean$year_zero[i]
+    age_vb_y[i,j] = ind_median$Ly[i]*(1-exp(-ind_median$ky[i]*(t0p + agegrid[j])))
+    age_vb_byr[i,j] = agegrid[j] + ind_median$year_zero[i]
     }  
 }
 
@@ -408,7 +413,8 @@ growest_plot<-by_df%>%
   mutate(agegrid = rep(agegrid,143))%>%
   left_join(ij_ID, by = c("i" = "ind"))%>%
   group_by(ID)%>%
-  mutate(est_diff = lead(y_est)-y_est)
+  mutate(est_diff = lead(y_est)-y_est)%>%
+  dplyr::rename("Pod" = "POD")
 
 
 ggplot(growest_plot)+
@@ -423,54 +429,104 @@ growest_plot%>%
   mutate(mean_limit = mean(agegrid))%>%
   distinct(mean_limit)
 
-ggplot(growest_plot)+
-  geom_line(aes(x = agegrid, y = y_est, group = as.factor(i)), alpha = 0.3)+
-  ylim(c(0,3.5))+
-  xlim(c(-1,45))+
-  facet_wrap(~POD)+
+vbgc_zero<-ggplot(growest_plot)+
+  geom_line(aes(x = agegrid, y = y_est, group = as.factor(i), color = Pod), alpha = 0.6)+
+  coord_cartesian(xlim=c(0, 45))+
+  coord_cartesian(ylim=c(0, 3.5))+
+  #facet_wrap(~POD)+
   theme_bw()+
-  xlab("Age")+
-  ylab("Total length estimate (m)")
+  xlab("Age (years)")+
+  ylab("Total length estimate (m)")+
+  theme(legend.position = "bottom")
 
-ggplot2::ggsave("./Figures/pod_vbplot.png", device = "png", dpi = 300, height = 100, width = 200, units = 'mm')
+#ggplot2::ggsave("./Figures/pod_vbplot.png", device = "png", dpi = 300, height = 150, width = 200, units = 'mm')
 
-ggplot(growest_plot)+
-  geom_line(aes(x = agegrid, y = y_est, group = as.factor(i)), alpha = 0.3)+
-  ylim(c(0,3.5))+
-  xlim(c(-1,45))+
-  facet_wrap(~age_value)+
-  theme_bw()+
-  xlab("Age")+
-  ylab("Total length estimate (m)")
+# ggplot(growest_plot)+
+#   geom_line(aes(x = agegrid, y = y_est, group = as.factor(i)), alpha = 0.3)+
+#   coord_cartesian(xlim=c(0, 45))+
+#   coord_cartesian(ylim=c(0, 3.5))+
+#   facet_wrap(~age_value)+
+#   theme_bw()+
+#   xlab("Age")+
+#   ylab("Total length estimate (m)")
 
-ggplot(growest_plot)+
-  geom_line(aes(x = year_by, y = y_est, group = as.factor(i), color = age_value), alpha = 0.8)+
+vbgc_by<-ggplot(growest_plot)+
+  geom_line(aes(x = year_by, y = y_est, group = as.factor(i), color = Pod, linetype = age_value), alpha = 0.8)+
   xlim(c(1980,2050))+
+  coord_cartesian(ylim=c(0, 3.5))+
   theme_bw()+
   xlab("Birth year")+
-  ylab("Total length estimate (m)")+
+  ylab("")+
   theme(legend.position = "bottom",
-        legend.title = element_blank())+
-  scale_colour_grey()
+        legend.title = element_blank())
 
-ggplot2::ggsave("./Figures/age_firstyear_vbplot.png", device = "png", dpi = 300, height = 100, width = 150, units = 'mm')
+ggpubr::ggarrange(vbgc_zero, vbgc_by, common.legend = T, legend = "bottom", widths = c(1,2), labels = "auto")
 
-ky_box<-ggplot(ind_mean)+
+ggplot2::ggsave("./Figures/vbgcplot.png", device = "png", dpi = 300, height = 75, units = 'mm')
+
+ky_box<-ggplot(ind_median)+
   geom_boxplot(aes(x = as.factor(SEX), y = ky, fill = SEX), alpha = 0.6)+
   theme_bw()+
   xlab("")+
   ylab("Estimated growth rate (K)")
 
-maxLy_box<-ggplot(ind_mean)+
+maxLy_box<-ggplot(ind_median)+
   geom_boxplot(aes(x = as.factor(SEX), y = Ly, fill = SEX), alpha = 0.6)+
   theme_bw()+
   xlab("")+
   ylab("Estimated max length (m)")
 
 box<-ggpubr::ggarrange(maxLy_box, ky_box, common.legend = T, legend = "none", ncol = 1)
-
+box
 ggplot2::ggsave("./Figures/box.png", device = "png", dpi = 300, height = 150, width = 75, units = 'mm')
 
 ind_mean%>%
   group_by(POD)%>%
   tally()
+
+ind_median%>%
+  group_by(POD)%>%
+  summarise(median = median(Ly), max = max(Ly), min = min(Ly))
+
+ind_median%>%
+  group_by(POD)%>%
+  summarise(median = median(ky), max = max(ky), min = min(ky))
+
+##
+####need to transform ky and q5 and q95
+id_parsumm%>%
+  group_by(ind)%>%
+  tidyr::pivot_wider(names_from = "param", values_from = "median")%>%
+  group_by(ind)%>%
+  tidyr::fill(Ly,ky,Lz,kz, .direction = "downup")%>%
+  mutate(ky = -1*log(exp(ky)/(1+exp(ky))),
+         kz = -1*log(exp(kz)/(1+exp(kz))))%>%
+  distinct(ind, ID, year_zero, age_value, SEX, POD, Ly, ky, Lz, kz)
+
+uncertainty<-id_parsumm%>%filter(param == "Ly" | param == "ky")%>%arrange(param, year_zero)%>%group_by(year_zero)%>%
+  mutate(rank = rank(ind))%>%
+  mutate(year_cat = as.numeric(year_zero+(rank*0.1)))%>%
+  dplyr::rename(`Birth year` = "age_value")%>%
+  mutate(median = case_when(
+      param == "ky" ~ -1*log(exp(median)/(1+exp(median))),
+      TRUE ~ median),
+    q5 = case_when(
+      param == "ky" ~ -1*log(exp(q5)/(1+exp(q5))),
+      TRUE ~ q5),
+    q95 = case_when(
+      param == "ky" ~ -1*log(exp(q95)/(1+exp(q95))),
+      TRUE ~ q95))
+head(uncertainty)
+
+ggplot(uncertainty%>%filter(param == "Ly"))+
+  geom_point(aes(x = year_cat, y = median, group = as.factor(i), color = POD, shape = `Birth year`), size = 2, alpha = 0.6)+
+  geom_linerange(aes(x = year_cat, ymin = q95, ymax = q5, group = as.factor(i), color = POD))+
+  facet_wrap(~param, ncol = 1)+
+  theme_bw()+
+  theme(legend.position = "bottom")+
+  xlab("")+
+  ylab("Length (m)")%>%
+  scale_x_continuous(n.breaks = 38)
+
+uncertainty%>%filter(param == "ky")%>%filter(q5 == max(q5))
+
