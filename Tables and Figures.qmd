@@ -1,14 +1,48 @@
 ---
-title: "Crowe et al. measurements"
+title: "Crowe et al. FBD measurements"
 format: pdf
 editor: visual
 ---
 
 # Figures
 
-```{r, Fig1, echo = F, out.height='80%'}
+{insert map here, but also, maybe don't need it?
+
+Fig. 1. This is a map of the FMA highlighting the survey areas (Doubtful and Dusky complex)
+
+```{r, Fig_dolphin, echo = F, out.width = '100%'}
+knitr::include_graphics('./Figures/Fig. 2.png')
+```
+
+Fig. 2. Example snapshot taken from the video where the rostrum and fluke notch are clearly visible for the total length (TL) measurements, and the blowhole and dorsal fin insertion are above the surface for the allometric measurement (BHDF). Oblique photos are also provided to demonstrate how individuals were identified from dorsal body markings. The animal in this image is a reproductive female named 'Minus' born in 2006.
+
+```{r, Fig_raw, echo = F, out.height = '60%'}
+knitr::include_graphics('./Figures/raw.png')
+```
+
+Fig. 3. Measured values of total length (solid circles) and blowhole to dorsal fin length (open circles).
+
+```{r, Fig_hist, echo = F, out.height='80%'}
 knitr::include_graphics('./Figures/hist_fig.png')
 
 ```
 
-Fig. 1. Number of snapshots where an individual dolphin measurement of TL and or BHDF was taken per pod identity a. over the whole course of the study and b. per sampling effort.
+Fig. 4. Number of snapshots where an individual dolphin measurement of TL and/or BHDF was taken per pod identity a. over the course of the entire study and b. per sampling effort.
+
+```{r, Fig_vbgc, echo = F, out.width='110%'}
+knitr::include_graphics('./Figures/vbgcplot.png')
+```
+
+Fig. 5. Predicted von Bertalanffy growth curves for each individual measured. Curves were fit using the median values estimated for $Ly_{i}$ and $ky_{i}$, and are a. plotted relative to age and b. actual (solid lines) or estimated minimum (dotted lines) birth year.
+
+```{r, Fig_Ly_CI, echo = F, out.width='110%'}
+knitr::include_graphics('./Figures/Ly_CI.png')
+```
+
+Fig. 6. Posterior distribution estimate of total length for each individual ($Ly_{i}$) by actual or estimated minimum birth year. The plotted point is at the median estimate and the vertical lines represent the 90% credible intervals.
+
+```{r, Fig_box, echo = F, out.height='80%'}
+knitr::include_graphics('./Figures/box.png')
+```
+
+Fig. 7. Summary boxplots of the median estimates of a. maximum total length ($Ly$) and b. growth rate coeffecient ($ky$) calculated for each individual grouped by sex (F = female, M = male, X = unknown).
