@@ -23,7 +23,7 @@ fiordland_base_raster<-marmap::as.raster(fiordland_base)
 #mapview::mapview(fiordland_base_raster)
 
 test_spdf <- as(fiordland_base_raster, "SpatialPixelsDataFrame")
-test_df <- as.data.frame(test_spdf)
+test_df <- as.data.frame(test_spdf)%>%filter(layer < 0)
 colnames(test_df) <- c("Depth (m)", "x", "y")
 
 nrow(test_df)
@@ -32,6 +32,7 @@ test_df<-test_df%>%
 nrow(test_df)
 
 bathy<-sf::read_sf(shapefile_path, layer = "niwa-new-zealand-bathymetry-contours-2016")
+mapview::mapview(bathy)
 alliso50<-subset(bathy, ELEVATION == -50)
 alliso50<-as.data.frame(st_coordinates(alliso50))
 alliso200<-subset(bathy, ELEVATION == -200)
@@ -88,9 +89,15 @@ fiord_labels<-data.frame(label = c("Piopiotahi-Milford Sound","Te H\u101pua-Suth
 bathy_FMA<-ggplot()+
   geom_tile(data=test_df, aes(x=x, y=y, fill=`Depth (m)`), alpha=0.8)+
   geom_sf(data = FMA, alpha = 0.05, color = "aquamarine", lwd = 0.4)+
-  geom_sf(data = NZ_coast, alpha = 0.9, fill = "white")+
+  #Doubtful complex
+  geom_polygon(mapping = aes(y=c(-45.13,-45.15,-45.23,-45.28,-45.43,-45.50,-45.44), 
+                             x=c(166.97,166.96,166.88,166.85,166.91,167.06,167.46)), fill = "yellow", alpha = 0.9)+
+  #Dusky complex
+  geom_polygon(mapping = aes(y=c(-45.55,-45.61,-45.73,-45.83,-45.76,-45.44), 
+                             x=c(166.68,166.60,166.45,166.45,167.04,167.03)), fill = "orange", alpha = 0.9)+
+  geom_sf(data = NZ_coast, alpha = 1, fill = "white")+
   geom_path(alliso200, mapping = aes(X,Y,group = L2), color = "steelblue4", alpha = 0.7, linewidth = 0.2)+
-  #geom_path(alliso50, mapping = aes(X,Y,group = L2), color = "black", alpha = 0.7, linewidth = 0.2)+
+  geom_path(alliso50, mapping = aes(X,Y,group = L2), color = "grey", alpha = 0.9, linewidth = 0.2)+
   theme(panel.background = element_rect(fill = "lightblue"),
         panel.grid.major = element_line(size = 0.1, linetype = 'solid', colour = "black"), 
         panel.border = element_rect(colour = "black", fill=NA, size=1))+
@@ -98,7 +105,7 @@ bathy_FMA<-ggplot()+
   ylab("Latitude")+
   #geom_sf(data = mpa, aes(fill = "Marine Reserve"), alpha = 1)+
   geom_sf(data = FNP, fill = "darkgreen", alpha = 0.3)+
-  geom_sf(data = big_lakes, alpha = 0.6, fill = "steelblue2")+
+  geom_sf(data = big_lakes, alpha = 0.7, fill = "steelblue2")+
   coord_sf(xlim = c(165.2,168.5), ylim = c(-47.2,-44.05), crs = 4269)+
   #scale_fill_manual(values = fiord_fill)+
   theme(legend.position = c(0.90, 0.40),
@@ -121,7 +128,7 @@ bathy_FMA<-ggplot()+
                               -0.15,0.02,0))
 
 bathy_FMA
-```
+
 ###small NZ with box ----
 
 dunedin<-data.frame(label = c("\u14ctepoti-Dunedin"),
@@ -143,25 +150,62 @@ NZ<-base+
         axis.ticks = element_blank())+
   xlab("")+
   ylab("")+
-  geom_rect(mapping = aes(xmin = 166, xmax = 171, ymin = -47.5, ymax = -43), fill = NA, color = "black")+
+  geom_rect(mapping = aes(xmin = 165.2, xmax = 168.7, ymin = -47.5, ymax = -44), fill = NA, color = "red")+
   theme_void()+
-  geom_text_repel(data = dunedin, aes(x = lon, y = lat, label = label), size = 2.3, force_pull = 2, box.padding = 0.1, min.segment.length = 0, nudge_x = 2)
+  geom_point(data = dunedin, aes(x = lon, y = lat), size = 0.8, color = "red")
 
 NZ
 
-#### all together ----
+#### map a all together ----
 
 map<-cowplot::ggdraw() +
   cowplot::draw_plot(bathy_FMA) +
-  cowplot::draw_plot(NZ, x = 0.35, y = 0.68, width = 0.2, height = 0.3)
+  cowplot::draw_plot(NZ, x = 0.2, y = 0.65, width = 0.2, height = 0.3)
 
 map 
 
-  ggsave("./figures/bathy_FMA.png", bathy_FMA, dpi = 320, height = 6, width = 4, units = 'in')
-  ggsave("./figures/bathy_FMA.svg", bathy_FMA, dpi = 320, height = 6, width = 4, units = 'in')
-  
-  ###
-  
+ggsave("./figures/map_a.png", map, dpi = 700, height = 6, width = 4, units = 'in')
+ggsave("./figures/map_a.svg", map, dpi = 700, height = 6, width = 4, units = 'in')
+
+#### map b close up of Dusky/Doubtful ----
+
+complex_base <- marmap::getNOAA.bathy(lon1 = 166, lon2 = 167.5,
+                        lat1 = -45.9, lat2 = -45.0, resolution = 0.1)
+complex_base_raster<-marmap::as.raster(complex_base)
+complex_spdf <- as(complex_base_raster, "SpatialPixelsDataFrame")
+complex_df <- as.data.frame(complex_spdf)%>%filter(layer <= 0)
+colnames(complex_df) <- c("Depth (m)", "x", "y")
+
+map_b<-ggplot()+
+  geom_tile(data=test_df, aes(x=x, y=y, fill=`Depth (m)`), alpha=0.8)+
+  geom_sf(data = FMA, alpha = 0.05, color = "aquamarine", lwd = 0.4)+
+  geom_sf(data = NZ_coast, alpha = 1, fill = "white")+
+  geom_path(alliso200, mapping = aes(X,Y,group = L2), color = "steelblue4", alpha = 0.7, linewidth = 0.2)+
+  geom_path(alliso50, mapping = aes(X,Y,group = L2), color = "grey", alpha = 0.9, linewidth = 0.2)+
+  theme(panel.background = element_rect(fill = "lightblue"),
+        panel.grid.major = element_line(size = 0.1, linetype = 'solid', colour = "black"), 
+        panel.border = element_rect(colour = "black", fill=NA, size=1))+
+  xlab("Longitude")+
+  ylab("Latitude")+
+  geom_sf(data = FNP, fill = "darkgreen", alpha = 0.3)+
+  geom_sf(data = big_lakes, alpha = 0.7, fill = "steelblue2")+
+  coord_sf(xlim = c(166.3,167.2), ylim = c(-45.85,-45.11), crs = 4269)+
+  theme(#legend.position = c(0.90, 0.10),
+        # legend.title =  element_text(size = 6),
+        # legend.margin = margin(c(1, 1, 1, 1)),
+        # legend.key.size = unit(0.2, 'cm'),
+        # legend.text = element_text(size = 5),
+        # #legend.spacing.y = unit(-0.02, "cm"),
+        # legend.box.background = element_rect(color = "white",fill = "white"),
+        # legend.key = element_rect(fill = NA),
+        legend.position = "none",
+        axis.text = element_text(size = 8),
+        axis.title = element_text(size = 8))
+
+
+ggsave("./figures/map_b.png", map_b, dpi = 700, height = 6, width = 4, units = 'in')
+ggsave("./figures/map_b.svg", map_b, dpi = 700, height = 6, width = 4, units = 'in')
+
 ```
 
 Fig. 1. This is a map of the FMA highlighting the survey areas (Doubtful and Dusky complex)
