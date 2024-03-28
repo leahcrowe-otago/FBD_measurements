@@ -209,8 +209,8 @@ fit_vb <- stan_fit$sample(
   ),
   init = init_vb,
   chains = 4,
-  iter_warmup = 100,
-  iter_sampling = 1000,
+  iter_warmup = 1000,
+  iter_sampling = 10000,
   thin = 1,
   save_warmup = FALSE,
   max_treedepth = 10,
@@ -219,11 +219,11 @@ fit_vb <- stan_fit$sample(
 )
 
  #saveRDS(fit_vb, file = paste0("fit_vb_",Sys.Date(),".rds"))
-getwd()
+#getwd()
 
-my_dir <- 'C:/Users/leahm/OneDrive - University of Otago/Documents/git-otago/FBD_measurements/stan_output/'
-fit_vb$save_output_files(basename = "fit_vb", random = FALSE)
-fit_vb$save_data_file(dir = ".", basename = "fit_vb", timestamp = TRUE, random = FALSE)
+#my_dir <- 'C:/Users/leahm/OneDrive - University of Otago/Documents/git-otago/FBD_measurements/stan_output/'
+#fit_vb$save_output_files(basename = "fit_vb", random = FALSE)
+#fit_vb$save_data_file(dir = ".", basename = "fit_vb", timestamp = TRUE, random = FALSE)
 
 # results -----
 
@@ -247,7 +247,7 @@ saveRDS(parindout, file = paste0("parindout_",Sys.Date(),"_2.rds"))
 
 # read in results ----
 date = "2024-03-16"
-parout_in = readRDS(file = paste0('parout_',date,'.rds'))
+parout_in = readRDS(file = paste0('parout_',date,'_2.rds'))
 bayesplot::mcmc_dens(parout_in)
 bayesplot::mcmc_trace(parout_in)+theme_bw()
 summ_paroutin<-as.data.frame(summary(parout_in))
@@ -259,19 +259,8 @@ max(summ_paroutin$ess_bulk)
 max(summ_paroutin$ess_tail)
 
 as.data.frame(parout_in)
-parindout_in = readRDS(file = paste0('./parindout_',date,'.rds'))
+parindout_in = readRDS(file = paste0('./parindout_',date,'_2.rds'))
 parindout_in_summ<-summary(parindout_in)
-
-### if 
-csv_files<-fit_vb$output_files()
-
-fit_vb_in<-read_cmdstan_csv(
-  csv_files,
-  variables = c("mu")
-  #sampler_diagnostics = NULL,
-  #format = getOption("cmdstanr_draws_format", NULL)
-)
-
 
 # report results ----
 
@@ -282,21 +271,49 @@ x
 
 ### Ly given Lz ----
 
-Lz = ij_b$BHDF[x]
+(median(parout$`sigma[1]`)/median(parout$`sigma[3]`))
 
-rho_sigma_for_Ly = mean(parout$rho_obs)*(mean(parout$`sigma[1]`)/mean(parout$`sigma[3]`))
 
-alpha_0_for_Ly = mean(parout$`mu[1]`) - rho_sigma_for_Ly*mean(parout$`mu[3]`)
-alpha_1_for_Ly = rho_sigma_for_Ly*Lz
+z_grid = seq(from = min(ij_b$BHDF), max(ij_b$BHDF), length.out = 101)
+y_est = NULL
 
-alpha_0_for_Ly+alpha_1_for_Ly
+(median(parout$`sigma[3]`)/median(parout$`sigma[1]`))
 
-sd_for_Ly = (1-mean(parout$rho_obs)^2)*mean(parout$`sigma[1]`)^2 
+(1 - median(parout$rho_obs)^2) * median(parout$`sigma[1]`)^2
+rho_sigma_for_Ly = median(parout$rho_obs)*(median(parout$`sigma[1]`)/median(parout$`sigma[3]`))
+alpha_0_for_Ly = median(parout$`mu[1]`) - rho_sigma_for_Ly*median(parout$`mu[3]`)
+
+for (i in 1:length(z_grid)){
+i = 1
+#alpha_1_for_Ly = rho_sigma_for_Ly*z_grid[i]
+
+#y_est[i]<-alpha_0_for_Ly+alpha_1_for_Ly
+y_est[i] = median(parout$`mu[1]`)+((median(parout$`sigma[1]`)/median(parout$`sigma[3]`))*median(parout$rho_obs)*(z_grid[i] - median(parout$`mu[3]`)))
+
+}
+
+y_est
+
+sd_for_Ly = (1-median(parout$rho_obs)^2)*median(parout$`sigma[1]`)^2 
 sd_for_Ly
 
-ij_b$length[x]
+lm(ij_b$BHDF ~ ij_b$length)
 
-### plot a couple of individuals
+ggplot(ij_b, aes(x=BHDF, y = length))+
+  geom_point()+ 
+  geom_smooth(method='lm', formula= y~x)+
+  #ylim(c(0,3.5))+
+  #xlim(c(0,1.5))+
+  geom_abline(intercept = 1.86, slope = 1.13, color = "red")
+  #geom_point(mapping = aes(x = z_grid, y = y_est), color = "blue")
+
+ggplot()+
+  geom_point(aes(x = parout$`mu[3]`, y = parout$`mu[1]`))
+
+ggplot()+
+  geom_point(aes(x = parout$`mu[4]`, y = parout$`mu[2]`))
+
+### plot a couple of individuals ----
 induse = c(1, 12, 14, 50)
 ngrid = 101
 agegrid = seq(from = 0, to = max(ij_b$age), length.out = ngrid)
@@ -387,10 +404,8 @@ ind_median<-id_parsumm%>%
   group_by(ind)%>%
   tidyr::fill(Ly,ky,Lz,kz, .direction = "downup")%>%
   mutate(ky = -1*log(exp(ky)/(1+exp(ky))),
-         kz = -1*log(exp(kz)/(1+exp(kz))))#%>%
+         kz = -1*log(exp(kz)/(1+exp(kz))))%>%
   distinct(ind, ID, year_zero, age_value, SEX, POD, Ly, ky, Lz, kz)
-
-
 
 age_vb_y = matrix(NA,nrow(ind_median),ngrid)
 age_vb_byr = matrix(NA,nrow(ind_median),ngrid)
@@ -421,7 +436,7 @@ ggplot(growest_plot)+
   geom_histogram(mapping = aes(x = est_diff), binwidth = 0.001)
 
 growest_plot%>%
-  filter(est_diff <= 0.006)%>%
+  filter(est_diff <= 0.01)%>%
   group_by(ID)%>%
   mutate(rank = rank(j))%>%
   filter(rank == 1)%>%
@@ -433,7 +448,7 @@ vbgc_zero<-ggplot(growest_plot)+
   geom_line(aes(x = agegrid, y = y_est, group = as.factor(i), color = Pod), alpha = 0.6)+
   coord_cartesian(xlim=c(0, 45))+
   coord_cartesian(ylim=c(0, 3.5))+
-  #facet_wrap(~POD)+
+  #facet_wrap(~SEX)+
   theme_bw()+
   xlab("Age (years)")+
   ylab("Total length estimate (m)")+
@@ -462,21 +477,23 @@ vbgc_by<-ggplot(growest_plot)+
 
 ggpubr::ggarrange(vbgc_zero, vbgc_by, common.legend = T, legend = "bottom", widths = c(1,2), labels = "auto")
 
-ggplot2::ggsave("./Figures/vbgcplot.png", device = "png", dpi = 300, height = 75, units = 'mm')
+ggplot2::ggsave("./Figures/vbgcplot.png", device = "png", dpi = 300, width = 250, height = 125, units = 'mm')
 
 ky_box<-ggplot(ind_median)+
-  geom_boxplot(aes(x = as.factor(SEX), y = ky, fill = SEX), alpha = 0.6)+
+  geom_boxplot(aes(x = as.factor(SEX), y = ky, fill = SEX), alpha = 0.5)+
   theme_bw()+
   xlab("")+
-  ylab("Estimated growth rate (K)")
+  ylab("Estimated growth rate (K)")+
+  scale_fill_viridis_d()
 
 maxLy_box<-ggplot(ind_median)+
-  geom_boxplot(aes(x = as.factor(SEX), y = Ly, fill = SEX), alpha = 0.6)+
+  geom_boxplot(aes(x = as.factor(SEX), y = Ly, fill = SEX), alpha = 0.5)+
   theme_bw()+
   xlab("")+
-  ylab("Estimated max length (m)")
+  ylab("Estimated max length (m)")+
+  scale_fill_viridis_d()
 
-box<-ggpubr::ggarrange(maxLy_box, ky_box, common.legend = T, legend = "none", ncol = 1)
+box<-ggpubr::ggarrange(maxLy_box, ky_box, common.legend = T, legend = "none", ncol = 1, labels = "auto")
 box
 ggplot2::ggsave("./Figures/box.png", device = "png", dpi = 300, height = 150, width = 75, units = 'mm')
 
@@ -503,9 +520,9 @@ id_parsumm%>%
          kz = -1*log(exp(kz)/(1+exp(kz))))%>%
   distinct(ind, ID, year_zero, age_value, SEX, POD, Ly, ky, Lz, kz)
 
-uncertainty<-id_parsumm%>%filter(param == "Ly" | param == "ky")%>%arrange(param, year_zero)%>%group_by(year_zero)%>%
-  mutate(rank = rank(ind))%>%
-  mutate(year_cat = as.numeric(year_zero+(rank*0.1)))%>%
+uncertainty<-id_parsumm%>%filter(param == "Ly" | param == "ky")%>%ungroup()%>%arrange(param, year_zero)%>%group_by(year_zero)%>%
+  mutate(rank = percent_rank(ind))%>%
+  mutate(year_cat = as.numeric(year_zero+(rank)))%>%
   dplyr::rename(`Birth year` = "age_value")%>%
   mutate(median = case_when(
       param == "ky" ~ -1*log(exp(median)/(1+exp(median))),
@@ -525,8 +542,15 @@ ggplot(uncertainty%>%filter(param == "Ly"))+
   theme_bw()+
   theme(legend.position = "bottom")+
   xlab("")+
-  ylab("Length (m)")%>%
-  scale_x_continuous(n.breaks = 38)
+  ylab("Length (m)")+
+  scale_x_continuous(breaks = seq(1984, 2024, 1))+
+  theme(panel.grid.minor = element_blank(),
+        axis.text.x = element_text(angle = -90, vjust = -0.5))
 
-uncertainty%>%filter(param == "ky")%>%filter(q5 == max(q5))
+ggplot2::ggsave("./Figures/Ly_CI.png", device = "png", dpi = 300, height = 100, width = 300, units = 'mm')
+
+
+
+
+
 
