@@ -376,4 +376,84 @@ saveRDS(ij, file = paste0("ij_",i,".rds"))
 
 ```
 
+```{r vbgc_data_sex, include = T, warning = F, message = F}
+
+ID_index<-age_calc%>%
+  filter(SEX != 'X')%>%
+  arrange(length_use,ID)%>%
+  mutate(year_zero = as.numeric(AGECLASS_YEAR)-age)%>%
+   mutate(sex = case_when(
+      SEX == "M" ~ 0,
+      SEX == "F" ~ 1
+    ))%>%
+  distinct(ID,year_zero,sex,POD,age_value)%>%
+  mutate(ind = 1:n())
+
+ij_sex_ID<-ID_index
+saveRDS(ij_sex_ID, file = paste0("ij_sex_ID.rds"))
+
+#both
+age_vbgc_sex_both<-age_calc%>%
+  filter(SEX != 'X')%>%
+  filter(!is.na(length_use) & !is.na(BHDF))%>% #filter for tl modeling
+  dplyr::rename("length" = "length_use")  
+nrow(age_vbgc_sex_both)
+
+#only bhdf
+age_vbgc_sex_bhdf<-age_calc%>%
+  filter(SEX != 'X')%>%
+  filter(is.na(length_use) & !is.na(BHDF))%>% 
+  dplyr::rename("length" = "length_use")  
+nrow(age_vbgc_sex_bhdf)
+
+#only tl, no bhdf
+age_vbgc_sex_tl<-age_calc%>%
+  filter(SEX != 'X')%>%
+  filter(!is.na(length_use) & is.na(BHDF))%>% 
+  dplyr::rename("length" = "length_use")
+nrow(age_vbgc_sex_tl)
+
+# 1 = both, 2 = bhdf only, 3 = tl only
+age_vbgc_sex<-list(age_vbgc_sex_both, age_vbgc_sex_bhdf, age_vbgc_sex_tl)
+length(age_vbgc_sex)
+age_vbgc_sex[[1]]
+
+for(i in 1:length(age_vbgc_sex)){
+
+  ij<-age_vbgc_sex[[i]]%>%
+    arrange(ID, age_month)%>%
+    ungroup()%>%
+    left_join(ID_index, by = c("ID"))%>%
+    #mutate(max_j = 1:n())%>%
+    group_by(ID)%>%
+    mutate(obs = 1:n(),
+           #J = max(max_j),
+           #ind = cur_group_id() 
+           age = age_month
+    )%>%
+    ungroup()
+
+  if (i == 1){
+    ij<-ij%>%
+      dplyr::select(ID, ind, obs, age, sex, length, BHDF)
+  }
+
+  if (i == 2){
+    ij<-ij%>%
+      dplyr::select(ID, ind, obs, age, sex, length, BHDF)
+  }
+
+  if (i == 3){
+    ij<-ij%>%
+      dplyr::select(ID, ind, obs, age, sex, length, BHDF)
+  }
+
+ij<-ij%>%
+  dplyr::select(-ID)
+
+saveRDS(ij, file = paste0("ij_sex_",i,".rds"))
+
+}
+
+```
 
