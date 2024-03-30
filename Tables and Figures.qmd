@@ -6,7 +6,7 @@ editor: visual
 
 # Figures
 
-```{r, map, echo = F, out.width='48%'}
+```{r, map, echo = F, out.width='75%'}
 # library(marmap);library(dplyr);library(readxl);library(sf);library(ggrepel)
 # 
 # 
@@ -212,7 +212,7 @@ knitr::include_graphics(c('./Figures/map_a.png','./Figures/map_b.png'))
 
 ```
 
-Fig. 1. Map of the Patea-Doubtful (yellow) and the Tamatea-Dusky (orange) complexes in southwestern Aotearoa-New Zealand a. relative to Ata Whenua-Fiordland National Park (green) and the Fiordland Marine Area (all areas of the sea inshore of the teal line including all fiords), and b. closer details. The 50m (grey) and 200m (dark blue) isobaths are provided on both maps. \u14ctepoti-Dunedin is marked as the red dot on the small inset map.  
+Fig. 1. Map of the Patea-Doubtful (yellow) and the Tamatea-Dusky (orange) complexes in southwestern Aotearoa-New Zealand a. relative to Ata Whenua-Fiordland National Park (green) and the Fiordland Marine Area (all areas of the sea inshore of the teal line including all fiords), and b. closer details. The 50m (grey) and 200m (dark blue) isobaths are provided on both maps. \u14ctepoti-Dunedin is marked as the red dot on the small inset map.
 
 ```{r, Fig_dolphin, echo = F, out.width = '100%'}
 knitr::include_graphics('./Figures/Fig. 2.png')
