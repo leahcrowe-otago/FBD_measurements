@@ -243,7 +243,7 @@ Fig. 5. Predicted von Bertalanffy growth curves for each individual measured. Cu
 knitr::include_graphics('./Figures/Ly_CI.png')
 ```
 
-Fig. 6. Posterior distribution estimate of total length for each individual ($Ly_{i}$) by actual or estimated minimum birth year. The plotted point is at the median estimate and the vertical lines represent the 90% credible intervals.
+Fig. 6. Posterior distribution estimate of total length for each individual ($Ly_{i}$) by actual or estimated minimum birth year. The plotted point is at the median estimate and the vertical lines represent the 90% credible intervals. The x-axis indicates the animal's birth year bin; the position within the year bin is arbitrarily spaced to be able to see the points.
 
 ```{r, Fig_box, echo = F, out.height='80%'}
 knitr::include_graphics('./Figures/box.png')
