@@ -15,7 +15,7 @@ editor: visual
 # # depth ----
 # 
 # fiordland_base <- marmap::getNOAA.bathy(lon1 = 165, lon2 = 169,
-#                         lat1 = -43.5, lat2 = -47.5, resolution = 0.25)
+#                         lat1 = -43.5, lat2 = -47.5, resolution = 0.5, keep = TRUE)
 # #plot(fiordland_base, image = TRUE)
 # #marmap::scaleBathy(fiordland_base, deg = 2, x = "bottomleft", inset = 5)
 # 
@@ -60,7 +60,7 @@ editor: visual
 #                                    "H\u101wea-Bligh Sound","Te Houhou-George Sound","Taitetimu-Caswell Sound",
 #                                    "Taiporoporo-Charles Sound","Hinenui-Nancy Sound","Te Awa-o-T\u16b-Thompson Sound",
 #                                    "Patea-Doubtful Sound","Te R\u101-Dagg Sound",
-#                                    "Te Puaitaha-Breaksea Sound","Tamatea-Dusky Sound","Taiari-Chalky Inlet",
+#                                    "Te Puaitaha-\nBreaksea Sound","Tamatea-Dusky Sound","Taiari-Chalky Inlet",
 #                                    "Rakituma-Preservation Inlet", "Motup\u14dhue-Bluff", "Rakiura-Stewart Island"),
 #                          lat = c(-44.55, -44.72,
 #                                  -44.77, -44.85, -45.01,
@@ -73,7 +73,7 @@ editor: visual
 #                                  167.09, 167.03, 166.97,
 #                                  166.88, 166.78,
 #                                  166.67, 166.47, 166.51,
-#                                  166.6, 168.330, 167.75))
+#                                  166.6, 168.33, 167.75))
 # 
 # # fiord_labels_white<-data.frame(label = c("Taiporoporo-Charles Sound","Hinenui-Nancy Sound",
 # #                                    "Te R\u101-Dagg Sound","Taiari-Chalky Inlet","Rakituma-Preservation Inlet"),
@@ -90,16 +90,16 @@ editor: visual
 #   geom_raster(data=test_df, aes(x=x, y=y, fill=`Depth (m)`), alpha=0.8)+
 #   geom_sf(data = FMA, alpha = 0.05, color = "aquamarine", lwd = 0.4)+
 #   #Doubtful complex
-#   geom_polygon(mapping = aes(y=c(-45.13,-45.15,-45.23,-45.28,-45.43,-45.50,-45.44), 
-#                              x=c(166.97,166.96,166.88,166.85,166.91,167.06,167.46)), fill = "yellow", alpha = 0.9)+
+#   geom_polygon(mapping = aes(y=c(-45.13,-45.15,-45.23,-45.28,-45.43,-45.50,-45.44),
+#                              x=c(166.97,166.96,166.88,166.85,166.91,167.06,167.46)), fill = "gold", alpha = 0.9)+
 #   #Dusky complex
-#   geom_polygon(mapping = aes(y=c(-45.55,-45.61,-45.73,-45.83,-45.76,-45.44), 
-#                              x=c(166.68,166.60,166.45,166.45,167.04,167.03)), fill = "orange", alpha = 0.9)+
+#   geom_polygon(mapping = aes(y=c(-45.55,-45.61,-45.73,-45.83,-45.76,-45.44),
+#                              x=c(166.68,166.60,166.45,166.45,167.04,167.03)), fill = "purple", alpha = 0.9)+
 #   geom_sf(data = NZ_coast, alpha = 1, fill = "white", lwd = 0.1)+
 #   geom_path(alliso200, mapping = aes(X,Y,group = L2), color = "steelblue4", alpha = 0.7, linewidth = 0.1)+
 #   geom_path(alliso50, mapping = aes(X,Y,group = L2), color = "antiquewhite4", alpha = 0.9, linewidth = 0.1)+
 #   theme(panel.background = element_rect(fill = "lightblue"),
-#         panel.grid.major = element_line(size = 0.1, linetype = 'solid', colour = "black"), 
+#         panel.grid.major = element_line(size = 0.1, linetype = 'solid', colour = "black"),
 #         panel.border = element_rect(colour = "black", fill=NA, size=1))+
 #   xlab("Longitude")+
 #   ylab("Latitude")+
@@ -138,7 +138,7 @@ editor: visual
 # base<-ggplot()+
 #   geom_sf(data = NZ_coast, alpha = 0.9, fill = "white", lwd = 0.1)+
 #   theme(panel.background = element_rect(fill = "lightblue"),
-#         panel.grid.major = element_line(linewidth = 0.1, linetype = 'solid', colour = "black"), 
+#         panel.grid.major = element_line(linewidth = 0.1, linetype = 'solid', colour = "black"),
 #         panel.border = element_rect(colour = "black", fill=NA, linewidth=1))+
 #   xlab("Longitude")+
 #   ylab("Latitude")
@@ -162,7 +162,7 @@ editor: visual
 #   cowplot::draw_plot(bathy_FMA) +
 #   cowplot::draw_plot(NZ, x = 0.2, y = 0.65, width = 0.2, height = 0.3)
 # 
-# map 
+# map
 # 
 # ggsave("./figures/map_a.png", map_a, dpi = 700, height = 6, width = 4, units = 'in')
 # ggsave("./figures/map_a.svg", map_a, dpi = 700, height = 6, width = 4, units = 'in')
@@ -183,7 +183,7 @@ editor: visual
 #   geom_path(alliso200, mapping = aes(X,Y,group = L2), color = "steelblue4", alpha = 0.7, linewidth = 0.1)+
 #   geom_path(alliso50, mapping = aes(X,Y,group = L2), color = "antiquewhite4", alpha = 0.9, linewidth = 0.1)+
 #   theme(panel.background = element_rect(fill = "lightblue"),
-#         panel.grid.major = element_line(size = 0.1, linetype = 'solid', colour = "black"), 
+#         panel.grid.major = element_line(size = 0.1, linetype = 'solid', colour = "black"),
 #         panel.border = element_rect(colour = "black", fill=NA, size=1))+
 #   xlab("Longitude")+
 #   ylab("Latitude")+
@@ -212,7 +212,7 @@ knitr::include_graphics(c('./Figures/map_a.png','./Figures/map_b.png'))
 
 ```
 
-Fig. 1. Map of the Patea-Doubtful (yellow) and the Tamatea-Dusky (orange) complexes in southwestern Aotearoa-New Zealand a. relative to Ata Whenua-Fiordland National Park (green) and the Fiordland Marine Area (all areas of the sea inshore of the teal line including all fiords), and b. closer details. The 50m (grey) and 200m (dark blue) isobaths are provided on both maps. \u14ctepoti-Dunedin is marked as the red dot on the small inset map.
+Fig. 1. Map of the Patea-Doubtful (yellow) and the Tamatea-Dusky (purple) complexes in southwestern Aotearoa-New Zealand a. relative to Ata Whenua-Fiordland National Park (green) and the Fiordland Marine Area (all areas of the sea inshore of the teal line including all fiords), and b. closer details. The 50m (grey) and 200m (dark blue) isobaths are provided on both maps. \u14ctepoti-Dunedin is marked as the red dot on the small inset map.
 
 ```{r, Fig_dolphin, echo = F, out.width = '100%'}
 knitr::include_graphics('./Figures/Fig. 2.png')
