@@ -1,0 +1,23 @@
+---
+title: "Crowe et al. FBD measurements suppmat"
+format: pdf
+editor: visual
+bibliography: references.bib
+---
+
+# Tables
+
+```{r, tab_priors, echo = F}
+library(dplyr);library(kableExtra)
+
+priors = data.frame(Parameter = c("$t_{0}$", "$\\mu$", "$\\beta$", "$\\gamma$", "$\\sigma$", "$\\sigma_{obs}$", "$L$"), `Prior_distribution` = c("Lognormal(0, 10)", "$N(0, 1000)$", "$N(0, 1000)$", "$N(0, 1000)$", 
+                                 "$t_{3}(0, 25)$", "$t_{3}(0, 25)$", "LKJ(1)"))
+
+priors%>%
+  kableExtra::kable(booktabs = T, align = "c") %>%
+  kable_classic(full_width = F, html_font = "Cambria")
+```
+
+Table 1. Priors
+
+# Figures
