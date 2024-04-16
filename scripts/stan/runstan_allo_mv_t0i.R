@@ -70,14 +70,15 @@ data {
 parameters {
 
   // real<lower=0> t0p;
-  real<lower=0> beta;
+  vector<lower=0>[n_ind] t0p;
+  real mu_t;
+  real<lower=0> sigma_t;
   matrix[n_ind, J] par;
-  vector[n_ind] t0p;
   vector<lower=0>[J] sigma;
   cholesky_factor_corr[J] L;
   vector[J] mu;
   vector<lower=0>[2] sigma_obs;
-  real<lower=0> sigma_t;
+  
   real<lower=0,upper=1> rho_obs;
 
   
@@ -102,7 +103,7 @@ model {
 
  for(i in 1:n_ind){
       par[i] ~ multi_normal_cholesky(mu,diag_pre_multiply(sigma,L));
-      t0p[i] ~ normal(beta, sigma_t);
+      t0p[i] ~ lognormal(mu_t, sigma_t);
       }
 
  for (i in 1:N_y){
@@ -116,15 +117,15 @@ model {
  for (i in 1:N_b){
       obs_mean[i,1] = par[ind_b[i],1]*(1-inv_logit(par[ind_b[i],2])^(age_b[i] + t0p[ind_b[i]]));
       obs_mean[i,2] = par[ind_b[i],3]*(1-inv_logit(par[ind_b[i],4])^(age_b[i] + t0p[ind_b[i]]));
-      data_b[i] ~ multi_normal_cholesky (obs_mean[i], Lobs);
+      data_b[i] ~ multi_normal_cholesky(obs_mean[i], Lobs);
 
       }
 
 
 //priors
   //t0p ~ lognormal(0, 10);
-  beta ~ lognormal(0, 10);
-  sigma_t ~ student_t(3, 0, 5);
+  mu_t ~ normal(0, 1000);
+  sigma_t ~ student_t(3, 0, 25);
   mu ~ normal(0, 1000);
   sigma ~ student_t(3, 0, 25);
 
@@ -159,20 +160,20 @@ stan_fit = cmdstan_model(file)
 
 init_vb = function(){
   
-  beta = rlnorm(1)
-  t0p = rlnorm(n_ind, beta)
+  mu_t = rlnorm(1)
+  t0p = rlnorm(n_ind, log(mu_t), 0.1)
   sigma_t = rlnorm(1, 0, 0.1)
   
-  mu = c(rnorm(1,mean(ij_b$length, na.rm = TRUE), 0.2),
+  mu = c(rnorm(1, mean(ij_b$length, na.rm = TRUE), 0.2),
          rlnorm(1, 0, 0.1),
-         rnorm(1,mean(ij_b$BHDF, na.rm = TRUE), 0.2),
+         rnorm(1, mean(ij_b$BHDF, na.rm = TRUE), 0.2),
          rlnorm(1, 0, 0.1))
   
   sigma = rlnorm(J)
   
   L = diag(J)
   
-  par = matrix(NA,n_ind, J)
+  par = matrix(NA, n_ind, J)
   
   for(j in 1:J){
     if(j == 1 | j == 3){
@@ -187,7 +188,7 @@ init_vb = function(){
   rho_obs = runif(1)
 
   return(list(t0p = t0p, 
-              beta = beta, sigma_t = sigma_t,
+              mu_t = mu_t, sigma_t = sigma_t,
               L = L, mu = mu, sigma = sigma, par = par, 
               sigma_obs = sigma_obs, rho_obs = rho_obs
               ))
@@ -238,7 +239,7 @@ fit_vb <- stan_fit$sample(
 
 # results -----
 
-parout = as_draws_df(fit_vb$draws(c("mu","sigma","sigma_obs","beta","sigma_t","rho_obs","corr[1,2]","corr[1,3]","corr[1,4]","corr[2,3]","corr[2,4]","corr[3,4]","Lobs[1,1]","Lobs[2,1]","Lobs[2,2]")))
+parout = as_draws_df(fit_vb$draws(c("mu","sigma","sigma_obs","mu_t","sigma_t","rho_obs","corr[1,2]","corr[1,3]","corr[1,4]","corr[2,3]","corr[2,4]","corr[3,4]","Lobs[1,1]","Lobs[2,1]","Lobs[2,2]")))
 saveRDS(parout, file = paste0("parout_",Sys.Date(),".rds"))
 
 #trace plot
@@ -252,15 +253,15 @@ as.data.frame(summary(parout))
 
 #draws of par from posterior
 parindout = as_draws_df(fit_vb$draws(c("par")))
-
+t0pindout = as_draws_df(fit_vb$draws(c("t0p")))
 #save par for individual plotting
 saveRDS(parindout, file = paste0("parindout_",Sys.Date(),".rds"))
-
+saveRDS(t0pindout, file = paste0("t0pindout_",Sys.Date(),".rds"))
 # read in results ----
-date = "2024-03-16"
+date = "2024-04-16"
 # remember k is logit(k)
 #all non individual based params
-parout_in = readRDS(file = paste0('parout_',date,'_2.rds'))
+parout_in = readRDS(file = paste0('parout_',date,'.rds'))
 as.data.frame(parout_in)
 bayesplot::mcmc_dens(parout_in)
 bayesplot::mcmc_trace(parout_in)+theme_bw()
@@ -289,9 +290,11 @@ max(summ_paroutin$ess_bulk)
 max(summ_paroutin$ess_tail)
 
 #individual based params
-parindout_in = readRDS(file = paste0('./parindout_',date,'_2.rds'))
+parindout_in = readRDS(file = paste0('./parindout_',date,'.rds'))
 parindout_in_summ<-summary(parindout_in)
 
+t0pindout_in = readRDS(file = paste0('./t0pindout_',date,'.rds'))
+t0pindout_in_summ<-summary(t0pindout_in)
 # report results ----
 
 ### plot a couple of individuals ----
@@ -300,7 +303,7 @@ ngrid = 101
 agegrid = seq(from = -2, to = max(ij_b$age), length.out = ngrid)
 nind = length(induse)
 pdf('indplots_bhdf.pdf', height = 8, width = 8)
-par(mfrow = c(2,3), mar = c(4, 4, 1, 1))
+par(mfrow = c(2,2), mar = c(4, 4, 1, 1))
 
 for(i in 1:nind){
 
@@ -317,14 +320,15 @@ for(i in 1:nind){
   ky = parindout_in[[paste0('par[',i,',2]')]]
   Lz = parindout_in[[paste0('par[',i,',3]')]]
   kz = parindout_in[[paste0('par[',i,',4]')]]
+  t0p = t0pindout_in[[paste0('t0p[',i,']')]]
   
   tmp_y = matrix(NA,length(Ly),ngrid)
   tmp_z = matrix(NA,length(Lz),ngrid)
   
   for(j in 1:ngrid){
     #inverse logit kyout/kzout 1/(1+exp(-k))
-    tmp_y[,j] = Ly*(1-(1/(1+exp(-ky))^(median(parout_in$t0p) + agegrid[j])))
-    tmp_z[,j] = Lz*(1-(1/(1+exp(-kz))^(median(parout_in$t0p) + agegrid[j])))
+    tmp_y[,j] = Ly*(1-(1/(1+exp(-ky))^(t0p + agegrid[j])))
+    tmp_z[,j] = Lz*(1-(1/(1+exp(-kz))^(t0p + agegrid[j])))
   }  
   
   quan_y = apply(tmp_y, 2, quantile, c(0.05, 0.5, 0.95), na.rm = T)
@@ -358,6 +362,11 @@ mcmc_intervals(parindout_in[430:ncol(parindout_in)], outer_size = 0.5, inner_siz
 
 parindout_in_summ$variable
 
+id_t0psumm<-t0pindout_in_summ%>%
+  mutate(param = "t0p")%>%
+  mutate(ind = as.numeric(stringr::str_extract(substr(variable, 5, nchar(variable)), '[^]]+')))%>%
+  left_join(ij_ID, by = 'ind')
+
 #rename logit_ks
 id_parsumm<-parindout_in_summ%>%
   mutate(param = as.factor(
@@ -368,11 +377,12 @@ id_parsumm<-parindout_in_summ%>%
     grepl(",4]", variable) ~ 'logit_kz'
   )))%>%
   mutate(ind = as.numeric(stringr::str_extract(substr(variable, 5, nchar(variable)), '[^,]+')))%>%
-  left_join(ij_ID, by = 'ind')
+  left_join(ij_ID, by = 'ind')%>%
+  bind_rows(id_t0psumm)
   
 ###
-t0p = median(parout_in$t0p)
-quantile(parout_in$t0p)
+#t0p = median(parout_in$t0p)
+#quantile(parout_in$t0p)
 ngrid = 101
 
 agegrid = seq(from = -2, to = max(ij_b$age), length.out = ngrid)
@@ -382,11 +392,11 @@ ind_median<-id_parsumm%>%
   group_by(ind)%>%
   tidyr::pivot_wider(names_from = "param", values_from = "median")%>%
   group_by(ind)%>%
-  tidyr::fill(Ly,logit_ky,Lz,logit_kz, .direction = "downup")%>%
+  tidyr::fill(Ly,logit_ky,Lz,logit_kz,t0p, .direction = "downup")%>%
   #inverse logit kyout/kzout #exp(x)/(1+exp(x)), k = exp(-K)
   mutate(ky = 1/(1+exp(-logit_ky)),
          kz = 1/(1+exp(-logit_kz)))%>%
-  distinct(ind, ID, year_zero, age_value, SEX, POD, Ly, logit_ky, ky, Lz, logit_kz, kz)
+  distinct(ind, ID, year_zero, age_value, SEX, POD, Ly, logit_ky, ky, Lz, logit_kz, kz, t0p)
 
 summary(ind_median)
 
@@ -396,7 +406,7 @@ age_vb_byr = matrix(NA,nrow(ind_median),ngrid)
 for (i in 1:nrow(ind_median)){
   
   for(j in 1:ngrid){
-    age_vb_y[i,j] = ind_median$Ly[i]*(1-ind_median$ky[i]^(t0p + agegrid[j]))
+    age_vb_y[i,j] = ind_median$Ly[i]*(1-ind_median$ky[i]^(ind_median$t0p[i] + agegrid[j]))
     age_vb_byr[i,j] = agegrid[j] + ind_median$year_zero[i]
   }  
 }
@@ -428,8 +438,7 @@ growest_plot%>%
 
 vbgc_zero<-ggplot(growest_plot)+
   geom_line(aes(x = agegrid, y = y_est, group = as.factor(i), color = Pod), alpha = 0.6)+
-  coord_cartesian(xlim=c(0, 45))+
-  coord_cartesian(ylim=c(0, 3.5))+
+  coord_cartesian(xlim=c(0, 41), ylim=c(0, 3.5))+
   #facet_wrap(~SEX)+
   theme_bw()+
   xlab("Age (years)")+
@@ -447,7 +456,7 @@ vbgc_zero<-ggplot(growest_plot)+
 
 vbgc_by<-ggplot(growest_plot)+
   geom_line(aes(x = year_by, y = y_est, group = as.factor(i), color = Pod, linetype = age_value), alpha = 0.8)+
-  xlim(c(1980,2050))+
+  xlim(c(1980,2065))+
   coord_cartesian(ylim=c(0, 3.5))+
   theme_bw()+
   xlab("Birth year")+
@@ -458,7 +467,6 @@ vbgc_by<-ggplot(growest_plot)+
 ggpubr::ggarrange(vbgc_zero, vbgc_by, common.legend = T, legend = "bottom", widths = c(1,2), labels = "auto")
 
 ggplot2::ggsave("./Figures/vbgcplot.png", device = "png", dpi = 700, width = 250, height = 125, units = 'mm')
-
 
 ind_median%>%
   group_by(POD)%>%
@@ -520,7 +528,7 @@ ggplot(uncertainty%>%filter(param == "logit_ky"))+
   theme_bw()+
   theme(legend.position = "bottom")+
   xlab("")+
-  ylab("Length (m)")+
+  ylab("Growth rate")+
   scale_x_continuous(breaks = seq(1984, 2024, 1))+
   theme(panel.grid.minor = element_blank(),
         axis.text.x = element_text(angle = -90, vjust = -0.5))
