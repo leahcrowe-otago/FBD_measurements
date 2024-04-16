@@ -70,10 +70,12 @@ data {
 parameters {
 
   // real<lower=0> t0p;
-  vector<lower=0>[n_ind] t0p;
+  // vector<lower=0>[n_ind] t0p;
+  vector[n_ind] z_t;
   real mu_t;
   real<lower=0> sigma_t;
-  matrix[n_ind, J] par;
+  matrix[n_ind, J] z;
+  //matrix[n_ind, J] par;
   vector<lower=0>[J] sigma;
   cholesky_factor_corr[J] L;
   vector[J] mu;
@@ -85,9 +87,15 @@ parameters {
  }
 
 transformed parameters{
-
+  matrix[n_ind, J] par;
+  vector[n_ind] t0p;
   matrix[2,2] varcov;
   cholesky_factor_cov[2] Lobs;
+
+  for(i in 1:n_ind){
+    par[i] = (mu + diag_pre_multiply(sigma,L)*z[i]')';
+    t0p[i] = exp(mu_t + z_t[i]*sigma_t);
+  }
 
   varcov[1,1] = sigma_obs[1]^2;
   varcov[2,2] = sigma_obs[2]^2;
@@ -102,8 +110,10 @@ model {
  matrix[N_b,2] obs_mean;
 
  for(i in 1:n_ind){
-      par[i] ~ multi_normal_cholesky(mu,diag_pre_multiply(sigma,L));
-      t0p[i] ~ lognormal(mu_t, sigma_t);
+      // par[i] ~ multi_normal_cholesky(mu,diag_pre_multiply(sigma,L));
+      z[i] ~ std_normal();     
+      // t0p[i] ~ lognormal(mu_t, sigma_t);
+      z_t[i] ~ std_normal();
       }
 
  for (i in 1:N_y){
@@ -126,6 +136,7 @@ model {
   //t0p ~ lognormal(0, 10);
   mu_t ~ normal(0, 1000);
   sigma_t ~ student_t(3, 0, 25);
+  
   mu ~ normal(0, 1000);
   sigma ~ student_t(3, 0, 25);
 
@@ -148,20 +159,23 @@ generated quantities {
 
 "
 
-set_cmdstan_path(path = "C:/Users/leahm/cmdstan-2.34.1")
+# set_cmdstan_path(path = "C:/Users/leahm/cmdstan-2.34.1")
 
-cat(a, file = paste0(cmdstan_path(),"/thesis/vb/vb_mod_allo_t0i.stan"))
+# cat(a, file = paste0(cmdstan_path(),"/thesis/vb/vb_mod_allo_t0i.stan"))
 
-file = file.path(cmdstan_path(), "/thesis/vb/vb_mod_allo_t0i.stan")
+cat(a, file = "vb_mod_all_t0i.stan")
 
-stan_fit = cmdstan_model(file)
+#file = file.path(cmdstan_path(), "/thesis/vb/vb_mod_allo_t0i.stan")
+
+stan_fit = cmdstan_model("vb_mod_all_t0i.stan")
 
 # initial values ----
 
 init_vb = function(){
   
   mu_t = rlnorm(1)
-  t0p = rlnorm(n_ind, log(mu_t), 0.1)
+  z_t = rnorm(n_ind)
+  # t0p = rlnorm(n_ind, log(mu_t), 0.1)
   sigma_t = rlnorm(1, 0, 0.1)
   
   mu = c(rnorm(1, mean(ij_b$length, na.rm = TRUE), 0.2),
@@ -173,23 +187,25 @@ init_vb = function(){
   
   L = diag(J)
   
-  par = matrix(NA, n_ind, J)
+  # par = matrix(NA, n_ind, J)
+  # 
+  # for(j in 1:J){
+  #   if(j == 1 | j == 3){
+  #     par[,j] = rnorm(n_ind, mu[j], 0.2)  
+  #   } else {
+  #     par[,j] = rlnorm(n_ind, log(mu[j]), 0.1)
+  #   }
+  # } 
   
-  for(j in 1:J){
-    if(j == 1 | j == 3){
-      par[,j] = rnorm(n_ind, mu[j], 0.2)  
-    } else {
-      par[,j] = rlnorm(n_ind, log(mu[j]), 0.1)
-    }
-  } 
+  par = matrix(rnorm(n_ind*J), n_ind, J)
   
   sigma_obs = rlnorm(2)
   
   rho_obs = runif(1)
 
-  return(list(t0p = t0p, 
+  return(list(z_t = z_t, 
               mu_t = mu_t, sigma_t = sigma_t,
-              L = L, mu = mu, sigma = sigma, par = par, 
+              L = L, mu = mu, sigma = sigma, z = par, 
               sigma_obs = sigma_obs, rho_obs = rho_obs
               ))
 }
