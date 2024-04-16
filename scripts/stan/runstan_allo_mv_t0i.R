@@ -3,7 +3,6 @@ library(posterior)
 library(bayesplot)
 library(latex2exp)
 library(dplyr)
-library(rstan)
 
 # data ----
 
@@ -40,10 +39,12 @@ N_b+N_z+N_y
 N_b/(N_b+N_z+N_y)
 
 #params matrix dims
-J=4
+J=5
 
 # model ----
 # z matrix and z_t are the individual deviations from the population parameters
+
+set_cmdstan_path(path = "C:/Users/leahm/cmdstan-2.34.1")
 
 stan_fit = cmdstan_model("./scripts/stan/vb_mod_all_t0i.stan")
 
@@ -51,15 +52,16 @@ stan_fit = cmdstan_model("./scripts/stan/vb_mod_all_t0i.stan")
 
 init_vb = function(){
   
-  mu_t = rlnorm(1)
-  z_t = rnorm(n_ind)
+  #mu_t = rlnorm(1)
+  #z_t = rnorm(n_ind)
   # t0p = rlnorm(n_ind, log(mu_t), 0.1)
-  sigma_t = rlnorm(1, 0, 0.1)
+  #sigma_t = rlnorm(1, 0, 0.1)
   
   mu = c(rnorm(1, mean(ij_b$length, na.rm = TRUE), 0.2),
          rlnorm(1, 0, 0.1),
          rnorm(1, mean(ij_b$BHDF, na.rm = TRUE), 0.2),
-         rlnorm(1, 0, 0.1))
+         rlnorm(1, 0, 0.1),
+         log(rlnorm(1)))
   
   sigma = rlnorm(J)
   
@@ -81,8 +83,8 @@ init_vb = function(){
   
   rho_obs = runif(1)
 
-  return(list(z_t = z_t, 
-              mu_t = mu_t, sigma_t = sigma_t,
+  return(list(#z_t = z_t, 
+              #mu_t = mu_t, sigma_t = sigma_t,
               L = L, mu = mu, sigma = sigma, z = par, 
               sigma_obs = sigma_obs, rho_obs = rho_obs
               ))
@@ -115,8 +117,8 @@ fit_vb <- stan_fit$sample(
   ),
   init = init_vb,
   chains = 4,
-  iter_warmup = 1000,
-  iter_sampling = 10000,
+  iter_warmup = 100,
+  iter_sampling = 1000,
   thin = 1,
   save_warmup = FALSE,
   max_treedepth = 10,
@@ -126,7 +128,11 @@ fit_vb <- stan_fit$sample(
 
 # results -----
 
-parout = as_draws_df(fit_vb$draws(c("mu","sigma","sigma_obs","mu_t","sigma_t","rho_obs","corr[1,2]","corr[1,3]","corr[1,4]","corr[2,3]","corr[2,4]","corr[3,4]","Lobs[1,1]","Lobs[2,1]","Lobs[2,2]")))
+parout = as_draws_df(fit_vb$draws(c("mu","sigma","sigma_obs","rho_obs",
+                                    "corr[1,2]","corr[1,3]","corr[1,4]","corr[1,5]",
+                                    "corr[2,3]","corr[2,4]","corr[2,5]",
+                                    "corr[3,4]","corr[3,5]","corr[4,5]",
+                                    "Lobs[1,1]","Lobs[2,1]","Lobs[2,2]")))
 saveRDS(parout, file = paste0("parout_",Sys.Date(),".rds"))
 
 #trace plot
@@ -145,7 +151,7 @@ t0pindout = as_draws_df(fit_vb$draws(c("t0p")))
 saveRDS(parindout, file = paste0("parindout_",Sys.Date(),".rds"))
 saveRDS(t0pindout, file = paste0("t0pindout_",Sys.Date(),".rds"))
 # read in results ----
-date = "2024-04-16"
+date = "2024-04-17"
 # remember k is logit(k)
 #all non individual based params
 parout_in = readRDS(file = paste0('parout_',date,'.rds'))
@@ -207,15 +213,15 @@ for(i in 1:nind){
   ky = parindout_in[[paste0('par[',i,',2]')]]
   Lz = parindout_in[[paste0('par[',i,',3]')]]
   kz = parindout_in[[paste0('par[',i,',4]')]]
-  t0p = t0pindout_in[[paste0('t0p[',i,']')]]
+  t0p = parindout_in[[paste0('par[',i,',5]')]]
   
   tmp_y = matrix(NA,length(Ly),ngrid)
   tmp_z = matrix(NA,length(Lz),ngrid)
   
   for(j in 1:ngrid){
     #inverse logit kyout/kzout 1/(1+exp(-k))
-    tmp_y[,j] = Ly*(1-(1/(1+exp(-ky))^(t0p + agegrid[j])))
-    tmp_z[,j] = Lz*(1-(1/(1+exp(-kz))^(t0p + agegrid[j])))
+    tmp_y[,j] = Ly*(1-(1/(1+exp(-ky))^(exp(t0p) + agegrid[j])))
+    tmp_z[,j] = Lz*(1-(1/(1+exp(-kz))^(exp(t0p) + agegrid[j])))
   }  
   
   quan_y = apply(tmp_y, 2, quantile, c(0.05, 0.5, 0.95), na.rm = T)
