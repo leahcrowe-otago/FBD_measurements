@@ -7,11 +7,11 @@ bibliography: references.bib
 
 # Tables
 
-```{r, tab_priors, echo = F}
+```{r, tab_priors, echo = F, warnings = F, messages = F, include = F}
 library(dplyr);library(kableExtra)
 
-priors = data.frame(Parameter = c("$t_{0}$", "$\\mu$", "$\\beta$", "$\\gamma$", "$\\sigma$", "$\\sigma_{obs}$", "$L$"), `Prior_distribution` = c("Lognormal(0, 10)", "$N(0, 1000)$", "$N(0, 1000)$", "$N(0, 1000)$", 
-                                 "$t_{3}(0, 25)$", "$t_{3}(0, 25)$", "LKJ(1)"))
+priors = data.frame(Parameter = c("$t_{0}$", "$\\mu$", "$\\sigma$", "$\\sigma_{obs}$", "$L$"), `Prior_distribution` = c("Lognormal(0, 10)", "$N(0, 1000)$", 
+                                 "$t_{3}(0, 25)$", "$t_{3}(0, 50)$", "LKJ(1)"))
 
 priors%>%
   kableExtra::kable(booktabs = T, align = "c") %>%
@@ -20,4 +20,43 @@ priors%>%
 
 Table 1. Priors
 
+\newpage
 # Figures
+
+```{r, morphs, echo = F, out.width='80%'}
+
+knitr::include_graphics(c('./Figures/Supplement/Morphs/Morphs_fig.png'))
+
+```
+
+Fig. S1. Example photographs of different morphs within the Fiordland bottlenose dolphin sub-populations. a) Dark morph on the left, lighter morph on the right. b, d, and f are all darker morphs, c and e are lighter morphs.
+
+```{r, squid, echo = F, out.width='50%'}
+
+knitr::include_graphics(c('./Figures/Supplement/Squid/Squid_fig.png'))
+
+```
+
+Fig. S2. Example photographs of squid sucker marks on Fiordland bottlenose dolphins (within the red circle). These sucker marks are likely to have originated from squid per personal communication with squid expert, K. Bolstad. a) On the lower jaw in 2004, b) on the chin in 2015, and c) around the eye in 2023.
+
+\newpage
+
+# Appendix I
+
+Primary model stan code.
+
+```{r, AppendixI, results='markup',echo=FALSE,comment=""}
+
+cat(paste(readLines("./scripts/stan/vb_mod_all_t0i.stan"), collapse = "\n"))
+```
+
+\newpage
+
+# Appendix II
+
+Model code to confirm exploratory findings that sex and pod do not influence growth parameters. 
+
+```{r, AppendixII, results='markup',echo=FALSE,comment=""}
+
+cat(paste(readLines("./scripts/stan/vb_mod_allo_sex[1].stan"), collapse = "\n"))
+```
