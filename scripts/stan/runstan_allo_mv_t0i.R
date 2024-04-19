@@ -6,16 +6,23 @@ library(dplyr)
 
 # data ----
 
-i = 18
+
 #both bhdf & tl
 ij_b = readRDS(file = 'ij_1.rds')
+ij_z = readRDS(file = 'ij_2.rds')
+ij_y = readRDS(file = 'ij_3.rds')
+
+ij_all<-ij_b%>%
+  bind_rows(ij_z)%>%
+  bind_rows(ij_y)
+
 #ij_b = as.matrix(ij_1)
 ij_b[i,]
 N_b = nrow(ij_b)
 N_b
 length(unique(ij_b$ind))
 #bhdf only
-ij_z = readRDS(file = 'ij_2.rds')%>%
+ij_z = ij_z%>%
   dplyr::select(-length)
 #ij_z = as.matrix(ij_z)
 ij_z[i,]
@@ -23,7 +30,7 @@ N_z = nrow(ij_z)
 N_z
 
 #tl only
-ij_y = readRDS(file = 'ij_3.rds')%>%
+ij_y = ij_y%>%
   dplyr::select(-BHDF)
 #ij_y = as.matrix(ij_y)
 ij_y[i,]
@@ -39,7 +46,7 @@ N_b+N_z+N_y
 N_b/(N_b+N_z+N_y)
 
 #params matrix dims
-J=5
+J=4
 
 # model ----
 # z matrix and z_t are the individual deviations from the population parameters
@@ -52,16 +59,15 @@ stan_fit = cmdstan_model("./scripts/stan/vb_mod_all_t0i.stan")
 
 init_vb = function(){
   
-  #mu_t = rlnorm(1)
-  #z_t = rnorm(n_ind)
-  # t0p = rlnorm(n_ind, log(mu_t), 0.1)
-  #sigma_t = rlnorm(1, 0, 0.1)
+  mu_t = rlnorm(1)
+  z_t = rnorm(n_ind)
+  t0p = rlnorm(n_ind, log(mu_t), 0.1)
+  sigma_t = rlnorm(1, 0, 0.1)
   
   mu = c(rnorm(1, mean(ij_b$length, na.rm = TRUE), 0.2),
          rlnorm(1, 0, 0.1),
          rnorm(1, mean(ij_b$BHDF, na.rm = TRUE), 0.2),
-         rlnorm(1, 0, 0.1),
-         log(rlnorm(1)))
+         rlnorm(1, 0, 0.1))
   
   sigma = rlnorm(J)
   
@@ -77,15 +83,15 @@ init_vb = function(){
   #   }
   # } 
   
-  par = matrix(rnorm(n_ind*J), n_ind, J)
+  z = matrix(rnorm(n_ind*J), n_ind, J)
   
   sigma_obs = rlnorm(2)
   
   rho_obs = runif(1)
 
-  return(list(#z_t = z_t, 
-              #mu_t = mu_t, sigma_t = sigma_t,
-              L = L, mu = mu, sigma = sigma, z = par, 
+  return(list(
+              z_t = z_t, mu_t = mu_t, sigma_t = sigma_t,
+              L = L, mu = mu, sigma = sigma, z = z, 
               sigma_obs = sigma_obs, rho_obs = rho_obs
               ))
 }
@@ -117,8 +123,8 @@ fit_vb <- stan_fit$sample(
   ),
   init = init_vb,
   chains = 4,
-  iter_warmup = 100,
-  iter_sampling = 1000,
+  iter_warmup = 1000,
+  iter_sampling = 10000,
   thin = 1,
   save_warmup = FALSE,
   max_treedepth = 10,
@@ -128,10 +134,10 @@ fit_vb <- stan_fit$sample(
 
 # results -----
 
-parout = as_draws_df(fit_vb$draws(c("mu","sigma","sigma_obs","rho_obs",
-                                    "corr[1,2]","corr[1,3]","corr[1,4]","corr[1,5]",
-                                    "corr[2,3]","corr[2,4]","corr[2,5]",
-                                    "corr[3,4]","corr[3,5]","corr[4,5]",
+parout = as_draws_df(fit_vb$draws(c("mu","mu_t","sigma","sigma_t","sigma_obs","rho_obs",
+                                    "corr[1,2]","corr[1,3]","corr[1,4]",
+                                    "corr[2,3]","corr[2,4]",
+                                    "corr[3,4]",
                                     "Lobs[1,1]","Lobs[2,1]","Lobs[2,2]")))
 saveRDS(parout, file = paste0("parout_",Sys.Date(),".rds"))
 
@@ -150,6 +156,7 @@ t0pindout = as_draws_df(fit_vb$draws(c("t0p")))
 #save par for individual plotting
 saveRDS(parindout, file = paste0("parindout_",Sys.Date(),".rds"))
 saveRDS(t0pindout, file = paste0("t0pindout_",Sys.Date(),".rds"))
+
 # read in results ----
 date = "2024-04-17"
 # remember k is logit(k)
@@ -182,6 +189,9 @@ min(summ_paroutin$ess_tail)
 max(summ_paroutin$ess_bulk)
 max(summ_paroutin$ess_tail)
 
+max(summary(parout)$rhat)
+min(summary(parout)$ess_bulk)
+min(summary(parout)$ess_tail)
 #individual based params
 parindout_in = readRDS(file = paste0('./parindout_',date,'.rds'))
 parindout_in_summ<-summary(parindout_in)
@@ -192,36 +202,38 @@ t0pindout_in_summ<-summary(t0pindout_in)
 
 ### plot a couple of individuals ----
 induse = c(1, 12, 99, 90)
+induse = ceiling(runif(4, 0, 143))
+
 ngrid = 101
 agegrid = seq(from = -2, to = max(ij_b$age), length.out = ngrid)
 nind = length(induse)
-pdf('indplots_bhdf.pdf', height = 8, width = 8)
-par(mfrow = c(2,2), mar = c(4, 4, 1, 1))
+#pdf('indplots_bhdf.pdf', height = 8, width = 8)
+#par(mfrow = c(2,2), mar = c(4, 4, 1, 1))
 
 for(i in 1:nind){
 
   i = induse[i]
   print(i)
-  x = ij_b%>%filter(ind == i)%>%select(age)
-  y = ij_b%>%filter(ind == i)%>%select(length)
-  z = ij_b%>%filter(ind == i)%>%select(BHDF)
+  x = ij_all%>%filter(ind == i)%>%select(age)
+  y = ij_all%>%filter(ind == i)%>%select(length)
+  z = ij_all%>%filter(ind == i)%>%select(BHDF)
   
-  plot(x$age, y$length, pch = 20, xlim = c(0,max(ij_b$age)), ylim = c(0, max(ij_b$length)), xlab = "Age", ylab = "Length", col = "blue")
-  points(x$age, z$BHDF, pch = 20, xlim = c(0,max(ij_b$age)), ylim = c(0, max(ij_b$length)), xlab = "Age", ylab = "Length", col = "red")
+  #plot(x$age, y$length, pch = 20, xlim = c(0,max(ij_b$age)), ylim = c(0, max(ij_b$length)), xlab = "Age", ylab = "Length", col = "blue")
+  #points(x$age, z$BHDF, pch = 20, xlim = c(0,max(ij_b$age)), ylim = c(0, max(ij_b$length)), xlab = "Age", ylab = "Length", col = "red")
 
   Ly = parindout_in[[paste0('par[',i,',1]')]]
   ky = parindout_in[[paste0('par[',i,',2]')]]
   Lz = parindout_in[[paste0('par[',i,',3]')]]
   kz = parindout_in[[paste0('par[',i,',4]')]]
-  t0p = parindout_in[[paste0('par[',i,',5]')]]
+  t0p = t0pindout_in[[paste0('t0p[',i,']')]]
   
   tmp_y = matrix(NA,length(Ly),ngrid)
   tmp_z = matrix(NA,length(Lz),ngrid)
   
   for(j in 1:ngrid){
     #inverse logit kyout/kzout 1/(1+exp(-k))
-    tmp_y[,j] = Ly*(1-(1/(1+exp(-ky))^(exp(t0p) + agegrid[j])))
-    tmp_z[,j] = Lz*(1-(1/(1+exp(-kz))^(exp(t0p) + agegrid[j])))
+    tmp_y[,j] = Ly*(1-(1/(1+exp(-ky))^(t0p + agegrid[j])))
+    tmp_z[,j] = Lz*(1-(1/(1+exp(-kz))^(t0p + agegrid[j])))
   }  
   
   quan_y = apply(tmp_y, 2, quantile, c(0.05, 0.5, 0.95), na.rm = T)
@@ -229,15 +241,31 @@ for(i in 1:nind){
   
   matrix(NA, length(quan_y*n_ind), ngrid)
   
-  lines(agegrid, quan_y[2,], col = "blue", lty = 1)  
-  lines(agegrid, quan_y[1,], col = "blue", lty = 2)
-  lines(agegrid, quan_y[3,], col = "blue", lty = 2)
+  #lines(agegrid, quan_y[2,], col = "blue", lty = 1)  
+  #lines(agegrid, quan_y[1,], col = "blue", lty = 2)
+  #lines(agegrid, quan_y[3,], col = "blue", lty = 2)
   
-  lines(agegrid, quan_z[2,], col = "red", lty = 1)  
-  lines(agegrid, quan_z[1,], col = "red", lty = 2)
-  lines(agegrid, quan_z[3,], col = "red", lty = 2)
+  #lines(agegrid, quan_z[2,], col = "red", lty = 1)  
+  #lines(agegrid, quan_z[1,], col = "red", lty = 2)
+  #lines(agegrid, quan_z[3,], col = "red", lty = 2)
 
-
+  ggplot()+
+    geom_point(aes(x = x$age, y = y$length, color = "TL"), size = 2.5, alpha = 0.8)+
+    geom_point(aes(x = x$age, y = z$BHDF, color = "BHDF"), size = 2.5, alpha = 0.8)+
+    geom_line(aes(x = agegrid, y = quan_y[1,], color = "TL"), linetype = "dashed")+
+    geom_line(aes(x = agegrid, y = quan_y[2,], color = "TL"))+
+    geom_line(aes(x = agegrid, y = quan_y[3,], color = "TL"), linetype = "dashed")+
+    geom_line(aes(x = agegrid, y = quan_z[1,], color = "BHDF"), linetype = "dashed")+
+    geom_line(aes(x = agegrid, y = quan_z[2,], color = "BHDF"))+
+    geom_line(aes(x = agegrid, y = quan_z[3,], color = "BHDF"), linetype = "dashed")+
+    coord_cartesian(ylim=c(0, 3.5))+
+    theme_bw()+
+    ylab("Length (m)")+
+    xlab("Age (years)")+
+    theme(legend.position = "none")+
+    scale_color_viridis_d(begin = 0.1, end = 0.8)
+ 
+  ggplot2::ggsave(paste0("./Figures/indplot_",i,".png"), device = "png", dpi = 700, width = 200, height = 200, units = 'mm')
   
   }
 
@@ -253,7 +281,7 @@ mcmc_intervals(parindout_in[430:ncol(parindout_in)], outer_size = 0.5, inner_siz
 
 ## L and k by birthyear----
 
-parindout_in_summ$variable
+#parindout_in_summ$variable
 
 id_t0psumm<-t0pindout_in_summ%>%
   mutate(param = "t0p")%>%
@@ -330,7 +358,7 @@ growest_plot%>%
   distinct(mean_limit)
 
 vbgc_zero<-ggplot(growest_plot)+
-  geom_line(aes(x = agegrid, y = y_est, group = as.factor(i), color = Pod), alpha = 0.6)+
+  geom_line(aes(x = agegrid, y = y_est, group = as.factor(i), color = Pod), alpha = 0.6, linewidth = 0.2)+
   coord_cartesian(xlim=c(0, 41), ylim=c(0, 3.5))+
   #facet_wrap(~SEX)+
   theme_bw()+
@@ -348,7 +376,7 @@ vbgc_zero<-ggplot(growest_plot)+
 #   ylab("Total length estimate (m)")
 
 vbgc_by<-ggplot(growest_plot)+
-  geom_line(aes(x = year_by, y = y_est, group = as.factor(i), color = Pod, linetype = age_value), alpha = 0.8)+
+  geom_line(aes(x = year_by, y = y_est, group = as.factor(i), color = Pod, linetype = age_value), alpha = 0.8, linewidth = 0.2)+
   xlim(c(1980,2065))+
   coord_cartesian(ylim=c(0, 3.5))+
   theme_bw()+
@@ -357,9 +385,16 @@ vbgc_by<-ggplot(growest_plot)+
   theme(legend.position = "bottom",
         legend.title = element_blank())
 
+vbgc_by+
+  facet_wrap(~age_value)
+
+growest_plot%>%
+  group_by(age_value)%>%
+  filter(y_est == max(y_est))
+
 ggpubr::ggarrange(vbgc_zero, vbgc_by, common.legend = T, legend = "bottom", widths = c(1,2), labels = "auto")
 
-ggplot2::ggsave(paste0("./Figures/vbgcplot_",Sys.Date(),".png"), device = "png", dpi = 700, width = 250, height = 125, units = 'mm')
+ggplot2::ggsave(paste0("./Figures/vbgcplot.png"), device = "png", dpi = 700, width = 250, height = 100, units = 'mm')
 
 ind_median%>%
   group_by(POD)%>%
@@ -403,8 +438,8 @@ uncertainty<-id_parsumm%>%filter(param == "Ly" | param == "logit_ky")%>%ungroup(
 head(uncertainty)
 
 ggplot(uncertainty%>%filter(param == "Ly"))+
-  geom_point(aes(x = year_cat, y = median, group = as.factor(i), color = POD, shape = `Birth year`), size = 2, alpha = 0.6)+
-  geom_linerange(aes(x = year_cat, ymin = q95, ymax = q5, group = as.factor(i), color = POD))+
+  geom_point(aes(x = year_cat, y = median, group = as.factor(i), color = POD, shape = `Birth year`), size = 1.5, alpha = 0.6)+
+  geom_linerange(aes(x = year_cat, ymin = q95, ymax = q5, group = as.factor(i), color = POD), linewidth = 0.2)+
   facet_wrap(~param, ncol = 1)+
   theme_bw()+
   theme(legend.position = "bottom")+
@@ -414,11 +449,11 @@ ggplot(uncertainty%>%filter(param == "Ly"))+
   theme(panel.grid.minor = element_blank(),
         axis.text.x = element_text(angle = -90, vjust = -0.5))
 
-ggplot2::ggsave(paste0("./Figures/Ly_CI_", Sys.Date() ,".png"), device = "png", dpi = 700, height = 100, width = 300, units = 'mm')
+ggplot2::ggsave(paste0("./Figures/Ly_CI.png"), device = "png", dpi = 700, height = 100, width = 300, units = 'mm')
 
 ggplot(uncertainty%>%filter(param == "logit_ky"))+
-  geom_point(aes(x = year_cat, y = median, group = as.factor(i), color = POD, shape = `Birth year`), size = 2, alpha = 0.6)+
-  geom_linerange(aes(x = year_cat, ymin = q95, ymax = q5, group = as.factor(i), color = POD))+
+  geom_point(aes(x = year_cat, y = median, group = as.factor(i), color = POD, shape = `Birth year`), size = 1.5, alpha = 0.6)+
+  geom_linerange(aes(x = year_cat, ymin = q95, ymax = q5, group = as.factor(i), color = POD), linewidth = 0.2)+
   facet_wrap(~param, ncol = 1)+
   theme_bw()+
   theme(legend.position = "bottom")+
@@ -428,7 +463,34 @@ ggplot(uncertainty%>%filter(param == "logit_ky"))+
   theme(panel.grid.minor = element_blank(),
         axis.text.x = element_text(angle = -90, vjust = -0.5))
 
-ggplot2::ggsave(paste0("./Figures/ky_CI_", Sys.Date() ,".png"), device = "png", dpi = 700, height = 100, width = 300, units = 'mm')
+ggplot2::ggsave(paste0("./Figures/ky_CI.png"), device = "png", dpi = 700, height = 100, width = 300, units = 'mm')
+
+# box plots ----
+## sex ----
+
+sex_box<-ggplot(id_parsumm%>%filter(param == "Ly" | param == "logit_ky"))+
+  geom_boxplot(aes(x = SEX, y = median, fill = SEX), alpha = 0.6)+
+  facet_wrap(~param, scales = "free")+
+  theme_bw()+
+  xlab("Sex")+
+  ylab("")+
+  theme(legend.position = "none")+
+  scale_fill_viridis_d()
+
+## pod ----
+pod_box<-ggplot(id_parsumm%>%filter(param == "Ly" | param == "logit_ky"))+
+  geom_boxplot(aes(x = POD, y = median, fill = POD), alpha = 0.6)+
+  facet_wrap(~param, scales = "free")+
+  theme_bw()+
+  xlab("Pod")+
+  ylab("")+
+  theme(legend.position = "none")
+
+ggpubr::ggarrange(sex_box, pod_box, ncol = 1, labels = "auto")
+
+ggplot2::ggsave(paste0("./Figures/boxplots.png"), device = "png", dpi = 700, height = 200, width = 200, units = 'mm')
+
+# messing around ----
 
 ggplot(wide)+
   geom_point(aes(x = logit_ky, y = Ly, color = "logit(ky) ~ Ly", shape = age_value))+
@@ -459,8 +521,64 @@ ggplot(ind_median, aes(x = ky, y = kz, color = age_value))+
 
 ## proportional relationship between z and y ----
 
-x<-sample(1:n_ind,1, replace=F) 
-x
+muLy<-summ_paroutin%>%
+  filter(variable == "mu[1]")
+
+muLz<-summ_paroutin%>%
+  filter(variable == "mu[3]")
+
+sigma_obs1<-summ_paroutin%>%
+  filter(variable == "sigma_obs[1]")
+
+sigma_obs2<-summ_paroutin%>%
+  filter(variable == "sigma_obs[2]")
+
+L_obs11<-summ_paroutin%>%
+  filter(variable == "Lobs[1,1]")
+
+L_obs21<-summ_paroutin%>%
+  filter(variable == "Lobs[2,1]")
+
+L_obs22<-summ_paroutin%>%
+  filter(variable == "Lobs[2,2]")
+
+rho_obs<-summ_paroutin%>%
+  filter(variable == "rho_obs")
+
+#regression coefficient
+var12 = sigma_obs1$median*sigma_obs2$median*rho_obs$median
+var22 = sigma_obs2$median^2
+reg_co<-(var12/var22)
+reg_co
+
+intercept<-muLy$median - reg_co*muLz$median
+intercept
+
+ij_est<-ij_all%>%
+  mutate(Length_est = reg_co*BHDF + intercept)%>%
+  mutate(Length2 = muLy$median+reg_co*(BHDF-muLz$median))
+
+ij_est
+
+#look at Ly and Lz to see if this equation works
+Lyest<-id_parsumm%>%
+  filter(param == "Lz" | param == "Ly")%>%
+  distinct(param, ind, ID, mean, median, sd, mad)%>%
+  mutate(Length_est = case_when(
+    param == "Lz" ~ reg_co*median + intercept,
+    TRUE ~ NA))
+
+x = Lyest%>%filter(param == "Lz")%>%dplyr::select(median)
+y = Lyest%>%filter(param == "Ly")%>%dplyr::select(median)
+
+ggplot()+
+  geom_point(Lyest%>%filter(param == "Lz"), mapping = aes(x = median, y = Length_est), color = "red")+
+  geom_point(mapping = aes(x = x$median, y = y$median))
+
+ggplot()+
+  geom_point(Lyest%>%filter(param == "Lz"), mapping = aes(x = ind, y = Length_est), color = "red")+
+  geom_point(Lyest%>%filter(param == "Ly"), mapping = aes(x = ind, y = median))+
+  xlim(70,143)
 
 ### Ly given Lz ----
 
