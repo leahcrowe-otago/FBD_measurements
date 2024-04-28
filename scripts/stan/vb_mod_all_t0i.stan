@@ -1,4 +1,5 @@
 
+
 data {
   int<lower=0> n_ind; // number individuals
   int<lower=0> N_b; // number of times when tl and bhdf measurements were both taken
@@ -23,16 +24,15 @@ data {
 
 parameters {
 
-  // real<lower=0> t0p;
-  // vector<lower=0>[n_ind] t0p;
   vector[n_ind] z_t;
-  real mu_t;
+  real<lower=0> mu_t;
   real<lower=0> sigma_t;
+  
   matrix[n_ind, J] z;
-  //matrix[n_ind, J] par;
+  vector[J] mu;
   vector<lower=0>[J] sigma;
   cholesky_factor_corr[J] L;
-  vector[J] mu;
+
   vector<lower=0>[2] sigma_obs;
   
   real<lower=0,upper=1> rho_obs;
@@ -61,12 +61,11 @@ transformed parameters{
 
 model {
 
- matrix[N_b,2] obs_mean;
+matrix[N_b,2] obs_mean;
 
  for(i in 1:n_ind){
       // par[i] ~ multi_normal_cholesky(mu,diag_pre_multiply(sigma,L));
       z[i] ~ std_normal();     
-      // t0p[i] ~ lognormal(mu_t, sigma_t);
       z_t[i] ~ std_normal();
       }
 
@@ -87,7 +86,7 @@ model {
 
 
 //priors
-  //t0p ~ lognormal(0, 10);
+
   mu_t ~ normal(0, 1000);
   sigma_t ~ student_t(3, 0, 25);
   mu ~ normal(0, 1000);
@@ -105,8 +104,10 @@ model {
 generated quantities {
 
   corr_matrix[J] corr;
+  cov_matrix[J] varcov_par;
   //below is L*L'
   corr = multiply_lower_tri_self_transpose(L);
+  varcov_par = quad_form_diag(corr, sigma);
 
  }
 
