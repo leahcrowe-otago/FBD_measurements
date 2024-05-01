@@ -189,7 +189,7 @@ age_calc<-age_length%>%
 age_calc<-age_calc%>%
   #give a better approximation of age for older reproductive females?
   mutate(age = case_when(
-    age_value == "min" & !is.na(FIRST_CALF) ~ age + (as.integer(avg_primo_age) - (as.numeric(FIRST_CALF) - as.numeric(FIRST_YEAR))),
+    age_value == "min" & !is.na(FIRST_CALF) & (as.numeric(FIRST_CALF) - as.integer(avg_primo_age)) < as.numeric(FIRST_YEAR) ~ age + (as.integer(avg_primo_age) - (as.numeric(FIRST_CALF) - as.numeric(FIRST_YEAR))),
     TRUE ~ age
   ))%>%
   mutate(age_month = case_when(
@@ -260,7 +260,7 @@ individuals_measuredmanytimes<-ggplot(ID_age, aes(x = trip, y = length_use, colo
 
 #individuals_measuredmanytimes
 
-ggsave("./Figures/individuals_measuredmanytimes.png", individuals_measuredmanytimes, dpi = 320, height = 500, width = 500, units = 'mm')
+#ggsave("./Figures/individuals_measuredmanytimes.png", individuals_measuredmanytimes, dpi = 320, height = 500, width = 500, units = 'mm')
 
 age_calc%>%distinct(POD, ID)%>%group_by(POD)%>%tally()
 
@@ -306,7 +306,7 @@ age_calc%>%
 ```{r vbgc_data, include = T, warning = F, message = F}
 
 ID_index<-age_calc%>%
-  arrange(length_use,ID)%>%
+  arrange(SEX,length_use,ID)%>%
   mutate(year_zero = as.numeric(AGECLASS_YEAR)-age)%>%
   distinct(ID,year_zero,SEX,POD,age_value)%>%
   mutate(ind = 1:n())
