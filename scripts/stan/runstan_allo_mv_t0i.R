@@ -5,7 +5,7 @@ library(latex2exp)
 library(dplyr)
 
 # data ----
-
+i = 34
 
 #both bhdf & tl
 ij_b = readRDS(file = 'ij_1.rds')
@@ -15,6 +15,13 @@ ij_y = readRDS(file = 'ij_3.rds')
 ij_all<-ij_b%>%
   bind_rows(ij_z)%>%
   bind_rows(ij_y)
+
+ij_all_old<-ij_b_old%>%
+  bind_rows(ij_z_old)%>%
+  bind_rows(ij_y_old)
+
+median(ij_all$length, na.rm = T)
+median(ij_all$BHDF, na.rm = T)
 
 #ij_b = as.matrix(ij_1)
 ij_b[i,]
@@ -90,7 +97,7 @@ init_vb = function(){
   rho_obs = runif(1)
 
   return(list(
-              z_t = z_t, mu_t = mu_t, sigma_t = sigma_t,
+              z_t = z_t, mu_t = mu_t, t0p = t0p, sigma_t = sigma_t,
               L = L, mu = mu, sigma = sigma, z = z, 
               sigma_obs = sigma_obs, rho_obs = rho_obs
               ))
@@ -123,8 +130,8 @@ fit_vb <- stan_fit$sample(
   ),
   init = init_vb,
   chains = 4,
-  iter_warmup = 1000,
-  iter_sampling = 10000,
+  iter_warmup = 1500,
+  iter_sampling = 15000,
   thin = 1,
   save_warmup = FALSE,
   max_treedepth = 10,
@@ -135,6 +142,7 @@ fit_vb <- stan_fit$sample(
 # results -----
 
 parout = as_draws_df(fit_vb$draws(c("mu","mu_t","sigma","sigma_t","sigma_obs","rho_obs",
+                                    "varcov_par",
                                     "corr[1,2]","corr[1,3]","corr[1,4]",
                                     "corr[2,3]","corr[2,4]",
                                     "corr[3,4]",
@@ -158,7 +166,7 @@ saveRDS(parindout, file = paste0("parindout_",Sys.Date(),".rds"))
 saveRDS(t0pindout, file = paste0("t0pindout_",Sys.Date(),".rds"))
 
 # read in results ----
-date = "2024-04-17"
+date = "2024-04-30"
 # remember k is logit(k)
 #all non individual based params
 parout_in = readRDS(file = paste0('parout_',date,'.rds'))
@@ -166,22 +174,6 @@ as.data.frame(parout_in)
 bayesplot::mcmc_dens(parout_in)
 bayesplot::mcmc_trace(parout_in)+theme_bw()
 summ_paroutin<-as.data.frame(summary(parout_in))
-
-mu12<-mcmc_scatter(
-  as.matrix(parout_in),
-  pars = c("mu[1]", "mu[2]"))
-
-mu34<-mcmc_scatter(
-  as.matrix(parout_in),
-  pars = c("mu[3]", "mu[4]"))
-
-mu13<-mcmc_scatter(
-  as.matrix(parout_in),
-  pars = c("mu[1]", "mu[3]"))
-
-mu24<-mcmc_scatter(
-  as.matrix(parout_in),
-  pars = c("mu[2]", "mu[4]"))
 
 max(summ_paroutin$rhat)
 min(summ_paroutin$ess_bulk)
@@ -201,7 +193,7 @@ t0pindout_in_summ<-summary(t0pindout_in)
 # report results ----
 
 ### plot a couple of individuals ----
-induse = c(1, 12, 99, 90)
+#induse = c(1, 12, 99, 90)
 induse = ceiling(runif(4, 0, 143))
 
 ngrid = 101
@@ -227,6 +219,12 @@ for(i in 1:nind){
   kz = parindout_in[[paste0('par[',i,',4]')]]
   t0p = t0pindout_in[[paste0('t0p[',i,']')]]
   
+  # mu_1 = parout[['mu[1]']]
+  # mu_2 = parout[['mu[2]']]
+  # mu_3 = parout[['mu[3]']]
+  # mu_4 = parout[['mu[4]']]
+  # mu_t = parout[['mu_t']]
+  
   tmp_y = matrix(NA,length(Ly),ngrid)
   tmp_z = matrix(NA,length(Lz),ngrid)
   
@@ -235,6 +233,12 @@ for(i in 1:nind){
     tmp_y[,j] = Ly*(1-(1/(1+exp(-ky))^(t0p + agegrid[j])))
     tmp_z[,j] = Lz*(1-(1/(1+exp(-kz))^(t0p + agegrid[j])))
   }  
+  
+  # for(j in 1:ngrid){
+  #   #inverse logit kyout/kzout 1/(1+exp(-k))
+  #   tmp_y[,j] = mu_1*(1-(1/(1+exp(-mu_2))^(mu_t + agegrid[j])))
+  #   tmp_z[,j] = mu_3*(1-(1/(1+exp(-mu_4))^(mu_t + agegrid[j])))
+  # } 
   
   quan_y = apply(tmp_y, 2, quantile, c(0.05, 0.5, 0.95), na.rm = T)
   quan_z = apply(tmp_z, 2, quantile, c(0.05, 0.5, 0.95), na.rm = T)
@@ -405,6 +409,11 @@ ind_median%>%
   group_by(POD)%>%
   summarise(median = median(ky), max = max(ky), min = min(ky))
 
+
+ind_median%>%
+  group_by(age_value)%>%
+  summarise(median = median(Ly), max = max(Ly), min = min(Ly))
+
 ##
 ####need to transform ky and q5 and q95
 wide<-id_parsumm%>%
@@ -451,9 +460,9 @@ ggplot(uncertainty%>%filter(param == "Ly"))+
 
 ggplot2::ggsave(paste0("./Figures/Ly_CI.png"), device = "png", dpi = 700, height = 100, width = 300, units = 'mm')
 
-ggplot(uncertainty%>%filter(param == "logit_ky"))+
-  geom_point(aes(x = year_cat, y = median, group = as.factor(i), color = POD, shape = `Birth year`), size = 1.5, alpha = 0.6)+
-  geom_linerange(aes(x = year_cat, ymin = q95, ymax = q5, group = as.factor(i), color = POD), linewidth = 0.2)+
+ggplot(uncertainty%>%filter(param == "logit_ky")%>%mutate(param = "ky"))+
+  geom_point(aes(x = year_cat, y = 1/(1+exp(-median)), group = as.factor(i), color = POD, shape = `Birth year`), size = 1.5, alpha = 0.6)+
+  geom_linerange(aes(x = year_cat, ymin = 1/(1+exp(-q95)), ymax = 1/(1+exp(-q5)), group = as.factor(i), color = POD), linewidth = 0.2)+
   facet_wrap(~param, ncol = 1)+
   theme_bw()+
   theme(legend.position = "bottom")+
@@ -465,67 +474,77 @@ ggplot(uncertainty%>%filter(param == "logit_ky"))+
 
 ggplot2::ggsave(paste0("./Figures/ky_CI.png"), device = "png", dpi = 700, height = 100, width = 300, units = 'mm')
 
+
 # box plots ----
 ## sex ----
 
-sex_box<-ggplot(id_parsumm%>%filter(param == "Ly" | param == "logit_ky"))+
-  geom_boxplot(aes(x = SEX, y = median, fill = SEX), alpha = 0.6)+
-  facet_wrap(~param, scales = "free")+
+sex_box<-ggplot(id_parsumm%>%filter(param != "t0p")%>%mutate(median = case_when(
+  param == "logit_ky" ~ 1/(1+exp(-median)),
+  param == "logit_kz" ~ 1/(1+exp(-median)),
+  TRUE ~ median
+), 
+param = case_when(
+  param == "logit_ky" ~ "ky",
+  param == "logit_kz" ~ "kz",
+  TRUE ~ param
+),
+group = case_when(
+  param == "ky" | param == "kz" ~ "Growth parameters",
+  TRUE ~ param
+)))+
+  geom_boxplot(aes(x = param, y = median, fill = SEX), alpha = 0.6)+
+  facet_wrap(~group, scales = "free")+
   theme_bw()+
-  xlab("Sex")+
+  xlab("")+
   ylab("")+
-  theme(legend.position = "none")+
+  theme(legend.position = "bottom")+
   scale_fill_viridis_d()
 
 ## pod ----
-pod_box<-ggplot(id_parsumm%>%filter(param == "Ly" | param == "logit_ky"))+
-  geom_boxplot(aes(x = POD, y = median, fill = POD), alpha = 0.6)+
-  facet_wrap(~param, scales = "free")+
+pod_box<-ggplot(id_parsumm%>%filter(param != "t0p")%>%mutate(median = case_when(
+  param == "logit_ky" ~ 1/(1+exp(-median)),
+  param == "logit_kz" ~ 1/(1+exp(-median)),
+  TRUE ~ median
+), 
+ param = case_when(
+   param == "logit_ky" ~ "ky",
+   param == "logit_kz" ~ "kz",
+   TRUE ~ param
+ ),
+group = case_when(
+  param == "ky" | param == "kz" ~ "Growth parameters",
+  TRUE ~ param
+)))+
+  geom_boxplot(aes(x = param, y = median, fill = POD), alpha = 0.6)+
+  facet_wrap(~group, scales = "free")+
   theme_bw()+
-  xlab("Pod")+
+  xlab("")+
   ylab("")+
-  theme(legend.position = "none")
+  theme(legend.position = "bottom")
 
 ggpubr::ggarrange(sex_box, pod_box, ncol = 1, labels = "auto")
 
 ggplot2::ggsave(paste0("./Figures/boxplots.png"), device = "png", dpi = 700, height = 200, width = 200, units = 'mm')
 
-# messing around ----
-
-ggplot(wide)+
-  geom_point(aes(x = logit_ky, y = Ly, color = "logit(ky) ~ Ly", shape = age_value))+
-  #geom_point(aes(x = logit_kz, y = Lz, color = "logit(kz) ~ Lz", shape = age_value))+
-  geom_point(aes(x = logit_kz, y = Ly, color = "logit(kz) ~ Ly", shape = age_value))
-  #geom_point(aes(x = logit_ky, y = Lz, color = "logit(ky) ~ Lz"))
-
-ggplot(wide, aes(x = -Ky, y = Ly, color = SEX))+
-  geom_point()
-
-ggplot(id_parsumm%>%
-         filter(param == "logit_kz" | param == "Ly")%>%
-         tidyr::pivot_wider(names_from = "param", values_from = "median"))+
-  geom_point(mapping = aes(x = logit_kz, y = Ly, color = age_value))
-
-ggplot(wide, aes(x = -Kz, y = Ly, color = age_value))+
-  geom_point()
-
-ggplot(ind_median, aes(x = kz, y = Lz, color = age_value))+
-  geom_point()
-
-ggplot(ind_median, aes(x = Lz, y = Ly, color = age_value))+
-  geom_point()
-
-ggplot(ind_median, aes(x = ky, y = kz, color = age_value))+
-  geom_point()
-
-
-## proportional relationship between z and y ----
+### Ly given Lz ----
 
 muLy<-summ_paroutin%>%
   filter(variable == "mu[1]")
 
+muky<-summ_paroutin%>%
+  filter(variable == "mu[2]")
+
 muLz<-summ_paroutin%>%
   filter(variable == "mu[3]")
+
+mukz<-summ_paroutin%>%
+  filter(variable == "mu[4]")
+
+sigma1<-summ_paroutin%>%
+  filter(variable == "sigma[1]")
+
+sigma3<-summ_paroutin%>%
+  filter(variable == "sigma[3]")
 
 sigma_obs1<-summ_paroutin%>%
   filter(variable == "sigma_obs[1]")
@@ -533,30 +552,65 @@ sigma_obs1<-summ_paroutin%>%
 sigma_obs2<-summ_paroutin%>%
   filter(variable == "sigma_obs[2]")
 
-L_obs11<-summ_paroutin%>%
-  filter(variable == "Lobs[1,1]")
-
-L_obs21<-summ_paroutin%>%
-  filter(variable == "Lobs[2,1]")
-
-L_obs22<-summ_paroutin%>%
-  filter(variable == "Lobs[2,2]")
-
 rho_obs<-summ_paroutin%>%
   filter(variable == "rho_obs")
 
-#regression coefficient
-var12 = sigma_obs1$median*sigma_obs2$median*rho_obs$median
-var22 = sigma_obs2$median^2
-reg_co<-(var12/var22)
-reg_co
+corr13<-summ_paroutin%>%
+  filter(variable == "corr[1,3]")
 
-intercept<-muLy$median - reg_co*muLz$median
-intercept
+vc11<-summ_paroutin%>%
+  filter(variable == "Lobs[1,1]")
+
+vc12<-summ_paroutin%>%
+  filter(variable == "Lobs[2,1]")
+
+vc22<-summ_paroutin%>%
+  filter(variable == "Lobs[2,2]")
+
+vc11<-summ_paroutin%>%
+  filter(variable == "varcov_par[1,1]")
+
+vc12<-summ_paroutin%>%
+  filter(variable == "varcov_par[1,3]")
+
+vc22<-summ_paroutin%>%
+  filter(variable == "varcov_par[3,3]")
+
+varcov = matrix(NA, 2, 2)
+
+varcov[1,1] = vc11$median
+sigma1$median^2
+
+varcov[2,2] = vc22$median
+sigma3$median^2
+
+varcov[1,2] = vc12$median
+corr13$median*sigma1$median*sigma3$median
+
+varcov[2,1] = varcov[1,2]
+
+#regression coefficient / slope
+reg_co<-(varcov[1,2]/varcov[2,2])
+slope = reg_co
+slope
+
+y_intercept<-muLy$median - reg_co*muLz$median
+y_intercept
+###
+#conditional variance
+con_var<-varcov[1,1]-slope*varcov[2,1]
 
 ij_est<-ij_all%>%
-  mutate(Length_est = reg_co*BHDF + intercept)%>%
-  mutate(Length2 = muLy$median+reg_co*(BHDF-muLz$median))
+  mutate(Length_est = slope*BHDF + y_intercept)%>%
+  mutate(`Age bin` = case_when(
+    age < 10 ~ "<10",
+    age >= 10 & age < 20 ~ "10-20",
+    age >= 20 & age < 30 ~ "20-30",
+    age >= 30 & age < 40 ~ "30-40",
+    age >= 40 ~ "40+"
+  ))
+
+summary(ij_est)
 
 ij_est
 
@@ -565,61 +619,56 @@ Lyest<-id_parsumm%>%
   filter(param == "Lz" | param == "Ly")%>%
   distinct(param, ind, ID, mean, median, sd, mad)%>%
   mutate(Length_est = case_when(
-    param == "Lz" ~ reg_co*median + intercept,
+    param == "Lz" ~ slope*median + y_intercept,
     TRUE ~ NA))
 
-x = Lyest%>%filter(param == "Lz")%>%dplyr::select(median)
-y = Lyest%>%filter(param == "Ly")%>%dplyr::select(median)
+x = Lyest%>%filter(param == "Lz")%>%dplyr::select(ind, median)
+y = Lyest%>%filter(param == "Ly")%>%dplyr::select(ind, median)
 
-ggplot()+
-  geom_point(Lyest%>%filter(param == "Lz"), mapping = aes(x = median, y = Length_est), color = "red")+
-  geom_point(mapping = aes(x = x$median, y = y$median))
+join<-x%>%
+  left_join(y, by = "ind")
 
-ggplot()+
-  geom_point(Lyest%>%filter(param == "Lz"), mapping = aes(x = ind, y = Length_est), color = "red")+
-  geom_point(Lyest%>%filter(param == "Ly"), mapping = aes(x = ind, y = median))+
-  xlim(70,143)
-
-### Ly given Lz ----
-
-(median(parout$`sigma[1]`)/median(parout$`sigma[3]`))
-
-
-z_grid = seq(from = min(ij_b$BHDF), max(ij_b$BHDF), length.out = 101)
-y_est = NULL
-
-(median(parout$`sigma[3]`)/median(parout$`sigma[1]`))
-
-(1 - median(parout$rho_obs)^2) * median(parout$`sigma[1]`)^2
-rho_sigma_for_Ly = median(parout$rho_obs)*(median(parout$`sigma[1]`)/median(parout$`sigma[3]`))
-alpha_0_for_Ly = median(parout$`mu[1]`) - rho_sigma_for_Ly*median(parout$`mu[3]`)
-
-for (i in 1:length(z_grid)){
-  i = 1
-  #alpha_1_for_Ly = rho_sigma_for_Ly*z_grid[i]
+linear_plot<-ggplot()+
+  geom_point(ij_est, mapping = aes(x = BHDF, y = length, color = `Age bin`), alpha = 0.6, size = 2)+
+  #geom_point(ij_est, mapping = aes(x = BHDF, y = Length_est))+
+  geom_point(join, mapping = aes(x = median.x, y = median.y), alpha = 0.6, size = 2)+
+  geom_abline(mapping = aes(slope = slope, intercept = y_intercept), size = 1.5)+
+  #geom_abline(mapping = aes(slope = 2.408, intercept = 0.72521, color = "Vivier et al. 2023"), size = 1.5)+
+  #geom_abline(mapping = aes(slope = 3.1314, intercept = 0.070626, color = "Cheney et al. 2018"), size = 1.5)+
+  #geom_abline(mapping = aes(slope = 3.17, intercept = 0.050583, color = "van Aswegen et al. 2019"), size = 1.5)+
+  scale_color_viridis_d(option="plasma", end = 0, begin = 0.88)+
+  theme_bw()+
+  theme(legend.position = "bottom")+
+  ylab("TL (m)")+
+  xlab("BHDF (m)")+
+  xlim(c(0.4, 1.2))+
+  ylim(c(1.3, 3.4))
   
-  #y_est[i]<-alpha_0_for_Ly+alpha_1_for_Ly
-  y_est[i] = median(parout$`mu[1]`)+((median(parout$`sigma[1]`)/median(parout$`sigma[3]`))*median(parout$rho_obs)*(z_grid[i] - median(parout$`mu[3]`)))
-  
-}
+fbd_allo<-ggMarginal(linear_plot)
 
-y_est
+lm<-lm(ij_est$length ~ ij_est$BHDF)
+lm_intercept = lm$coefficients[[1]]
+lm_slope = lm$coefficients[[2]]
 
-sd_for_Ly = (1-median(parout$rho_obs)^2)*median(parout$`sigma[1]`)^2 
-sd_for_Ly
+compare_plot<-ggplot()+
+  geom_point(ij_est, mapping = aes(x = BHDF, y = length),alpha = 0.1, size = 2)+
+  #geom_point(ij_est, mapping = aes(x = BHDF, y = Length_est))+
+  #geom_point(join, mapping = aes(x = median.x, y = median.y), alpha = 0.6, size = 2)+
+  geom_abline(mapping = aes(slope = slope, intercept = y_intercept), size = 2)+
+  geom_abline(mapping = aes(slope = 2.408, intercept = 0.72521, color = "Vivier et al. 2023"), size = 1.5, alpha = 0.6)+
+  geom_abline(mapping = aes(slope = 3.1314, intercept = 0.070626, color = "Cheney et al. 2018"), size = 1.5, alpha = 0.8)+
+  geom_abline(mapping = aes(slope = 3.17, intercept = 0.050583, color = "van Aswegen et al. 2019"), size = 1.5, alpha = 0.8)+
+  scale_color_viridis_d(end = 0.4, begin = 0.99)+
+  theme_bw()+
+  theme(legend.position = "bottom",
+        legend.title = element_blank())+
+  ylab("TL (m)")+
+  xlab("BHDF (m)")+
+  xlim(c(0.4, 1.2))+
+  ylim(c(1.3, 3.4))
 
-lm(ij_b$BHDF ~ ij_b$length)
+compare_plot
 
-ggplot(ij_b, aes(x=BHDF, y = length))+
-  geom_point()+ 
-  geom_smooth(method='lm', formula= y~x)+
-  #ylim(c(0,3.5))+
-  #xlim(c(0,1.5))+
-  geom_abline(intercept = 1.86, slope = 1.13, color = "red")
-#geom_point(mapping = aes(x = z_grid, y = y_est), color = "blue")
+alloplot<-ggpubr::ggarrange(linear_plot, compare_plot, labels = "auto")
 
-ggplot()+
-  geom_point(aes(x = parout$`mu[3]`, y = parout$`mu[1]`))
-
-ggplot()+
-  geom_point(aes(x = parout$`mu[4]`, y = parout$`mu[2]`))
+ggplot2::ggsave(paste0("./Figures/alloplot.png"), device = "png", dpi = 700, height = 125, width = 250, units = 'mm')
