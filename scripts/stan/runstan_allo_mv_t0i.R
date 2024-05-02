@@ -193,17 +193,18 @@ t0pindout_in_summ<-summary(t0pindout_in)
 # report results ----
 
 ### plot a couple of individuals ----
-#induse = c(1, 12, 99, 90)
-induse = ceiling(runif(4, 0, 143))
+induse = c(42,95,23)
+#induse = ceiling(runif(4, 0, 143))
 
 ngrid = 101
 agegrid = seq(from = -2, to = max(ij_b$age), length.out = ngrid)
 nind = length(induse)
 #pdf('indplots_bhdf.pdf', height = 8, width = 8)
 #par(mfrow = c(2,2), mar = c(4, 4, 1, 1))
+label = c("a","b","c")
 
 for(i in 1:nind){
-
+  k = label[i]
   i = induse[i]
   print(i)
   x = ij_all%>%filter(ind == i)%>%select(age)
@@ -254,26 +255,27 @@ for(i in 1:nind){
   #lines(agegrid, quan_z[3,], col = "red", lty = 2)
 
   ggplot()+
-    geom_point(aes(x = x$age, y = y$length, color = "TL"), size = 2.5, alpha = 0.8)+
-    geom_point(aes(x = x$age, y = z$BHDF, color = "BHDF"), size = 2.5, alpha = 0.8)+
-    geom_line(aes(x = agegrid, y = quan_y[1,], color = "TL"), linetype = "dashed")+
-    geom_line(aes(x = agegrid, y = quan_y[2,], color = "TL"))+
-    geom_line(aes(x = agegrid, y = quan_y[3,], color = "TL"), linetype = "dashed")+
-    geom_line(aes(x = agegrid, y = quan_z[1,], color = "BHDF"), linetype = "dashed")+
-    geom_line(aes(x = agegrid, y = quan_z[2,], color = "BHDF"))+
-    geom_line(aes(x = agegrid, y = quan_z[3,], color = "BHDF"), linetype = "dashed")+
-    coord_cartesian(ylim=c(0, 3.5))+
-    theme_bw()+
-    ylab("Length (m)")+
-    xlab("Age (years)")+
-    theme(legend.position = "none")+
-    scale_color_viridis_d(begin = 0.1, end = 0.8)
- 
-  ggplot2::ggsave(paste0("./Figures/indplot_",i,".png"), device = "png", dpi = 700, width = 200, height = 200, units = 'mm')
+      geom_point(aes(x = x$age, y = y$length, color = "TL"), size = 2.5, alpha = 0.8)+
+      geom_point(aes(x = x$age, y = z$BHDF, color = "BHDF"), size = 2.5, alpha = 0.8)+
+      geom_line(aes(x = agegrid, y = quan_y[1,], color = "TL"), linetype = "dashed")+
+      geom_line(aes(x = agegrid, y = quan_y[2,], color = "TL"))+
+      geom_line(aes(x = agegrid, y = quan_y[3,], color = "TL"), linetype = "dashed")+
+      geom_line(aes(x = agegrid, y = quan_z[1,], color = "BHDF"), linetype = "dashed")+
+      geom_line(aes(x = agegrid, y = quan_z[2,], color = "BHDF"))+
+      geom_line(aes(x = agegrid, y = quan_z[3,], color = "BHDF"), linetype = "dashed")+
+      coord_cartesian(ylim=c(0, 3.5))+
+      theme_bw()+
+      ylab("Length (m)")+
+      xlab("Age (years)")+
+      theme(legend.position = "none")+
+      scale_color_viridis_d(begin = 0.1, end = 0.8)+
+      labs(title = k)
+  
+  ggplot2::ggsave(paste0("./Figures/indplot_",i,".png"), device = "png", dpi = 700, width = 100, height = 100, units = 'mm')
   
   }
 
-dev.off()
+#dev.off()
 
 parindout
 
