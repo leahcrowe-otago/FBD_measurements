@@ -1,10 +1,27 @@
 ---
-title: "Crowe et al. FBD measurements suppmat"
+title: "Supplementary"
 format: pdf
 editor: visual
 bibliography: references.bib
 ---
 
+```{=tex}
+\begin{center}
+\huge
+Growth estimates of bottlenose dolphins (\textit{Tursiops truncatus}) at the southern extreme of their range
+\end{center}
+```
+```{=tex}
+\begin{center}
+Leah M. Crowe$^{*1,2}$, Steve M. Dawson$^{1}$, Matthew R. Schofield$^{2}$, William Rayment$^{1}$
+
+*leah.crowe@postgrad.otago.ac.nz
+
+$^{1}$Department of Marine Science $^{2}$Department of Mathematics and Statistics
+
+University of Otago, Dunedin, New Zealand
+\end{center}
+```
 # Tables
 
 ```{r, tab_priors, echo = F, warnings = F, messages = F, include = F}
@@ -18,9 +35,8 @@ priors%>%
   kable_classic(full_width = F, html_font = "Cambria")
 ```
 
-Table 1. Priors
-
 \newpage
+
 # Figures
 
 ```{r, morphs, echo = F, out.width='80%'}
@@ -39,13 +55,44 @@ knitr::include_graphics(c('./Figures/Supplement/Squid/Squid_fig.png'))
 
 Fig. S2. Example photographs of squid sucker marks on Fiordland bottlenose dolphins (within the red circle). These sucker marks are likely to have originated from squid per personal communication with squid expert, K. Bolstad. a) On the lower jaw in 2004, b) on the chin in 2015, and c) around the eye in 2023.
 
+```{r, Fig_raw, echo = F, out.height = '60%'}
+
+knitr::include_graphics('./Figures/raw.png')
+```
+
+Fig. S3. Measured values of total length (solid circles) and blowhole to dorsal fin length (open circles).
+
+\newpage
+
+::: {layout-nrow=1}
+
+![](Figures/indplot_42.png)
+
+![](Figures/indplot_95.png)
+
+![](Figures/indplot_23.png)
+
+:::
+
+
+Fig. S4. Example VBGC for three individuals. The purple circles are the measured BHDF lengths, the green circles are the measured TLs, the solid lines are the corresponding median growth curve model estimates, and the dashed lines represent the 90% credible intervals: (a) was measured as an adult during the study, and there is more uncertainty around the growth trajectory; (b) was measured as a juvenile, and there is more uncertainty in the projected maximum length estimate; (c) was measured near the age of reproductive maturity (around 10 years of age), and there is moderate uncertainty both around growth rate and projected maximum length.
+
+\newpage
+
+```{r, SWFSC, echo = F, out.height = '90%'}
+
+knitr::include_graphics('./Figures/Supp SWFSC Tt.png')
+```
+
+Fig. S5. Box plot summary of bottlenose dolphin (*Tursiops truncatus*) total length measurements from stranded specimens organized by degree (N) of latitude where the animal was recovered, organized from North to South (exclusive of missing latitude data from some animals recovered in California). Data were provided by the Southwest Fisheries Science Center and include animals collected across the Pacific United States include: CA = California, GU = Guam, HI = Hawaii, OR = Oregon, WA = Washington. All raw data points are plotted, and the boxed represent the interquartile range, where the vertical black bars indicate the median values.
+
 \newpage
 
 # Appendix I
 
-Primary model stan code.
+Primary model stan code. \footnotesize
 
-```{r, AppendixI, results='markup',echo=FALSE,comment=""}
+```{r, AppendixI, results='markup',echo=FALSE,comment="", out.width='50%'}
 
 cat(paste(readLines("./scripts/stan/vb_mod_all_t0i.stan"), collapse = "\n"))
 ```
@@ -54,7 +101,9 @@ cat(paste(readLines("./scripts/stan/vb_mod_all_t0i.stan"), collapse = "\n"))
 
 # Appendix II
 
-Model code to confirm exploratory findings that sex and pod do not influence growth parameters. 
+Model code to confirm exploratory findings that sex and pod do not influence growth parameters.
+
+\scriptsize
 
 ```{r, AppendixII, results='markup',echo=FALSE,comment=""}
 

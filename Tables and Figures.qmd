@@ -1,20 +1,43 @@
 ---
-title: "Crowe et al. FBD measurements"
+title: "Tables and Figures"
 format: pdf
 editor: visual
+fontsize: 11pt
+geometry: margin=30mm
 ---
 
-# Figures
+```{=tex}
+\begin{center}
+\huge
+Growth estimates of bottlenose dolphins (\textit{Tursiops truncatus}) at the southern extreme of their range
+\end{center}
+```
+```{=tex}
+\begin{center}
 
-```{r, map, echo = F, out.width='70%'}
+Leah M. Crowe$^{*1,2}$, Steve M. Dawson$^{1}$, Matthew R. Schofield$^{2}$, William Rayment$^{1}$
+
+*leah.crowe@postgrad.otago.ac.nz
+
+$^{1}$Department of Marine Science $^{2}$Department of Mathematics and Statistics
+
+University of Otago, Dunedin, New Zealand
+\end{center}
+```
+## Figures
+
+```{r, map, echo = F,out.width = '80%'}
 
 #source('C:/Users/leahm/OneDrive - University of Otago/Documents/git-otago/FBD_measurements/scripts/ms_map.R', local = TRUE, verbose = F)$value
 
-knitr::include_graphics(c('./Figures/map_a.png','./Figures/map_b.png'))
+#knitr::include_graphics(c('./Figures/map_a.png','./Figures/map_b.png'))
+knitr::include_graphics(c('./Figures/map_a.png'))
 
 ```
 
-Fig. 1. Map of the Patea-Doubtful (yellow) and the Tamatea-Dusky (purple) complexes in southwestern Aotearoa-New Zealand a. relative to Ata Whenua-Fiordland National Park (green) and the Te Moana o Atawhenua-Fiordland Marine Area (all areas of the sea inshore of the teal line including all fiords), and b. closer details. The 50m (grey) and 200m (dark blue) isobaths are provided on both maps. $\mathrm{\bar{O}}$tepoti-Dunedin is marked as the red dot on the small inset map.
+\vspace{-3ex}
+
+Fig. 1. Map of the Patea-Doubtful (yellow) and the Tamatea-Dusky (purple) complexes in southwestern Aotearoa-New Zealand relative to Ata Whenua-Fiordland National Park (green) and the Te Moana o Atawhenua-Fiordland Marine Area (all areas of the sea inshore of the teal line, including all fiords). The 50m (grey) and 200m (dark blue) isobaths are displayed, and Ōtepoti-Dunedin is marked as the red dot on the inset map.
 
 ```{r, Fig_dolphin, echo = F, out.width = '100%'}
 knitr::include_graphics('./Figures/Fig. 2.png')
@@ -22,33 +45,33 @@ knitr::include_graphics('./Figures/Fig. 2.png')
 
 Fig. 2. Example video snapshot where the rostrum and fluke notch are clearly visible for the total length (TL) measurements, and the blowhole and dorsal fin insertion are above the surface (BHDF). Oblique photos are also provided to demonstrate how individuals were identified from dorsal body markings. The animal in this image is a reproductive female named 'Minus' born in 2006.
 
-```{r, Fig_raw, echo = F, out.height = '60%'}
-knitr::include_graphics('./Figures/raw.png')
-```
-
-Fig. 3. Measured values of total length (solid circles) and blowhole to dorsal fin length (open circles).
-
 ```{r, Fig_hist, echo = F, out.height='80%'}
 knitr::include_graphics('./Figures/hist_fig.png')
 
 ```
 
-Fig. 4. Number of snapshots where an individual dolphin measurement of TL and/or BHDF was taken per pod identity a. over the course of the entire study and b. per sampling effort.
+Fig. 3. Number of snapshots where an individual dolphin measurement of TL and/or BHDF was taken per pod identity a. over the course of the entire study and b. per sampling effort.
 
 ```{r, Fig_vbgc, echo = F, out.width='110%'}
 knitr::include_graphics('./Figures/vbgcplot.png')
 ```
 
-Fig. 5. Predicted von Bertalanffy growth curves for each individual measured. Curves were fit using the median values estimated for $Ly_{i}$ and $ky_{i}$, and are a. plotted relative to age and b. actual (solid lines) or estimated minimum (dotted lines) birth year.
+Fig. 4. Predicted von Bertalanffy growth curves for each individual measured. Curves were fit using the median values estimated for $Ly_{i}$ and $ky_{i}$, and are a. plotted relative to age and b. actual (solid lines) or estimated minimum (dotted lines) birth year.
 
 ```{r, Fig_Ly_CI, echo = F, out.width='110%'}
 knitr::include_graphics('./Figures/Ly_CI.png')
 ```
 
-Fig. 6. Posterior distribution estimate of total length for each individual ($Ly_{i}$) by actual or estimated minimum birth year. The plotted point is at the median estimate and the vertical lines represent the 90% credible intervals. The x-axis indicates the animal's birth year bin; the position within the year bin is arbitrarily spaced to be able to see the points.
+Fig. 5. Posterior distribution estimate of total length for each individual ($Ly_{i}$) by actual or estimated minimum birth year. The plotted point is at the median estimate and the vertical lines represent the 90% credible intervals. The x-axis indicates the animal's birth year bin; the position within the year bin is arbitrarily spaced to be able to see the points.
+
+```{r, Fig_allo, echo = F, out.width='100%'}
+knitr::include_graphics('./Figures/alloplot.png')
+```
+
+Fig. 6. The allometric relationship between TL and BHDF length. a. The raw data measurements of Fiordland bottlenose dolphins collected in this study are plotted in the colored circles relative to the age at the measurement occasion. The black dots are the estimates of $Ly_{i}$ and $Lz_{i}$ for each individual and the black line is the conditional relationship between these two parameter estimates. b. The modeled allometric relationship between TL and BHDF length of Fiordland bottlenose dolphins (black, y = 2.133x + 0.925) and our raw data measurements (grey circles) are contextualized with previously reported allometric relationships from other *Tursiops* populations: unknown ecotype *T. truncatus* in Moray Firth, Scotland (Cheney et al. 2018, y = 3.1314x + 0.070626), *T. aduncus* in southwestern Australia (van Aswegen et al. 2019, y = 3.17x + 0.050583), and likely coastal ecotype, captive *T. truncatus* (Vivier et al. 2023, y = 2.408x + 0.72521). The conditional relationship we report here is most similar to that reported by Vivier et al. 2023 where most of the 18 individuals they measured were adult age animals. While Cheney et al. 2018 and van Aswegen et al. 2019 reported nearly similar relationships, both studies applied a linear regression to datasets that were more distributed across lengths and age-classes.
 
 ```{r, Fig_box, echo = F, out.height='80%'}
 knitr::include_graphics('./Figures/boxplots.png')
 ```
 
-Fig. 7. Exploratory summary boxplots of the median estimates of growth rate (logit($ky_i$), left column) and estimated maximum total length ($Ly_{i}$, right column) calculated for each individual grouped by a. sex (F = female, M = male, X = unknown) and b. pod membership. Note the y-axis for logit($ky_i$) is the estimated growth rate ($e^K$) and is meters for $Ly$.
+Fig. 7. Exploratory summary boxplots of the median estimates of growth rates ($ky_i$ and $kz_{i}$) and estimated maximum total lengths ($Ly_{i}$ and $Lz_{i}$) calculated for each individual grouped by a. sex (F = female, M = male, X = unknown) and b. pod membership. Note that the growth parameters are scaled between 0 and 1, and the y-axis represented length in meters for $Ly$ and $Lz$.
