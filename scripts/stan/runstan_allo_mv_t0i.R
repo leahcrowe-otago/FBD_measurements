@@ -16,10 +16,6 @@ ij_all<-ij_b%>%
   bind_rows(ij_z)%>%
   bind_rows(ij_y)
 
-ij_all_old<-ij_b_old%>%
-  bind_rows(ij_z_old)%>%
-  bind_rows(ij_y_old)
-
 median(ij_all$length, na.rm = T)
 median(ij_all$BHDF, na.rm = T)
 
@@ -45,7 +41,7 @@ N_y = nrow(ij_y)
 N_y
 
 #IDs
-ij_ID = readRDS(file = 'ij_ID.rds')
+ij_ID = readRDS(file = './data/Measurements/ij_ID.rds')
 
 n_ind<-nrow(ij_ID)
 
@@ -147,12 +143,12 @@ parout = as_draws_df(fit_vb$draws(c("mu","mu_t","sigma","sigma_t","sigma_obs","r
                                     "corr[2,3]","corr[2,4]",
                                     "corr[3,4]",
                                     "Lobs[1,1]","Lobs[2,1]","Lobs[2,2]")))
-saveRDS(parout, file = paste0("parout_",Sys.Date(),".rds"))
+saveRDS(parout, file = paste0("./results/parout_",Sys.Date(),".rds"))
 
 #trace plot
 library(ggplot2)
 mcmc_trace(parout)+theme_bw()
-ggplot2::ggsave("traceplot_allo.png", device = "png", dpi = 300, height = 200, width = 300, units = 'mm')
+ggplot2::ggsave(paste0("./results/traceplot_allo",Sys.Date(),".png"), device = "png", dpi = 500, height = 200, width = 300, units = 'mm')
 #density plot
 bayesplot::mcmc_dens(parout)
 #summary
@@ -162,18 +158,35 @@ as.data.frame(summary(parout))
 parindout = as_draws_df(fit_vb$draws(c("par")))
 t0pindout = as_draws_df(fit_vb$draws(c("t0p")))
 #save par for individual plotting
-saveRDS(parindout, file = paste0("parindout_",Sys.Date(),".rds"))
-saveRDS(t0pindout, file = paste0("t0pindout_",Sys.Date(),".rds"))
+saveRDS(parindout, file = paste0("./results/parindout_",Sys.Date(),".rds"))
+saveRDS(t0pindout, file = paste0("./results/t0pindout_",Sys.Date(),".rds"))
 
 # read in results ----
 date = "2024-04-30"
 # remember k is logit(k)
 #all non individual based params
-parout_in = readRDS(file = paste0('parout_',date,'.rds'))
+parout_in = readRDS(file = paste0('./results/parout_',date,'.rds'))
 as.data.frame(parout_in)
 bayesplot::mcmc_dens(parout_in)
 bayesplot::mcmc_trace(parout_in)+theme_bw()
 summ_paroutin<-as.data.frame(summary(parout_in))
+
+summ<-summ_paroutin%>%
+  mutate(median = case_when(
+    variable == "mu_t" ~ exp(median),
+    TRUE ~ median),
+    q5 = case_when(
+      variable == "mu_t" ~ exp(q5),
+      TRUE ~ q5),
+    q95 = case_when(
+      variable == "mu_t" ~ exp(q95),
+      TRUE ~ q95
+    ))%>%
+  mutate(`90%CI` = paste0(as.character(format(round(q5,2)),2),"–",as.character(round(q95,2))),
+         Median = round(median, 2))%>%
+  dplyr::select(variable, Median,`90%CI`)
+
+saveRDS(summ, file = "./results/summtable.rds")
 
 max(summ_paroutin$rhat)
 min(summ_paroutin$ess_bulk)
@@ -185,12 +198,159 @@ max(summary(parout)$rhat)
 min(summary(parout)$ess_bulk)
 min(summary(parout)$ess_tail)
 #individual based params
-parindout_in = readRDS(file = paste0('./parindout_',date,'.rds'))
+parindout_in = readRDS(file = paste0('./results/parindout_',date,'.rds'))
 parindout_in_summ<-summary(parindout_in)
 
-t0pindout_in = readRDS(file = paste0('./t0pindout_',date,'.rds'))
+t0pindout_in = readRDS(file = paste0('./results/t0pindout_',date,'.rds'))
 t0pindout_in_summ<-summary(t0pindout_in)
 # report results ----
+
+i1 = 7 #13 
+i2 = 18 #116 
+i3 = 141 #28 
+i4 = 81 
+i5 = 134
+i6 = 143
+
+## Lyi x Lzi ----
+a<-ggplot()+
+  geom_density_2d(aes(x = parindout_in[[paste0('par[',i1,',1]')]], y = parindout_in[[paste0('par[',i1,',3]')]], color = as.factor(i1)), alpha = 0.8)+
+  geom_density_2d(aes(x = parindout_in[[paste0('par[',i2,',1]')]], y = parindout_in[[paste0('par[',i2,',3]')]], color = as.factor(i2)), alpha = 0.8)+
+  geom_density_2d(aes(x = parindout_in[[paste0('par[',i3,',1]')]], y = parindout_in[[paste0('par[',i3,',3]')]], color = as.factor(i3)), alpha = 0.8)+
+  geom_density_2d(aes(x = parindout_in[[paste0('par[',i4,',1]')]], y = parindout_in[[paste0('par[',i4,',3]')]], color = as.factor(i4)), alpha = 0.8)+
+  geom_density_2d(aes(x = parindout_in[[paste0('par[',i5,',1]')]], y = parindout_in[[paste0('par[',i5,',3]')]], color = as.factor(i5)), alpha = 0.8)+
+  geom_density_2d(aes(x = parindout_in[[paste0('par[',i6,',1]')]], y = parindout_in[[paste0('par[',i6,',3]')]], color = as.factor(i6)), alpha = 0.8)+
+  xlab("Ly_i")+
+  ylab("Lz_i")+
+  theme_bw()+
+  scale_color_viridis_d()+
+  theme(legend.position = "none")
+ggplot2::ggsave("./Figures/a.png", a, device = "png", dpi = 500, height = 200, width = 200, units = 'mm')
+
+### plot all posterior
+j = 0
+
+LyiLzi<-function(parindout_in){
+  
+p<-ggplot(parindout_in)+
+  theme_bw()+
+  scale_color_viridis_d()+
+  theme(legend.position = "none")+
+  xlab("Ly_i")+
+  ylab("Lz_i")
+
+for (i in names(parindout_in)[1:143]){
+  print(i)
+  print(j)
+  j=j+1
+  iname = j + 143*2
+  print(iname)
+  iplus = names(parindout_in)[iname]
+  print(iplus)
+
+  p<-p+
+    geom_density_2d(aes(x = .data[[i]], y = .data[[iplus]]), color = j, alpha = 0.8)
+
+}
+return(p)
+}
+
+LyiLzi_p<-LyiLzi(parindout_in)
+ggplot2::ggsave("./Figures/LyiLzi_2d.png", LyiLzi_p, device = "png", dpi = 500, height = 200, width = 200, units = 'mm')
+
+
+## logit(kyi) x logit(kzi) ----
+b<-ggplot()+
+  geom_density_2d(aes(x = parindout_in[[paste0('par[',i1,',4]')]], y = parindout_in[[paste0('par[',i1,',2]')]], color = as.factor(i1)), alpha = 0.8)+
+  geom_density_2d(aes(x = parindout_in[[paste0('par[',i2,',4]')]], y = parindout_in[[paste0('par[',i2,',2]')]], color = as.factor(i2)), alpha = 0.8)+
+  geom_density_2d(aes(x = parindout_in[[paste0('par[',i3,',4]')]], y = parindout_in[[paste0('par[',i3,',2]')]], color = as.factor(i3)), alpha = 0.8)+
+  geom_density_2d(aes(x = parindout_in[[paste0('par[',i4,',4]')]], y = parindout_in[[paste0('par[',i4,',2]')]], color = as.factor(i4)), alpha = 0.8)+
+  geom_density_2d(aes(x = parindout_in[[paste0('par[',i5,',4]')]], y = parindout_in[[paste0('par[',i5,',2]')]], color = as.factor(i5)), alpha = 0.8)+
+  geom_density_2d(aes(x = parindout_in[[paste0('par[',i6,',4]')]], y = parindout_in[[paste0('par[',i6,',2]')]], color = as.factor(i6)), alpha = 0.8)+
+  xlab("logit(kz_i)")+
+  ylab("logit(ky_i)")+  
+  theme_bw()+
+  scale_color_viridis_d()+
+  theme(legend.position = "none")
+
+j = 143
+
+kyikzi<-function(parindout_in){
+  
+  p<-ggplot(parindout_in)+
+    theme_bw()+
+    scale_color_viridis_d()+
+    theme(legend.position = "none")+
+    xlab("logit(kz_i)")+
+    ylab("logit(ky_i)")
+  
+  for (i in names(parindout_in)[144:286]){
+    print(i)
+    print(j)
+    j=j+1
+    iname = j + 143*2
+    print(iname)
+    iplus = names(parindout_in)[iname]
+    print(iplus)
+    
+    p<-p+
+      geom_density_2d(aes(x = .data[[i]], y = .data[[iplus]]), color = j, alpha = 0.8)
+    
+  }
+  return(p)
+}
+
+kyikzi_p<-kyikzi(parindout_in)
+ggplot2::ggsave("./Figures/kyikzi_2d.png", kyikzi_p, device = "png", dpi = 500, height = 200, width = 200, units = 'mm')
+
+## Lyi x logit(kyi) ----
+c<-ggplot()+
+  geom_density_2d(aes(x = parindout_in[[paste0('par[',i1,',1]')]], y = parindout_in[[paste0('par[',i1,',2]')]], color = as.factor(i1)), alpha = 0.8)+
+  geom_density_2d(aes(x = parindout_in[[paste0('par[',i2,',1]')]], y = parindout_in[[paste0('par[',i2,',2]')]], color = as.factor(i2)), alpha = 0.8)+
+  geom_density_2d(aes(x = parindout_in[[paste0('par[',i3,',1]')]], y = parindout_in[[paste0('par[',i3,',2]')]], color = as.factor(i3)), alpha = 0.8)+
+  geom_density_2d(aes(x = parindout_in[[paste0('par[',i4,',1]')]], y = parindout_in[[paste0('par[',i4,',2]')]], color = as.factor(i4)), alpha = 0.8)+
+  geom_density_2d(aes(x = parindout_in[[paste0('par[',i5,',1]')]], y = parindout_in[[paste0('par[',i5,',2]')]], color = as.factor(i5)), alpha = 0.8)+
+  geom_density_2d(aes(x = parindout_in[[paste0('par[',i6,',1]')]], y = parindout_in[[paste0('par[',i6,',2]')]], color = as.factor(i6)), alpha = 0.8)+
+  xlab("Ly_i")+
+  ylab("logit(ky_i)")+
+  theme_bw()+
+  scale_color_viridis_d()+
+  theme(legend.position = "none")
+
+j = 143
+
+Lyikyi<-function(parindout_in){
+  
+  p<-ggplot(parindout_in)+
+    theme_bw()+
+    scale_color_viridis_d()+
+    theme(legend.position = "none")+
+    xlab("Ly_i")+
+    ylab("logit(ky_i)")
+  
+  for (i in names(parindout_in)[1:143]){
+    print(i)
+    print(j)
+    j=j+1
+    iname = j + 143
+    print(iname)
+    iplus = names(parindout_in)[iname]
+    print(iplus)
+    
+    p<-p+
+      geom_density_2d(aes(x = .data[[i]], y = .data[[iplus]]), color = j, alpha = 0.8)
+    
+  }
+  return(p)
+}
+
+Lyikyi_p<-Lyikyi(parindout_in)
+ggplot2::ggsave("./Figures/Lyikyi_2d.png", Lyikyi_p, device = "png", dpi = 500, height = 200, width = 200, units = 'mm')
+
+abc<-ggpubr::ggarrange(a,b,c)
+ggplot2::ggsave("./Figures/corr_density_2d.png", abc, device = "png", dpi = 500, height = 200, width = 200, units = 'mm')
+abc<-ggpubr::arrange(LyiLzi_p,kyikzi_p,Lyikyi_p)
+ggplot2::ggsave("./Figures/all_corr_plot.png", abc, device = "png", dpi = 500, height = 200, width = 200, units = 'mm')
 
 ### plot a couple of individuals ----
 induse = c(42,95,23)
@@ -280,6 +440,7 @@ for(i in 1:nind){
 parindout
 
 #### need to adjust for new model outputs above
+library(bayesplot)
 mcmc_intervals(parindout_in[1:143], outer_size = 0.5, inner_size = 1, point_size = 2)
 mcmc_intervals(parindout_in[144:286], outer_size = 0.5, inner_size = 1, point_size = 2)
 mcmc_intervals(parindout_in[287:429], outer_size = 0.5, inner_size = 1, point_size = 2)
@@ -306,7 +467,7 @@ id_parsumm<-parindout_in_summ%>%
   mutate(ind = as.numeric(stringr::str_extract(substr(variable, 5, nchar(variable)), '[^,]+')))%>%
   left_join(ij_ID, by = 'ind')%>%
   bind_rows(id_t0psumm)
-  
+
 ###
 #t0p = median(parout_in$t0p)
 #quantile(parout_in$t0p)
@@ -477,8 +638,8 @@ ggplot(uncertainty%>%filter(param == "logit_ky")%>%mutate(param = "ky"))+
 ggplot2::ggsave(paste0("./Figures/ky_CI.png"), device = "png", dpi = 700, height = 100, width = 300, units = 'mm')
 
 
-# box plots ----
-## sex ----
+## box plots ----
+#### sex ----
 
 sex_box<-ggplot(id_parsumm%>%filter(param != "t0p")%>%mutate(median = case_when(
   param == "logit_ky" ~ 1/(1+exp(-median)),
@@ -502,7 +663,7 @@ group = case_when(
   theme(legend.position = "bottom")+
   scale_fill_viridis_d()
 
-## pod ----
+#### pod ----
 pod_box<-ggplot(id_parsumm%>%filter(param != "t0p")%>%mutate(median = case_when(
   param == "logit_ky" ~ 1/(1+exp(-median)),
   param == "logit_kz" ~ 1/(1+exp(-median)),
@@ -674,3 +835,15 @@ compare_plot
 alloplot<-ggpubr::ggarrange(linear_plot, compare_plot, labels = "auto")
 
 ggplot2::ggsave(paste0("./Figures/alloplot.png"), device = "png", dpi = 700, height = 125, width = 250, units = 'mm')
+
+
+head(ind_median)
+
+ggplot(ind_median)+
+  geom_point(mapping = aes(x = Ly, y = Lz, color = ind))
+
+ggplot(ind_median)+
+  geom_point(mapping = aes(x = logit_ky, y = logit_kz))
+
+ggplot(ind_median)+
+  geom_point(mapping = aes(x = Ly, y = ky))
