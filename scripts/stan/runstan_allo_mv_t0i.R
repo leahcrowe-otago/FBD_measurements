@@ -205,29 +205,8 @@ t0pindout_in = readRDS(file = paste0('./results/t0pindout_',date,'.rds'))
 t0pindout_in_summ<-summary(t0pindout_in)
 # report results ----
 
-i1 = 7 #13 
-i2 = 18 #116 
-i3 = 141 #28 
-i4 = 81 
-i5 = 134
-i6 = 143
-
-## Lyi x Lzi ----
-a<-ggplot()+
-  geom_density_2d(aes(x = parindout_in[[paste0('par[',i1,',1]')]], y = parindout_in[[paste0('par[',i1,',3]')]], color = as.factor(i1)), alpha = 0.8)+
-  geom_density_2d(aes(x = parindout_in[[paste0('par[',i2,',1]')]], y = parindout_in[[paste0('par[',i2,',3]')]], color = as.factor(i2)), alpha = 0.8)+
-  geom_density_2d(aes(x = parindout_in[[paste0('par[',i3,',1]')]], y = parindout_in[[paste0('par[',i3,',3]')]], color = as.factor(i3)), alpha = 0.8)+
-  geom_density_2d(aes(x = parindout_in[[paste0('par[',i4,',1]')]], y = parindout_in[[paste0('par[',i4,',3]')]], color = as.factor(i4)), alpha = 0.8)+
-  geom_density_2d(aes(x = parindout_in[[paste0('par[',i5,',1]')]], y = parindout_in[[paste0('par[',i5,',3]')]], color = as.factor(i5)), alpha = 0.8)+
-  geom_density_2d(aes(x = parindout_in[[paste0('par[',i6,',1]')]], y = parindout_in[[paste0('par[',i6,',3]')]], color = as.factor(i6)), alpha = 0.8)+
-  xlab("Ly_i")+
-  ylab("Lz_i")+
-  theme_bw()+
-  scale_color_viridis_d()+
-  theme(legend.position = "none")
-ggplot2::ggsave("./Figures/a.png", a, device = "png", dpi = 500, height = 200, width = 200, units = 'mm')
-
-### plot all posterior
+### plot all posterior ----
+#### Lyi x Lzi ----
 j = 0
 
 LyiLzi<-function(parindout_in){
@@ -258,21 +237,7 @@ return(p)
 LyiLzi_p<-LyiLzi(parindout_in)
 ggplot2::ggsave("./Figures/LyiLzi_2d.png", LyiLzi_p, device = "png", dpi = 500, height = 200, width = 200, units = 'mm')
 
-
-## logit(kyi) x logit(kzi) ----
-b<-ggplot()+
-  geom_density_2d(aes(x = parindout_in[[paste0('par[',i1,',4]')]], y = parindout_in[[paste0('par[',i1,',2]')]], color = as.factor(i1)), alpha = 0.8)+
-  geom_density_2d(aes(x = parindout_in[[paste0('par[',i2,',4]')]], y = parindout_in[[paste0('par[',i2,',2]')]], color = as.factor(i2)), alpha = 0.8)+
-  geom_density_2d(aes(x = parindout_in[[paste0('par[',i3,',4]')]], y = parindout_in[[paste0('par[',i3,',2]')]], color = as.factor(i3)), alpha = 0.8)+
-  geom_density_2d(aes(x = parindout_in[[paste0('par[',i4,',4]')]], y = parindout_in[[paste0('par[',i4,',2]')]], color = as.factor(i4)), alpha = 0.8)+
-  geom_density_2d(aes(x = parindout_in[[paste0('par[',i5,',4]')]], y = parindout_in[[paste0('par[',i5,',2]')]], color = as.factor(i5)), alpha = 0.8)+
-  geom_density_2d(aes(x = parindout_in[[paste0('par[',i6,',4]')]], y = parindout_in[[paste0('par[',i6,',2]')]], color = as.factor(i6)), alpha = 0.8)+
-  xlab("logit(kz_i)")+
-  ylab("logit(ky_i)")+  
-  theme_bw()+
-  scale_color_viridis_d()+
-  theme(legend.position = "none")
-
+#### logit(kyi) x logit(kzi) ----
 j = 143
 
 kyikzi<-function(parindout_in){
@@ -303,20 +268,7 @@ kyikzi<-function(parindout_in){
 kyikzi_p<-kyikzi(parindout_in)
 ggplot2::ggsave("./Figures/kyikzi_2d.png", kyikzi_p, device = "png", dpi = 500, height = 200, width = 200, units = 'mm')
 
-## Lyi x logit(kyi) ----
-c<-ggplot()+
-  geom_density_2d(aes(x = parindout_in[[paste0('par[',i1,',1]')]], y = parindout_in[[paste0('par[',i1,',2]')]], color = as.factor(i1)), alpha = 0.8)+
-  geom_density_2d(aes(x = parindout_in[[paste0('par[',i2,',1]')]], y = parindout_in[[paste0('par[',i2,',2]')]], color = as.factor(i2)), alpha = 0.8)+
-  geom_density_2d(aes(x = parindout_in[[paste0('par[',i3,',1]')]], y = parindout_in[[paste0('par[',i3,',2]')]], color = as.factor(i3)), alpha = 0.8)+
-  geom_density_2d(aes(x = parindout_in[[paste0('par[',i4,',1]')]], y = parindout_in[[paste0('par[',i4,',2]')]], color = as.factor(i4)), alpha = 0.8)+
-  geom_density_2d(aes(x = parindout_in[[paste0('par[',i5,',1]')]], y = parindout_in[[paste0('par[',i5,',2]')]], color = as.factor(i5)), alpha = 0.8)+
-  geom_density_2d(aes(x = parindout_in[[paste0('par[',i6,',1]')]], y = parindout_in[[paste0('par[',i6,',2]')]], color = as.factor(i6)), alpha = 0.8)+
-  xlab("Ly_i")+
-  ylab("logit(ky_i)")+
-  theme_bw()+
-  scale_color_viridis_d()+
-  theme(legend.position = "none")
-
+#### Lyi x logit(kyi) ----
 j = 143
 
 Lyikyi<-function(parindout_in){
@@ -347,10 +299,9 @@ Lyikyi<-function(parindout_in){
 Lyikyi_p<-Lyikyi(parindout_in)
 ggplot2::ggsave("./Figures/Lyikyi_2d.png", Lyikyi_p, device = "png", dpi = 500, height = 200, width = 200, units = 'mm')
 
-abc<-ggpubr::ggarrange(a,b,c)
-ggplot2::ggsave("./Figures/corr_density_2d.png", abc, device = "png", dpi = 500, height = 200, width = 200, units = 'mm')
-abc<-ggpubr::arrange(LyiLzi_p,kyikzi_p,Lyikyi_p)
-ggplot2::ggsave("./Figures/all_corr_plot.png", abc, device = "png", dpi = 500, height = 200, width = 200, units = 'mm')
+#### all arrange ----
+abc<-ggpubr::ggarrange(LyiLzi_p,kyikzi_p,Lyikyi_p)
+ggplot2::ggsave("./Figures/all_corr_plot_2d.png", abc, device = "png", dpi = 500, height = 200, width = 200, units = 'mm')
 
 ### plot a couple of individuals ----
 induse = c(42,95,23)
