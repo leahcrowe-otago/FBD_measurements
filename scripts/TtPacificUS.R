@@ -44,8 +44,11 @@ ggplot(TtUSPac_confirmed)+
   geom_point(aes(y = as.factor(latitude_dd), x = length_cm, color = State), size = 2)+
   theme_bw()+
   ylab("Latitude degree")+
-  xlab("Length (cm)")
+  xlab("Length (cm)")+
+  theme(legend.position = "bottom")
   #facet_wrap(~`Age Class`)
+
+ggplot2::ggsave(paste0("./Figures/Supplement/SWFSC Tt.png"), device = "png", dpi = 700, width = 150, height = 200, units = 'mm')
 
 max(TtUSPac_confirmed$latitude_dd)
 min(TtUSPac_confirmed$`Observation Date`)
@@ -57,3 +60,4 @@ TtUSPac_confirmed%>%
   tally()
 
 nrow(TtUSPac_confirmed)
+
