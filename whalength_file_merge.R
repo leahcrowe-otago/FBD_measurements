@@ -369,13 +369,28 @@ noodle<-length_ID_merge%>%
     TRUE ~ Total.Length..m.
   ))
 
-noodle%>%
-  mutate(diff_TL = mean(Total.Length..m.-1.947), ## noodle total length
-         diff_RBH = mean(Rostrum.BH-0.462), ## noodle orange length
-         diff_BHDF = mean(BH.DF.insertion-1.485))%>% ## noodle purple length
-  distinct(diff_TL, diff_RBH, diff_BHDF)
+noodle_diff<-noodle%>%
+  ungroup()%>%
+  mutate(diff_TL = Total.Length..m.-1.947, ## noodle total length
+         diff_RBH = Rostrum.BH-0.462, ## noodle orange length
+         diff_BHDF = BH.DF.insertion-1.485) ## noodle purple length
 
-noodle%>%
+ggplot(noodle_diff)+
+  geom_point(mapping = aes(y = diff_TL, x = 1.947, color = "Total length"))+
+  geom_point(mapping = aes(y = diff_RBH, x = 0.462, color = "Orange"))+
+  geom_point(mapping = aes(y = diff_BHDF, x = 1.485, color = "Purple"))+
+  theme_bw()+
+  xlab("Actual length (m)")+
+  ylab("Difference between observed and actual length (m)")+
+  facet_wrap(~trip, ncol = 4)+
+  theme(legend.position = c(0.88,0.2))+
+  guides(color=guide_legend(title='Segment measured'))+
+  scale_color_manual(values = c("orange","purple","black"))
+
+ggplot2::ggsave(paste0("./Figures/noodle.png"), device = "png", dpi = 700, height = 150, width = 300, units = 'mm')
+
+
+noodlestats<-noodle%>%
   group_by(trip)%>%
   dplyr::summarise(mean_TL = mean(Total.Length..m.),
                    sd_TL = sd(Total.Length..m.),
@@ -388,12 +403,15 @@ noodle%>%
          CV_RBH = sd_RBH/mean_RBH,
          CV_BHDF = sd_BHDF/mean_BHDF)
 
-ggplot(noodle)+
+noodle_plot<-ggplot(noodle)+
   geom_point(mapping = aes(y = Total.Length..m., x = 1.947, color = "Total length"))+
   geom_point(mapping = aes(y = Rostrum.BH, x = 0.462, color = "Orange"))+
   geom_point(mapping = aes(y = BH.DF.insertion, x = 1.485, color = "Purple"))+
   theme_bw()+
   xlab("Actual length (m)")+
-  ylab("Estimated length (m)")+
-  facet_wrap(~trip)
+  ylab("Observed length (m)")+
+  facet_wrap(~trip)+
+  theme(legend.position = c(0.8,0.15))+
+  guides(color=guide_legend(title='Segment measured'))
 
+ggplot2::ggsave(paste0("./Figures/noodle.png"), noodle_plot, device = "png", dpi = 700, height = 300, width = 200, units = 'mm')
