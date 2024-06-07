@@ -1,77 +1,52 @@
 ---
-title: "Tables and Figures"
 format: pdf
 editor: visual
-fontsize: 11pt
-geometry: margin=30mm
+fontsize: 12pt
+geometry: margin=1in
+header-includes:
+  - \usepackage[left]{lineno}
+  - \linenumbers
+  - \usepackage{setspace}
+  - \usepackage{times}
 ---
 
-```{=tex}
-\begin{center}
-\huge
-Growth estimates of bottlenose dolphins (\textit{Tursiops truncatus}) at the southern extreme of their range
-\end{center}
-```
-```{=tex}
-\begin{center}
+\newpage
 
-Leah M. Crowe$^{*1,2}$, Steve M. Dawson$^{1}$, Matthew R. Schofield$^{2}$, William Rayment$^{1}$
+\doublespacing
+\setcounter{page}{26}
 
-*leah.crowe@postgrad.otago.ac.nz
+## FIGURE CAPTIONS
 
-$^{1}$Department of Marine Science $^{2}$Department of Mathematics and Statistics
+Figure 1. Example measurement snapshot where the rostrum and fluke notch are clearly visible for total length (TL), and the blowhole and dorsal fin insertion (BHDF) are above the surface for the BHDF measurement. Oblique photos are also provided to demonstrate how individuals were identified from dorsal body markings. The animal in this image is a reproductive female named 'Minus' born in 2006.
 
-University of Otago, Dunedin, New Zealand
-\end{center}
-```
-## Figures
+Figure 2. (a) Von Bertalanffy growth curves (VBGC) for each dolphin to estimate the median maximum total length (TL) and blowhole to dorsal fin length. The horizontal red lines are the median (solid) and 90% credible intervals (CI; dashed) of the population-level posterior distribution, and the vertical red line is provided at age 7 to visually compare the growth rate between the two lengths. (b) The TL VBGC per individual relative to birth year ('actual' = birth year if known; 'est' = first year sighted or estimated based on calving history). (c) The uncertainty (90%CI, vertical lines) around the maximum median total length estimates (points) for each individual; the position within the year bin is arbitrary.
 
-```{r, map, echo = F,out.width = '80%'}
+Figure 3. (a--c) The conditional distribution (red line) between the median estimates of individual ($i$) growth parameters: maximum total length $L_{1i}$, maximum blowhole to dorsal fin length $L_{2i}$, total length growth rate logit($k_{1i}$), and blowhole to dorsal fin length growth rate logit($k_{2i}$). The dashed red lines are the standard deviations ($\sigma$) of the linear relationship given by the listed equation where $\hat{y}$ is the expected value given x. (d) The values and linear relationship from (a) are plotted on top of the raw data measurements of individuals from occasions where both a total length (TL) and a blowhole to dorsal fin (BHDF) length were observed relative to age.  
 
-#source('C:/Users/leahm/OneDrive - University of Otago/Documents/git-otago/FBD_measurements/scripts/ms_map.R', local = TRUE, verbose = F)$value
+Figure 4. Exploratory summary boxplots of the median estimates of growth rates ($k_{1i}$ and $k_{2i}$) and maximum total lengths ($L_{1i}$ and $L_{2i}$) calculated for each individual grouped by (a) sex (F = female, M = male, X = unknown) and (b) pod membership. Note that the y-axis is the inverse-logit for the growth parameters $k_{hi}$ and the length is in meters for $L_{hi}$.
 
-#knitr::include_graphics(c('./Figures/map_a.png','./Figures/map_b.png'))
-knitr::include_graphics(c('./Figures/map_a.png'))
-
-```
-
-\vspace{-3ex}
-
-Fig. 1. Map of the Patea-Doubtful (yellow) and the Tamatea-Dusky (purple) complexes in southwestern Aotearoa-New Zealand relative to Ata Whenua-Fiordland National Park (green) and the Te Moana o Atawhenua-Fiordland Marine Area (all areas of the sea inshore of the teal line, including all fiords). The 50m (grey) and 200m (dark blue) isobaths are displayed, and Ōtepoti-Dunedin is marked as the red dot on the inset map.
+\newpage
 
 ```{r, Fig_dolphin, echo = F, out.width = '100%'}
 knitr::include_graphics('./Figures/Fig. 2.png')
 ```
+Figure 1
+\newpage
 
-Fig. 2. Example video snapshot where the rostrum and fluke notch are clearly visible for the total length (TL) measurements, and the blowhole and dorsal fin insertion are above the surface (BHDF). Oblique photos are also provided to demonstrate how individuals were identified from dorsal body markings. The animal in this image is a reproductive female named 'Minus' born in 2006.
-
-```{r, Fig_hist, echo = F, out.height='80%'}
-knitr::include_graphics('./Figures/hist_fig.png')
-
+```{r, Fig_vbgc, echo = F, out.width='100%'}
+knitr::include_graphics('./Figures/curve_plots.png')
 ```
+Figure 2
+\newpage
 
-Fig. 3. Number of snapshots where an individual dolphin measurement of TL and/or BHDF was taken per pod identity a. over the course of the entire study and b. per sampling effort.
-
-```{r, Fig_vbgc, echo = F, out.width='110%'}
-knitr::include_graphics('./Figures/vbgcplot.png')
+```{r, Fig_corr, echo = F, out.width='100%'}
+knitr::include_graphics('./Figures/params.png')
 ```
+Figure 3
+\newpage
 
-Fig. 4. Predicted von Bertalanffy growth curves for each individual measured. Curves were fit using the median values estimated for $Ly_{i}$ and $ky_{i}$, and are a. plotted relative to age and b. actual (solid lines) or estimated minimum (dotted lines) birth year.
-
-```{r, Fig_Ly_CI, echo = F, out.width='110%'}
-knitr::include_graphics('./Figures/Ly_CI.png')
-```
-
-Fig. 5. Posterior distribution estimate of total length for each individual ($Ly_{i}$) by actual or estimated minimum birth year. The plotted point is at the median estimate and the vertical lines represent the 90% credible intervals. The x-axis indicates the animal's birth year bin; the position within the year bin is arbitrarily spaced to be able to see the points.
-
-```{r, Fig_allo, echo = F, out.width='100%'}
-knitr::include_graphics('./Figures/alloplot.png')
-```
-
-Fig. 6. The allometric relationship between TL and BHDF length. a. The raw data measurements of Fiordland bottlenose dolphins collected in this study are plotted in the colored circles relative to the age at the measurement occasion. The black dots are the estimates of $Ly_{i}$ and $Lz_{i}$ for each individual and the black line is the conditional relationship between these two parameter estimates. b. The modeled allometric relationship between TL and BHDF length of Fiordland bottlenose dolphins (black, y = 2.133x + 0.925) and our raw data measurements (grey circles) are contextualized with previously reported allometric relationships from other *Tursiops* populations: unknown ecotype *T. truncatus* in Moray Firth, Scotland (Cheney et al. 2018, y = 3.1314x + 0.070626), *T. aduncus* in southwestern Australia (van Aswegen et al. 2019, y = 3.17x + 0.050583), and likely coastal ecotype, captive *T. truncatus* (Vivier et al. 2023, y = 2.408x + 0.72521). The conditional relationship we report here is most similar to that reported by Vivier et al. 2023 where most of the 18 individuals they measured were adult age animals. While Cheney et al. 2018 and van Aswegen et al. 2019 reported nearly similar relationships, both studies applied a linear regression to datasets that were more distributed across lengths and age-classes.
-
-```{r, Fig_box, echo = F, out.height='80%'}
+```{r, Fig_box, echo = F, out.width='70%'}
 knitr::include_graphics('./Figures/boxplots.png')
 ```
+Figure 4
 
-Fig. 7. Exploratory summary boxplots of the median estimates of growth rates ($ky_i$ and $kz_{i}$) and estimated maximum total lengths ($Ly_{i}$ and $Lz_{i}$) calculated for each individual grouped by a. sex (F = female, M = male, X = unknown) and b. pod membership. Note that the growth parameters are scaled between 0 and 1, and the y-axis represented length in meters for $Ly$ and $Lz$.
