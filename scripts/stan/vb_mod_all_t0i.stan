@@ -88,9 +88,9 @@ matrix[N_b,2] obs_mean;
 //priors
 
   mu_t ~ normal(0, 1000);
-  sigma_t ~ student_t(3, 0, 25);
+  sigma_t ~ student_t(3, 0, 50);
   mu ~ normal(0, 1000);
-  sigma ~ student_t(3, 0, 25);
+  sigma ~ student_t(3, 0, 50);
 
   L ~ lkj_corr_cholesky(1);
   
@@ -107,7 +107,11 @@ generated quantities {
   cov_matrix[J] varcov_par;
   //below is L*L'
   corr = multiply_lower_tri_self_transpose(L);
+  //below is diag(sigma)*LL'*diag(sigma)
   varcov_par = quad_form_diag(corr, sigma);
+  cholesky_factor_cov[4] L_covar = cholesky_decompose(varcov_par);
+  //ppd
+  vector[J] mu_pred = multi_normal_cholesky_rng(mu, L_covar);
 
  }
 
