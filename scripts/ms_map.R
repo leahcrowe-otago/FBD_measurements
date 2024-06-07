@@ -142,8 +142,8 @@ NZ<-base+
   xlab("")+
   ylab("")+
   geom_rect(mapping = aes(xmin = 165.2, xmax = 168.7, ymin = -47.5, ymax = -44), fill = NA, color = "red")+
-  theme_void()+
-  geom_point(data = dunedin, aes(x = lon, y = lat), size = 0.8, color = "red")
+  theme_void()#+
+  #geom_point(data = dunedin, aes(x = lon, y = lat), size = 0.8, color = "red")
 
 NZ
 
@@ -155,8 +155,8 @@ map_a<-cowplot::ggdraw() +
 
 map
 
-ggsave("./figures/map_a.png", map_a, dpi = 700, height = 6, width = 4, units = 'in')
-ggsave("./figures/map_a.svg", map_a, dpi = 700, height = 6, width = 4, units = 'in')
+ggsave("./figures/map.png", map_a, dpi = 700, height = 6, width = 4, units = 'in')
+ggsave("./figures/map.svg", map_a, dpi = 700, height = 6, width = 4, units = 'in')
 
 #### map b close up of Dusky/Doubtful ----
 
