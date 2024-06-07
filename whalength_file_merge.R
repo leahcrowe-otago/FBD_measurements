@@ -387,7 +387,7 @@ ggplot(noodle_diff)+
   guides(color=guide_legend(title='Segment measured'))+
   scale_color_manual(values = c("orange","purple","black"))
 
-ggplot2::ggsave(paste0("./Figures/noodle.png"), device = "png", dpi = 700, height = 150, width = 300, units = 'mm')
+ggplot2::ggsave(paste0("./Figures/noodle.png"), device = "png", dpi = 700, height = 120, width = 250, units = 'mm')
 
 
 noodlestats<-noodle%>%
@@ -414,4 +414,4 @@ noodle_plot<-ggplot(noodle)+
   theme(legend.position = c(0.8,0.15))+
   guides(color=guide_legend(title='Segment measured'))
 
-ggplot2::ggsave(paste0("./Figures/noodle.png"), noodle_plot, device = "png", dpi = 700, height = 300, width = 200, units = 'mm')
+#ggplot2::ggsave(paste0("./Figures/noodle.png"), noodle_plot, device = "png", dpi = 700, height = 300, width = 200, units = 'mm')
