@@ -6,7 +6,11 @@ library(dplyr)
 
 # data ----
 i = 34
+#IDs
+ij_ID = readRDS(file = './data/Measurements/Data for review/ij_ID.rds')
+n_ind = nrow(ij_ID)
 
+### reg model ----
 #both bhdf & tl
 ij_b = readRDS(file = './data/Measurements/ij_1.rds')
 ij_z = readRDS(file = './data/Measurements/ij_2.rds')
@@ -40,14 +44,25 @@ ij_y[i,]
 N_y = nrow(ij_y)
 N_y
 
-#IDs
-ij_ID = readRDS(file = './data/Measurements/ij_ID.rds')
-
-n_ind<-nrow(ij_ID)
-
 N_b+N_z+N_y
 N_b/(N_b+N_z+N_y)
 
+### sex/pod model ----
+obs_sex = readRDS(file = './data/Measurements/Data for review/obs_sex.rds')
+n_k<-obs_sex%>%filter(SEX != "X")%>%distinct(ID)%>%nrow()
+n_obs_k<-obs_sex%>%filter(SEX != "X")%>%nrow()
+n_obs = nrow(obs_sex)
+sex = ij_ID%>%
+  dplyr::select(SEX)%>%
+  filter(SEX != "X")%>%
+  mutate(SEX = case_when(
+    SEX == "F" ~ 0,
+    SEX == "M" ~ 1))
+pod = ij_ID%>%
+  dplyr::select(POD)%>%
+  mutate(POD = case_when(
+    POD == "DOUBTFUL" ~ 0,
+    POD == "DUSKY" ~ 1))
 #params matrix dims
 J=4
 
@@ -56,7 +71,8 @@ J=4
 
 set_cmdstan_path(path = "C:/Users/leahm/cmdstan-2.34.1")
 
-stan_fit = cmdstan_model("./scripts/stan/vb_mod_all_t0i.stan")
+#stan_fit = cmdstan_model("./scripts/stan/vb_mod_all_t0i.stan") #ms model
+stan_fit = cmdstan_model("./scripts/stan/vb_mod_all_t0i_sex.stan") #sex/pod effects model
 
 # initial values ----
 
@@ -76,23 +92,20 @@ init_vb = function(){
   
   L = diag(J)
   
-  # par = matrix(NA, n_ind, J)
-  # 
-  # for(j in 1:J){
-  #   if(j == 1 | j == 3){
-  #     par[,j] = rnorm(n_ind, mu[j], 0.2)  
-  #   } else {
-  #     par[,j] = rlnorm(n_ind, log(mu[j]), 0.1)
-  #   }
-  # } 
-  
   z = matrix(rnorm(n_ind*J), n_ind, J)
   
   sigma_obs = rlnorm(2)
   
   rho_obs = runif(1)
-
-  return(list(
+  
+  #sex/pod
+  beta = runif(J)
+  gamma = runif(J)
+  pi = runif(1)
+    
+  return(list(#obs/sex
+              beta = beta, gamma = gamma, pi = pi,
+              #both versions
               z_t = z_t, mu_t = mu_t, t0p = t0p, sigma_t = sigma_t,
               L = L, mu = mu, sigma = sigma, z = z, 
               sigma_obs = sigma_obs, rho_obs = rho_obs
@@ -104,6 +117,10 @@ init_vb = function(){
 fit_vb <- stan_fit$sample(
   data = list(
     
+  ### both models ----
+    n_ind = n_ind,
+    J = J,
+  ### reg model ----
     ind_b = ij_b$ind,
     data_b = ij_b%>%dplyr::select(length, BHDF),
     age_b = ij_b$age,
@@ -119,10 +136,17 @@ fit_vb <- stan_fit$sample(
     N_b = N_b,
     N_z = N_z,
     N_y = N_y,
-    
-    n_ind = n_ind,
-    J = J
-    
+  ### sex/pod model ----
+    n_k = n_k,
+    n_obs_k = n_obs_k,
+    n_obs = n_obs,
+    id = obs_sex$ind,
+    age = obs_sex$age,
+    type = obs_sex$type,
+    val = obs_sex%>%dplyr::select(length, BHDF)%>%replace(is.na(.), 0),
+    sex = sex$SEX,
+    pod = pod$POD
+  
   ),
   init = init_vb,
   chains = 4,
@@ -137,7 +161,10 @@ fit_vb <- stan_fit$sample(
 
 # results -----
 
-parout = as_draws_df(fit_vb$draws(c("mu","mu_t","sigma","sigma_t","sigma_obs","rho_obs",
+parout = as_draws_df(fit_vb$draws(c(#sex/pod model
+                                    "beta","gamma","pi",
+                                    #both models
+                                    "mu","mu_t","sigma","sigma_t","sigma_obs","rho_obs",
                                     "varcov_par",
                                     "corr[1,2]","corr[1,3]","corr[1,4]",
                                     "corr[2,3]","corr[2,4]",
@@ -348,6 +375,9 @@ ind_median<-id_parsumm%>%
   distinct(ind, ID, year_zero, age_value, SEX, POD, Ly, logit_ky, ky, Lz, logit_kz, kz, t0p)
 
 summary(ind_median)
+
+ind_median%>%
+  filter(year_zero <= 2013)
 
 age_vb_y = matrix(NA,nrow(ind_median),ngrid)
 age_vb_byr = matrix(NA,nrow(ind_median),ngrid)
@@ -698,7 +728,7 @@ kykz<-ggplot()+
   theme_bw()+
   xlab(bquote(logit(k['1i'])))+
   ylab(bquote(logit(k['2i'])))+
-  annotate(geom = "text", x=-0.05, y=1.5, label=eq_k, parse = F, size = 3)+
+  annotate(geom = "text", x=0.35, y=1.5, label=eq_k, parse = F, size = 3)+
   xlim(c(-0.1, 1.5))+
   ylim(c(-0.1, 1.5))+
   coord_fixed(ratio = 1)
