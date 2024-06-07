@@ -14,7 +14,7 @@ library(readxl)
 library(ggplot2)
 library(ggpubr)
 
-# Data ----
+#### Data ------
 #add population variable to datasheet
 #write code to merge data xlsx from Whalelength
 
@@ -57,12 +57,14 @@ measurement_ID_trip<-measurement_merge%>%
 
 measurement_merge%>%
   filter(ID == 'SUNSHINE')
+
+measurement_merge%>%
+  filter(ID == 'calibration')
 ```
 
 ```{r, whalength_file_merge, include=FALSE}
 
 source('./whalength_file_merge.R', local = TRUE, verbose = F)$value
-head(length_ID_merge_Tt)
 
 #wl below stands for Whalelength to signify that those were measurement results from WL, not the ones I manually entered during the process in the ID spreadsheet to signify that the total length was actual measured, not just the hack to only measure BHDF for some individuals 
 measure_data<-length_ID_merge_Tt%>%
@@ -105,8 +107,6 @@ prop_bh<-length_data%>%
 summary(prop_bh)
 
 ```
-
-Fig. 1: number of times individuals were measured per trip
 
 ```{r demo, include = F}
 # life history update ----
@@ -165,10 +165,11 @@ age_calc<-age_length%>%
   ))%>%
   mutate(age_value = case_when(
     !is.na(BIRTH_YEAR) ~ "actual", #birth year known
-    is.na(BIRTH_YEAR) ~ "min" #birth year not known
+    is.na(BIRTH_YEAR) ~ "est" #birth year not known
   ))%>%
   filter(!is.na(age)) # gets ride of unmatched dolphin measurements
 
+  
  age_length%>%
   ungroup()%>%
   mutate(age = case_when(
@@ -177,10 +178,14 @@ age_calc<-age_length%>%
   ))%>%
   mutate(age_value = case_when(
     !is.na(BIRTH_YEAR) ~ "actual", #birth year known
-    is.na(BIRTH_YEAR) ~ "min" #birth year not known
+    is.na(BIRTH_YEAR) ~ "est" #birth year not known
   ))%>%
   filter(is.na(age))%>%
   arrange(length_use)
+ 
+ length_data%>%
+   filter(ID == 'calibration')
+ 
 
 ```
 
@@ -189,7 +194,7 @@ age_calc<-age_length%>%
 age_calc<-age_calc%>%
   #give a better approximation of age for older reproductive females?
   mutate(age = case_when(
-    age_value == "min" & !is.na(FIRST_CALF) & (as.numeric(FIRST_CALF) - as.integer(avg_primo_age)) < as.numeric(FIRST_YEAR) ~ age + (as.integer(avg_primo_age) - (as.numeric(FIRST_CALF) - as.numeric(FIRST_YEAR))),
+    age_value == "est" & !is.na(FIRST_CALF) & (as.numeric(FIRST_CALF) - as.integer(avg_primo_age)) < as.numeric(FIRST_YEAR) ~ age + (as.integer(avg_primo_age) - (as.numeric(FIRST_CALF) - as.numeric(FIRST_YEAR))),
     TRUE ~ age
   ))%>%
   mutate(age_month = case_when(
@@ -205,7 +210,8 @@ age_calc<-age_calc%>%
     month == 6 ~ age + 9/12,
     month == 7 ~ age + 10/12,
     month == 8 ~ age + 11/12,
-  ))
+  ))%>%
+  filter(!(is.na(BHDF) & is.na(length_use)))
 
 # length per age all measurements ----
 length_all<-ggplot(age_calc%>%filter(!is.na(length_use)), aes(x = age_month, y = length_use, shape = POD, color = age_value))+
@@ -243,8 +249,6 @@ age_calc%>%distinct(ID, POD)%>%group_by(POD)%>%tally()
 
 ggsave("./Figures/length_trip.png", length_trip, dpi = 320, height = 100, units = 'mm')
 
-#age_calc%>%filter(n>1)%>%mutate(CV = actual_length_sd/actual_length_mean)%>%group_by(trip)%>%summarise(min = min(CV),max=max(CV), mean_CV=mean(CV), n = n())
-
 # Individuals that have been measured on more than one trip ----
 ID_age<-age_calc%>%
   group_by(ID)%>%
@@ -252,15 +256,6 @@ ID_age<-age_calc%>%
   filter(n > 1)%>%
   arrange(ID,trip)%>%
   mutate(length_diff = lead(length_use) - length_use)
-  
-individuals_measuredmanytimes<-ggplot(ID_age, aes(x = trip, y = length_use, color = SEX))+
-  geom_point()+
-  facet_wrap(~ID, ncol = 7)+
-  theme(legend.position = "bottom")
-
-#individuals_measuredmanytimes
-
-#ggsave("./Figures/individuals_measuredmanytimes.png", individuals_measuredmanytimes, dpi = 320, height = 500, width = 500, units = 'mm')
 
 age_calc%>%distinct(POD, ID)%>%group_by(POD)%>%tally()
 
@@ -295,7 +290,6 @@ hist_fig<-ggpubr::ggarrange(hist_all, hist, ncol = 1, heights = c(1,2), labels =
 
 ggsave("./Figures/hist_fig.png", hist_fig, dpi = 320, height = 200, width = 150, units = 'mm')
 
-
 age_calc%>%
   distinct(trip, DATE, POD)%>%
   group_by(trip, POD)%>%
@@ -312,8 +306,10 @@ ID_index<-age_calc%>%
   mutate(ind = 1:n())
 
 ij_ID<-ID_index
-saveRDS(ij_ID, file = paste0("ij_ID.rds"))
+saveRDS(ij_ID, "./data/Measurements/Data for review/ij_ID_ms.rds")
+write.csv(ij_ID, "./data/Measurements/Data for review/ij_ID.csv", row.names = F)
 
+### reg model ----
 #both
 age_vbgc_both<-age_calc%>%
   filter(!is.na(length_use) & !is.na(BHDF))%>% #filter for tl modeling
@@ -343,13 +339,9 @@ for(i in 1:length(age_vbgc)){
     arrange(ID, age_month)%>%
     ungroup()%>%
     left_join(ID_index, by = "ID")%>%
-    #mutate(max_j = 1:n())%>%
     group_by(ID)%>%
     mutate(obs = 1:n(),
-           #J = max(max_j),
-           #ind = cur_group_id() 
-           age = age_month
-    )%>%
+           age = age_month)%>%
     ungroup()
 
   if (i == 1){
@@ -370,90 +362,30 @@ for(i in 1:length(age_vbgc)){
 ij<-ij%>%
   dplyr::select(-ID)
 
-saveRDS(ij, file = paste0("ij_",i,".rds"))
-
+saveRDS(ij, file = paste0("./data/Measurements/ij_",i,"_ms.rds"))
+write.csv(ij, paste0("./data/Measurements/ij_",i,".csv"), row.names = F)
 }
 
-```
+### sex/pod model ----
 
-```{r vbgc_data_sex, include = T, warning = F, message = F}
-
-ID_index<-age_calc%>%
-  filter(SEX != 'X')%>%
-  arrange(length_use,ID)%>%
-  mutate(year_zero = as.numeric(AGECLASS_YEAR)-age)%>%
-   mutate(sex = case_when(
-      SEX == "M" ~ 0,
-      SEX == "F" ~ 1
-    ))%>%
-  distinct(ID,year_zero,sex,POD,age_value)%>%
-  mutate(ind = 1:n())
-
-ij_sex_ID<-ID_index
-saveRDS(ij_sex_ID, file = paste0("ij_sex_ID.rds"))
-
-#both
-age_vbgc_sex_both<-age_calc%>%
-  filter(SEX != 'X')%>%
-  filter(!is.na(length_use) & !is.na(BHDF))%>% #filter for tl modeling
-  dplyr::rename("length" = "length_use")  
-nrow(age_vbgc_sex_both)
-
-#only bhdf
-age_vbgc_sex_bhdf<-age_calc%>%
-  filter(SEX != 'X')%>%
-  filter(is.na(length_use) & !is.na(BHDF))%>% 
-  dplyr::rename("length" = "length_use")  
-nrow(age_vbgc_sex_bhdf)
-
-#only tl, no bhdf
-age_vbgc_sex_tl<-age_calc%>%
-  filter(SEX != 'X')%>%
-  filter(!is.na(length_use) & is.na(BHDF))%>% 
-  dplyr::rename("length" = "length_use")
-nrow(age_vbgc_sex_tl)
-
-# 1 = both, 2 = bhdf only, 3 = tl only
-age_vbgc_sex<-list(age_vbgc_sex_both, age_vbgc_sex_bhdf, age_vbgc_sex_tl)
-length(age_vbgc_sex)
-age_vbgc_sex[[1]]
-
-for(i in 1:length(age_vbgc_sex)){
-
-  ij<-age_vbgc_sex[[i]]%>%
-    arrange(ID, age_month)%>%
+#known sex, both measurements, n_obs_k, 538
+obs_sex<-age_calc%>%
+  dplyr::rename("length" = "length_use")%>%
+  mutate(type = case_when(
+    !is.na(length) & !is.na(BHDF) ~ 1,
+    !is.na(length) & is.na(BHDF) ~ 2,
+    is.na(length) & !is.na(BHDF) ~ 3
+  ))%>%
+  dplyr::select(-SEX,-POD)%>% #these get added from the ID_index join
+  #mutate(ind = 1:n())%>%
+  left_join(ID_index, by = "ID")%>%
+  group_by(ID)%>%
+  mutate(obs = 1:n(),
+         age = age_month)%>%
     ungroup()%>%
-    left_join(ID_index, by = c("ID"))%>%
-    #mutate(max_j = 1:n())%>%
-    group_by(ID)%>%
-    mutate(obs = 1:n(),
-           #J = max(max_j),
-           #ind = cur_group_id() 
-           age = age_month
-    )%>%
-    ungroup()
+  arrange(SEX, ID, ind)%>%
+  dplyr::select(ID, ind, obs, age, length, BHDF, type)
 
-  if (i == 1){
-    ij<-ij%>%
-      dplyr::select(ID, ind, obs, age, sex, length, BHDF)
-  }
-
-  if (i == 2){
-    ij<-ij%>%
-      dplyr::select(ID, ind, obs, age, sex, length, BHDF)
-  }
-
-  if (i == 3){
-    ij<-ij%>%
-      dplyr::select(ID, ind, obs, age, sex, length, BHDF)
-  }
-
-ij<-ij%>%
-  dplyr::select(-ID)
-
-saveRDS(ij, file = paste0("ij_sex_",i,".rds"))
-
-}
-
+saveRDS(obs_sex, file = paste0("./data/Measurements/Data for review/obs_sex.rds"))
+write.csv(obs_sex, paste0("./data/Measurements/Data for review/obs_sex.csv"), row.names = F)
 ```
-
