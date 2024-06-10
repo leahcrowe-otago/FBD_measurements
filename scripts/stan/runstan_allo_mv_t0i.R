@@ -12,9 +12,9 @@ n_ind = nrow(ij_ID)
 
 ### reg model ----
 #both bhdf & tl
-ij_b = readRDS(file = './data/Measurements/ij_1.rds')
-ij_z = readRDS(file = './data/Measurements/ij_2.rds')
-ij_y = readRDS(file = './data/Measurements/ij_3.rds')
+ij_b = readRDS(file = './data/Measurements/Data for review/ij_1.rds')
+ij_z = readRDS(file = './data/Measurements/Data for review/ij_2.rds')
+ij_y = readRDS(file = './data/Measurements/Data for review/ij_3.rds')
 
 ij_all<-ij_b%>%
   bind_rows(ij_z)%>%
@@ -71,8 +71,8 @@ J=4
 
 set_cmdstan_path(path = "C:/Users/leahm/cmdstan-2.34.1")
 
-#stan_fit = cmdstan_model("./scripts/stan/vb_mod_all_t0i.stan") #ms model
-stan_fit = cmdstan_model("./scripts/stan/vb_mod_all_t0i_sex.stan") #sex/pod effects model
+stan_fit = cmdstan_model("./scripts/stan/vb_mod_all_t0i.stan") #ms model
+#stan_fit = cmdstan_model("./scripts/stan/vb_mod_all_t0i_sex.stan") #sex/pod effects model
 
 # initial values ----
 
@@ -87,20 +87,15 @@ init_vb = function(){
          rlnorm(1, 0, 0.1),
          rnorm(1, mean(ij_b$BHDF, na.rm = TRUE), 0.2),
          rlnorm(1, 0, 0.1))
-  
   sigma = rlnorm(J)
-  
   L = diag(J)
-  
   z = matrix(rnorm(n_ind*J), n_ind, J)
-  
   sigma_obs = rlnorm(2)
-  
   rho_obs = runif(1)
   
   #sex/pod
-  beta = runif(J)
-  gamma = runif(J)
+  beta = rlnorm(J)
+  gamma = rlnorm(J)
   pi = runif(1)
     
   return(list(#obs/sex
@@ -162,7 +157,7 @@ fit_vb <- stan_fit$sample(
 # results -----
 
 parout = as_draws_df(fit_vb$draws(c(#sex/pod model
-                                    "beta","gamma","pi",
+                                    #"beta","gamma","pi",
                                     #both models
                                     "mu","mu_t","sigma","sigma_t","sigma_obs","rho_obs",
                                     "varcov_par",
@@ -171,6 +166,7 @@ parout = as_draws_df(fit_vb$draws(c(#sex/pod model
                                     "corr[3,4]",
                                     "Lobs[1,1]","Lobs[2,1]","Lobs[2,2]",
                                     "mu_pred")))
+#saveRDS(parout, file = paste0("./results/parout_",Sys.Date(),"sexpod.rds"))
 saveRDS(parout, file = paste0("./results/parout_",Sys.Date(),".rds"))
 
 #trace plot
@@ -453,9 +449,9 @@ vbgc_zero<-ggplot(growest_plot)+
   xlab("Age (years)")+
   ylab("Length (m)")+
   theme(legend.position = "none")+
-  scale_color_grey(start = 0.6, end = 0.1)+
-  geom_vline(xintercept = 7, color = "red")+
-  annotate("text", x=6.4, y=0, label="7", angle=0, color = "red")
+  scale_color_grey(start = 0.6, end = 0.1)
+  #geom_vline(xintercept = 7, color = "red")+
+  #annotate("text", x=6.4, y=0, label="7", angle=0, color = "red")
 
 ggplot2::ggsave(paste0("./Figures/vbgc_zero.png"), vbgc_zero, device = "png", dpi = 700, width = 250, height = 100, units = 'mm')
 
@@ -564,16 +560,16 @@ uncertainty%>%
 #### sex ----
 
 box<-ind_median%>%
-  dplyr::select(-logit_ky, -logit_kz, -t0p)%>%
-  tidyr::pivot_longer(cols = c(Ly, ky, Lz, kz), names_to = "param", values_to =  "median")%>%
+  dplyr::select(-ky, -kz, -t0p)%>%
+  tidyr::pivot_longer(cols = c(Ly, logit_ky, Lz, logit_kz), names_to = "param", values_to =  "median")%>%
   mutate(param2 = case_when(
     param == "Ly" ~ "L<sub>1i</sub>",
     param == "Lz" ~ "L<sub>2i</sub>",
-    param == "ky" ~ "k<sub>1i</sub>",
-    param == "kz" ~ "k<sub>2i</sub>"
+    param == "logit_ky" ~ "logit(k<sub>1i</sub>)",
+    param == "logit_kz" ~ "logit(k<sub>2i</sub>)"
   ))%>%
   mutate(group = case_when(
-    param == "ky" | param == "kz" ~ "Growth rate parameter",
+    param == "logit_ky" | param == "logit_kz" ~ "Growth rate parameters",
     TRUE ~ param2
   ))%>%
   dplyr::rename('Sex' = 'SEX', "Pod" = "POD")
@@ -694,7 +690,7 @@ library(ggExtra)
 slope_L
 y_intercept_L
 sd_L
-eq_L<-expression(paste(hat(y) == 2.130*x + 0.928,", ",sigma == 0.068))#,round(slope_L,3),"* L['2i'] "))#,round(y_intercept_L,3),", \U03c3 = ",round(var_L,3))
+eq_L<-expression(paste(hat(y) == 2.13*x + 0.93,", ",sigma == 0.07))#,round(slope_L,3),"* L['2i'] "))#,round(y_intercept_L,3),", \U03c3 = ",round(var_L,3))
 
 LzLy<-ggplot()+
   geom_point(ind_median, mapping = aes(x = Lz, y = Ly), color = "black", alpha = 0.9)+
@@ -718,7 +714,7 @@ var_k<-vc44$median-slope_k*vc24$median
 sd_k<-sqrt(var_k)
 sd_k
 
-eq_k<-expression(paste(hat(y) == 1.196*x - 0.173,", ",sigma == 0.144))#,round(slope_L,3),"* L['2i'] "))#,round(y_intercept_L,3),", \U03c3 = ",round(var_L,3))
+eq_k<-expression(paste(hat(y) == 1.2,'0',x - 0.17,", ",sigma == 0.14))#,round(slope_L,3),"* L['2i'] "))#,round(y_intercept_L,3),", \U03c3 = ",round(var_L,3))
 
 kykz<-ggplot()+
   geom_point(ind_median, mapping = aes(x = logit_ky, y = logit_kz), color = "black", alpha = 0.9)+
@@ -728,9 +724,9 @@ kykz<-ggplot()+
   theme_bw()+
   xlab(bquote(logit(k['1i'])))+
   ylab(bquote(logit(k['2i'])))+
-  annotate(geom = "text", x=0.35, y=1.5, label=eq_k, parse = F, size = 3)+
-  xlim(c(-0.1, 1.5))+
-  ylim(c(-0.1, 1.5))+
+  annotate(geom = "text", x=0.32, y=1.6, label=eq_k, parse = F, size = 3)+
+  xlim(c(-0.1, 1.6))+
+  ylim(c(-0.1, 1.6))+
   coord_fixed(ratio = 1)
 
 ###
@@ -744,7 +740,7 @@ var_Lk<-vc11$median-slope_Lk*vc12$median
 sd_Lk<-sqrt(var_Lk)
 sd_Lk
 
-eq_Lk<-expression(paste(hat(y) == 0.256*x + 2.741,", ",sigma == 0.102))#,round(slope_L,3),"* L['2i'] "))#,round(y_intercept_L,3),", \U03c3 = ",round(var_L,3))
+eq_Lk<-expression(paste(hat(y) == 0.26*x + 2.74,", ",sigma == 0.1,'0'))#,round(slope_L,3),"* L['2i'] "))#,round(y_intercept_L,3),", \U03c3 = ",round(var_L,3))
 
 kyLy<-ggplot()+
   geom_point(ind_median, mapping = aes(x = logit_ky, y = Ly), color = "black", alpha = 0.9)+
@@ -756,7 +752,7 @@ kyLy<-ggplot()+
   ylab(bquote(L['1i']))+
   annotate(geom = "text", x=0.50, y=3.3, label=eq_Lk, parse = F, size = 3)
 
-params_plot<-ggpubr::ggarrange(LzLy, kykz, kyLy, linear_plot, labels = "auto")
+params_plot<-ggpubr::ggarrange(kyLy, kykz, LzLy, labels = "auto")
 ggplot2::ggsave(paste0("./Figures/params.png"), params_plot, device = "png", dpi = 700, height = 200, width = 200, units = 'mm', bg="white")
 
 summ_paroutin%>%
