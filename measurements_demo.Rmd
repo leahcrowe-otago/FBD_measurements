@@ -260,8 +260,8 @@ ID_age<-age_calc%>%
 age_calc%>%distinct(POD, ID)%>%group_by(POD)%>%tally()
 
 raw<-ggplot(age_calc)+
-  geom_point(mapping = aes(x = age, y = length_use, color = POD))+
-  geom_point(mapping = aes(x = age, y = BHDF, color = POD), shape = 21)+
+  geom_point(mapping = aes(x = age_month, y = length_use, color = POD))+
+  geom_point(mapping = aes(x = age_month, y = BHDF, color = POD), shape = 21)+
   theme_bw()+
   ylab("Length (m)")+
   theme(legend.position = "bottom")
