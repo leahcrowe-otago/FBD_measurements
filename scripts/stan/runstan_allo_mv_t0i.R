@@ -7,14 +7,14 @@ library(ggplot2)
 # data ----
 i = 34
 #IDs
-ij_ID = readRDS(file = './data/Measurements/Data for review/ij_ID.rds')
+ij_ID = readRDS(file = './data/Measurements/ij_ID.rds')
 n_ind = nrow(ij_ID)
 
 ### reg model ----
 #both bhdf & tl
-ij_b = readRDS(file = './data/Measurements/Data for review/ij_1.rds')
-ij_z = readRDS(file = './data/Measurements/Data for review/ij_2.rds')
-ij_y = readRDS(file = './data/Measurements/Data for review/ij_3.rds')
+ij_b = readRDS(file = './data/Measurements/ij_1.rds')
+ij_z = readRDS(file = './data/Measurements/ij_2.rds')
+ij_y = readRDS(file = './data/Measurements/ij_3.rds')
 
 ij_all<-ij_b%>%
   bind_rows(ij_z)%>%
@@ -48,7 +48,7 @@ N_b+N_z+N_y
 N_b/(N_b+N_z+N_y)
 
 ### sex/pod model ----
-obs_sex = readRDS(file = './data/Measurements/Data for review/obs_sex.rds')
+obs_sex = readRDS(file = './data/Measurements/ij_obs_sex.rds')
 n_k<-obs_sex%>%filter(SEX != "X")%>%distinct(ID)%>%nrow()
 n_obs_k<-obs_sex%>%filter(SEX != "X")%>%nrow()
 n_obs = nrow(obs_sex)
