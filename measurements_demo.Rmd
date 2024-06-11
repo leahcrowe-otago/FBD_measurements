@@ -74,7 +74,6 @@ measure_data<-length_ID_merge_Tt%>%
                 "w60" = Width.at.10..TL, "w70" = Width.at.20..TL, "w80" = Width.at.30..TL, "w90" = Width.at.40..TL, Rostrum.BH, Fluke.width, 
                 "BHDF" = BH.DF.insertion, COMMENTS, tilt_deg, laser_altitude_m, actual_length)
 
-
 length_data<-measure_data%>%
   filter(!is.na(length_wl))
 
@@ -91,9 +90,7 @@ length_data%>%
   filter(diff_tl > 0.001)%>%
   dplyr::select(ID, trip, DATE, Filename, length_wl, actual_length)
 
-# length_data%>%
-#   dplyr::select(alt_corrected, laser_altitude_m)
-
+#when a TL was not taken, needed to trick Whalength, so a bogus length was taken to proceed through the program. This step ensures that when I entered a TL value in the spreadsheet (i.e. I took a real TL length), the whalength output for TL was retained, otherwise, NA
 length_data<-length_data%>%
   mutate(length_use = case_when(
     !is.na(actual_length) ~ length_wl,
@@ -110,16 +107,15 @@ summary(prop_bh)
 
 ```{r demo, include = F}
 # life history update ----
-
 source('C:/Users/leahm/OneDrive - University of Otago/Documents/git-otago/Fiordland_reporting/scripts/life_history_ageclass update.R', local = TRUE, verbose = F)$value
-#use below when you can write to db again
-#lifehist<-dbReadTable(con, "life_history_ageclass")
-#this created from life_history_ageclass update.R
+
+#lifehist created in life_history_ageclass update.R, added here for tracing
 lifehist<-lifehist
 
 lifehist%>%
   filter(NAME == "SUNSHINE")
-# merge lh with measurements ----
+
+# merge life history with measurements ----
 
 measurements_demo_ind<-length_data%>%
   filter(ID != 'calibration')%>%
@@ -145,8 +141,6 @@ measurements_demo_ind<-length_data%>%
     TRUE ~ trip
   ))
 
-#measurements_demo_ind%>%filter(trip == "2023_06" & POD == "DOUBTFUL")
-
 measurements_demo_ind$AGECLASS<-factor(measurements_demo_ind$AGECLASS, levels = c("C","J","S-A","A"))
 
 # only age grouping ----
@@ -168,7 +162,6 @@ age_calc<-age_length%>%
     is.na(BIRTH_YEAR) ~ "est" #birth year not known
   ))%>%
   filter(!is.na(age)) # gets ride of unmatched dolphin measurements
-
   
  age_length%>%
   ungroup()%>%
@@ -185,14 +178,13 @@ age_calc<-age_length%>%
  
  length_data%>%
    filter(ID == 'calibration')
- 
 
 ```
 
 ```{r age_length, echo = F, message = F}
 
 age_calc<-age_calc%>%
-  #give a better approximation of age for older reproductive females?
+  #give a better approximation of age for older reproductive females
   mutate(age = case_when(
     age_value == "est" & !is.na(FIRST_CALF) & (as.numeric(FIRST_CALF) - as.integer(avg_primo_age)) < as.numeric(FIRST_YEAR) ~ age + (as.integer(avg_primo_age) - (as.numeric(FIRST_CALF) - as.numeric(FIRST_YEAR))),
     TRUE ~ age
@@ -221,8 +213,6 @@ length_all<-ggplot(age_calc%>%filter(!is.na(length_use)), aes(x = age_month, y =
   xlab("Age")+
   ylab("Length (m)")
 
-#length_all
-
 num_measurements<-nrow(age_calc)
 num_individuals_measured<-age_calc%>%
   distinct(ID)%>%
@@ -234,31 +224,7 @@ ID_pertrip_pod<-length_all+
 
 ID_pertrip_pod
 
-# length per age per trip ----
-length_trip<-ggplot(age_calc, aes(x = age_month, y = length_use, color = POD))+
-  geom_point()+
-  facet_wrap(~trip)+
-  theme_bw()+
-  theme(legend.position = "bottom")+
-  xlab("Age")+
-  ylab("Length (m)")
-
-length_trip
-
-age_calc%>%distinct(ID, POD)%>%group_by(POD)%>%tally()
-
-ggsave("./Figures/length_trip.png", length_trip, dpi = 320, height = 100, units = 'mm')
-
-# Individuals that have been measured on more than one trip ----
-ID_age<-age_calc%>%
-  group_by(ID)%>%
-  mutate(n = n())%>%
-  filter(n > 1)%>%
-  arrange(ID,trip)%>%
-  mutate(length_diff = lead(length_use) - length_use)
-
-age_calc%>%distinct(POD, ID)%>%group_by(POD)%>%tally()
-
+## Fig. S5 ----
 raw<-ggplot(age_calc)+
   geom_point(mapping = aes(x = age_month, y = length_use, color = POD))+
   geom_point(mapping = aes(x = age_month, y = BHDF, color = POD), shape = 21)+
@@ -268,6 +234,7 @@ raw<-ggplot(age_calc)+
 
 ggsave("./Figures/raw.png", raw, dpi = 320, height = 150, width = 200, units = 'mm')
 
+## Fig. S6 ----
 hist<-ggplot(age_calc%>%group_by(ID,trip, POD)%>%tally())+
   geom_histogram(aes(x = n, fill = POD), binwidth = 1, color = "black", alpha = 0.6)+
   facet_wrap(~trip*POD)+
