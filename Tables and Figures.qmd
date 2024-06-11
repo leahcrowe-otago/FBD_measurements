@@ -15,15 +15,15 @@ header-includes:
 \doublespacing
 \setcounter{page}{26}
 
-## FIGURE CAPTIONS
+FIGURE CAPTIONS
 
 Figure 1. Example measurement snapshot where the rostrum and fluke notch are clearly visible for total length (TL), and the blowhole and dorsal fin insertion (BHDF) are above the surface for the BHDF measurement. Oblique photos are also provided to demonstrate how individuals were identified from dorsal body markings. The animal in this image is a reproductive female named 'Minus' born in 2006.
 
-Figure 2. (a) Von Bertalanffy growth curves (VBGC) for each dolphin to estimate the median maximum total length (TL) and blowhole to dorsal fin length. The horizontal red lines are the median (solid) and 90% credible intervals (CI; dashed) of the population-level posterior distribution, and the vertical red line is provided at age 7 to visually compare the growth rate between the two lengths. (b) The TL VBGC per individual relative to birth year ('actual' = birth year if known; 'est' = first year sighted or estimated based on calving history). (c) The uncertainty (90%CI, vertical lines) around the maximum median total length estimates (points) for each individual; the position within the year bin is arbitrary.
+Figure 2. (a) Von Bertalanffy growth curves (VBGC) of total length (TL) and blowhole to dorsal fin length (BHDF) from median estimates for each individual. The horizontal red lines are the median (solid) and 90% credible intervals (CI; dashed) of the population-level posterior distribution. (b) The individual TL VBGC relative to birth year ('actual' = birth year if known; 'est' = first year sighted or estimated based on calving history). (c) The uncertainty (90%CI, vertical lines) around the median maximum total length estimates (points) for each individual; the position within the year bin is arbitrary.
 
-Figure 3. (a--c) The conditional distribution (red line) between the median estimates of individual ($i$) growth parameters: maximum total length $L_{1i}$, maximum blowhole to dorsal fin length $L_{2i}$, total length growth rate logit($k_{1i}$), and blowhole to dorsal fin length growth rate logit($k_{2i}$). The dashed red lines are the standard deviations ($\sigma$) of the linear relationship given by the listed equation where $\hat{y}$ is the expected value given x. (d) The values and linear relationship from (a) are plotted on top of the raw data measurements of individuals from occasions where both a total length (TL) and a blowhole to dorsal fin (BHDF) length were observed relative to age.  
+Figure 3. (a–c) The conditional distribution (red line, listed equation) between growth parameters where $\hat{y}$ is the expected value of one parameter given another, x. The individual $i$ growth parameters (black dots) are maximum length $L_{hi}$ and growth rate (logit($k_{hi}$)) where $h$ = 1 is the total length and $h$ = 2 is the blowhole to dorsal fin length. The dashed red lines indicate the standard deviations ($\sigma$) of the conditional distribution.  
 
-Figure 4. Exploratory summary boxplots of the median estimates of growth rates ($k_{1i}$ and $k_{2i}$) and maximum total lengths ($L_{1i}$ and $L_{2i}$) calculated for each individual grouped by (a) sex (F = female, M = male, X = unknown) and (b) pod membership. Note that the y-axis is the inverse-logit for the growth parameters $k_{hi}$ and the length is in meters for $L_{hi}$.
+Figure 4. Exploratory summary boxplots of the growth rates (logit($k_{hi}$) and maximum total length ($L_{hi}$) median estimates where $h$ = 1 is the total length and $h$ = 2 is the blowhole to dorsal fin length. Each individual $i$ is grouped by (a) sex (F = female, M = male, X = unknown) and (b) pod membership. Note that the y-axis is in meters for $L_{hi}$.
 
 \newpage
 
