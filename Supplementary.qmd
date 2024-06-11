@@ -296,7 +296,7 @@ Primary model Stan code. \footnotesize
 
 ```{r, AppendixI, results='markup',echo=FALSE,comment=""}
 
-cat(paste(readLines("./scripts/stan/vb_mod_all_t0i.stan"), collapse = "\n"))
+cat(paste(readLines("./scripts/stan/vb_mod_allo_t0i.stan"), collapse = "\n"))
 ```
 
 \newpage
@@ -311,7 +311,7 @@ Model code to confirm exploratory findings that sex and pod do not influence gro
 
 ```{r, AppendixII, results='markup',echo=FALSE,comment=""}
 
-cat(paste(readLines("./scripts/stan/vb_mod_all_t0i_sex.stan"), collapse = "\n"))
+cat(paste(readLines("./scripts/stan/vb_mod_allo_t0i_sex.stan"), collapse = "\n"))
 ```
 
 # References
