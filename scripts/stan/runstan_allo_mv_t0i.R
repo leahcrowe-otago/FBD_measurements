@@ -71,8 +71,8 @@ J=4
 
 set_cmdstan_path(path = "C:/Users/leahm/cmdstan-2.34.1")
 
-stan_fit = cmdstan_model("./scripts/stan/vb_mod_all_t0i.stan") #reg model
-#stan_fit = cmdstan_model("./scripts/stan/vb_mod_all_t0i_sex.stan") #sex/pod effects model
+stan_fit = cmdstan_model("./scripts/stan/vb_mod_allo_t0i.stan") #reg model
+#stan_fit = cmdstan_model("./scripts/stan/vb_mod_allo_t0i_sex.stan") #sex/pod effects model
 
 # initial values ----
 
