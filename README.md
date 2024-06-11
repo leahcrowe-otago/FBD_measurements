@@ -11,9 +11,33 @@
   - finds altitude for each snapshot
   - matches up to IDs and outputs file to enter measurements
   - identifies if altimeter reading meets criteria per Dickson et al. 2020 ("issues" column)
-5. Populate the "altperimage_*" file with measurements (also consider instead merging output csvs from Whalelength)
+5. Populate the "altperimage_*" file with measurements (.csvs from *Whalelength* are later merged in "whalength_file_merge.R")
   - filter by issue == "N"
   - hide columns C, G, H, and J to AC
   - Run each resulting image through Whalength
     - I1P Video stills, -1.5 cm offset
-6. Run "measurements_demo.Rmd" to group by age and sex classes
+6. Run "measurements_demo.Rmd" to wrangle data, incorporate life history info ("demo"graphy data), and create some supplementary figures
+  - calls "whalength_file_merge.R"
+    - merges all *Whalelength* outputs
+    - creates Fig. S4, calibration measurements 
+  - Supplementary Figures S5 & S6
+  - data output: see data repo for metadata details
+    -  individual *i* measurement data at each capture occasion *j* for model
+    -  individual life history data
+7. Model run in the "runstan_allo_mv_t0i.R" file: "run" the "Stan" code of "allo"metric measurement data in a "m"ulti"v"ariate model with individual varying age at length zero (t0i)
+  - data formatting for model
+  - calls the Stan model
+    - reg model: Appendix I
+    - sex/pod effects: Appendix II
+  - initial values for von Bertalanffy model (init_vb)
+  - fit the model (fit_vb)
+  - save results
+8. "Results.R"
+  - read data
+  - summarise results
+  - create table S2
+  - create Figs. 2–4, S7
+9. "Supplementary.qmd" creates the suppmat file
+  - creates supplementary tables
+  - Fig. S1 map created by calling "ms_map.R"
+  - Fig. S8 of SWFSC stranding data created in "TtPacificUS.R"
