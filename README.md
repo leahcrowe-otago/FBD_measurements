@@ -6,12 +6,12 @@
 2. Screen grab the best image of the dolphin above that shows rostrum to tail at/near the surface
   - used VLC player to go frame by frame
 3. Add screen grab filename to the time and ID from #1
-4. Run "Altitudes for snapshots" for each day of droning
+4. Run "./scripts/Altitudes for snapshots" for each day of droning
   - this adds a check to make sure GPS of the LiDAR and the metadata from the drone match up
   - finds altitude for each snapshot
   - matches up to IDs and outputs file to enter measurements
   - identifies if altimeter reading meets criteria per Dickson et al. 2020 ("issues" column)
-5. Populate the "altperimage_*" file with measurements (.csvs from *Whalelength* are later merged in "whalength_file_merge.R")
+5. Populate the "altperimage_*" file with measurements (.csvs from *Whalelength* are later merged in "./scripts/whalength_file_merge.R")
   - filter by issue == "N"
   - hide columns C, G, H, and J to AC
   - Run each resulting image through Whalength
@@ -24,20 +24,20 @@
   - data output: see data repo for metadata details
     -  individual *i* measurement data at each capture occasion *j* for model
     -  individual life history data
-7. Model run in the "runstan_allo_mv_t0i.R" file: "run" the "Stan" code of "allo"metric measurement data in a "m"ulti"v"ariate model with individual varying age at length zero (t0i)
+7. Model run in the "./scripts/stan/runstan_allo_mv_t0i.R" file: "run" the "Stan" code of "allo"metric measurement data in a "m"ulti"v"ariate model with individual varying age at length zero (t0i)
   - data formatting for model
   - calls the Stan model
-    - reg model: Appendix I
-    - sex/pod effects: Appendix II
+    - main model: Appendix I, "./scripts/stan/vb_mod_all0_t0i.stan"
+    - sex/pod effects: Appendix II, "./scripts/stan/vb_mod_all0_t0i_sex.stan"
   - initial values for von Bertalanffy model (init_vb)
   - fit the model (fit_vb)
   - save results
-8. "Results.R"
+8. "./scripts/Results.R"
   - read data
   - summarise results
   - create table S2
   - create Figs. 2–4, S7
 9. "Supplementary.qmd" creates the suppmat file
   - creates supplementary tables
-  - Fig. S1 map created by calling "ms_map.R"
-  - Fig. S8 of SWFSC stranding data created in "TtPacificUS.R"
+  - Fig. S1 map created by calling "./scripts/ms_map.R"
+  - Fig. S8 of SWFSC stranding data created in "./scripts/TtPacificUS.R"
