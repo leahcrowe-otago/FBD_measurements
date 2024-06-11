@@ -273,7 +273,7 @@ ID_index<-age_calc%>%
   mutate(ind = 1:n())
 
 ij_ID<-ID_index
-saveRDS(ij_ID, "./data/Measurements/Data for review/ij_ID_ms.rds")
+saveRDS(ij_ID, "./data/Measurements/ij_ID.rds")
 write.csv(ij_ID, "./data/Measurements/Data for review/ij_ID.csv", row.names = F)
 
 ### reg model ----
@@ -330,7 +330,7 @@ ij<-ij%>%
   dplyr::select(-ID)
 
 saveRDS(ij, file = paste0("./data/Measurements/ij_",i,"_ms.rds"))
-write.csv(ij, paste0("./data/Measurements/ij_",i,".csv"), row.names = F)
+write.csv(ij, paste0("./data/Measurements/Data for review/ij_",i,".csv"), row.names = F)
 }
 
 ### sex/pod model ----
@@ -340,8 +340,8 @@ obs_sex<-age_calc%>%
   dplyr::rename("length" = "length_use")%>%
   mutate(type = case_when(
     !is.na(length) & !is.na(BHDF) ~ 1,
-    !is.na(length) & is.na(BHDF) ~ 2,
-    is.na(length) & !is.na(BHDF) ~ 3
+    is.na(length) & !is.na(BHDF) ~ 2,
+    !is.na(length) & is.na(BHDF) ~ 3
   ))%>%
   dplyr::select(-SEX,-POD)%>% #these get added from the ID_index join
   #mutate(ind = 1:n())%>%
@@ -353,6 +353,6 @@ obs_sex<-age_calc%>%
   arrange(SEX, ID, ind)%>%
   dplyr::select(ID, ind, obs, age, length, BHDF, type)
 
-saveRDS(obs_sex, file = paste0("./data/Measurements/Data for review/obs_sex.rds"))
-write.csv(obs_sex, paste0("./data/Measurements/Data for review/obs_sex.csv"), row.names = F)
+saveRDS(obs_sex, file = paste0("./data/Measurements/ij_obs_sex.rds"))
+write.csv(obs_sex, paste0("./data/Measurements/Data for review/ij_obs_sex.csv"), row.names = F)
 ```
