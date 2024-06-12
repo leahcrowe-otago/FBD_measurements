@@ -49,6 +49,9 @@ N_b/(N_b+N_z+N_y)
 
 ### sex/pod model ----
 obs_sex = readRDS(file = './data/Measurements/ij_obs_sex.rds')
+obs_sex<-obs_sex%>%
+  left_join(ij_ID, by = c("ID","ind"))
+
 n_k<-obs_sex%>%filter(SEX != "X")%>%distinct(ID)%>%nrow()
 n_obs_k<-obs_sex%>%filter(SEX != "X")%>%nrow()
 n_obs = nrow(obs_sex)
@@ -56,13 +59,13 @@ sex = ij_ID%>%
   dplyr::select(SEX)%>%
   filter(SEX != "X")%>%
   mutate(SEX = case_when(
-    SEX == "F" ~ 0,
-    SEX == "M" ~ 1))
+    SEX == "F" ~ 1,
+    SEX == "M" ~ 2))
 pod = ij_ID%>%
   dplyr::select(POD)%>%
   mutate(POD = case_when(
-    POD == "DOUBTFUL" ~ 0,
-    POD == "DUSKY" ~ 1))
+    POD == "DOUBTFUL" ~ 1,
+    POD == "DUSKY" ~ 2))
 #params matrix dims
 J=4
 
@@ -71,8 +74,8 @@ J=4
 
 set_cmdstan_path(path = "C:/Users/leahm/cmdstan-2.34.1")
 
-stan_fit = cmdstan_model("./scripts/stan/vb_mod_allo_t0i.stan") #reg model
-#stan_fit = cmdstan_model("./scripts/stan/vb_mod_allo_t0i_sex.stan") #sex/pod effects model
+#stan_fit = cmdstan_model("./scripts/stan/vb_mod_allo_t0i.stan") #reg model
+stan_fit = cmdstan_model("./scripts/stan/vb_mod_allo_t0i_sex.stan") #sex/pod effects model
 
 # initial values ----
 
