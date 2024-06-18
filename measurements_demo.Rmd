@@ -333,26 +333,4 @@ saveRDS(ij, file = paste0("./data/Measurements/ij_",i,"_ms.rds"))
 write.csv(ij, paste0("./data/Measurements/Data for review/ij_",i,".csv"), row.names = F)
 }
 
-### sex/pod model ----
-
-#known sex, both measurements, n_obs_k, 538
-obs_sex<-age_calc%>%
-  dplyr::rename("length" = "length_use")%>%
-  mutate(type = case_when(
-    !is.na(length) & !is.na(BHDF) ~ 1,
-    is.na(length) & !is.na(BHDF) ~ 2,
-    !is.na(length) & is.na(BHDF) ~ 3
-  ))%>%
-  dplyr::select(-SEX,-POD)%>% #these get added from the ID_index join
-  #mutate(ind = 1:n())%>%
-  left_join(ID_index, by = "ID")%>%
-  group_by(ID)%>%
-  mutate(obs = 1:n(),
-         age = age_month)%>%
-    ungroup()%>%
-  arrange(SEX, ID, ind)%>%
-  dplyr::select(ID, ind, obs, age, length, BHDF, type)
-
-saveRDS(obs_sex, file = paste0("./data/Measurements/ij_obs_sex.rds"))
-write.csv(obs_sex, paste0("./data/Measurements/Data for review/ij_obs_sex.csv"), row.names = F)
 ```
