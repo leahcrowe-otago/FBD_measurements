@@ -13,7 +13,9 @@ n_ind = nrow(ij_ID)
 ### reg model ----
 #both bhdf & tl
 ij_b = readRDS(file = './data/Measurements/ij_1.rds')
+#bhdf only
 ij_z = readRDS(file = './data/Measurements/ij_2.rds')
+#total length only
 ij_y = readRDS(file = './data/Measurements/ij_3.rds')
 
 ij_all<-ij_b%>%
@@ -47,35 +49,12 @@ N_y
 N_b+N_z+N_y
 N_b/(N_b+N_z+N_y)
 
-### sex/pod model ----
-obs_sex = readRDS(file = './data/Measurements/ij_obs_sex.rds')
-obs_sex<-obs_sex%>%
-  left_join(ij_ID, by = c("ID","ind"))
-
-n_k<-obs_sex%>%filter(SEX != "X")%>%distinct(ID)%>%nrow()
-n_obs_k<-obs_sex%>%filter(SEX != "X")%>%nrow()
-n_obs = nrow(obs_sex)
-sex = ij_ID%>%
-  dplyr::select(SEX)%>%
-  filter(SEX != "X")%>%
-  mutate(SEX = case_when(
-    SEX == "F" ~ 1,
-    SEX == "M" ~ 2))
-pod = ij_ID%>%
-  dplyr::select(POD)%>%
-  mutate(POD = case_when(
-    POD == "DOUBTFUL" ~ 1,
-    POD == "DUSKY" ~ 2))
-#params matrix dims
-J=4
-
 # model ----
 # z matrix and z_t are the individual deviations from the population parameters
 
 set_cmdstan_path(path = "C:/Users/leahm/cmdstan-2.34.1")
 
-#stan_fit = cmdstan_model("./scripts/stan/vb_mod_allo_t0i.stan") #reg model
-stan_fit = cmdstan_model("./scripts/stan/vb_mod_allo_t0i_sex.stan") #sex/pod effects model
+stan_fit = cmdstan_model("./scripts/stan/vb_mod_allo_t0i.stan") #reg model
 
 # initial values ----
 
@@ -95,19 +74,12 @@ init_vb = function(){
   z = matrix(rnorm(n_ind*J), n_ind, J)
   sigma_obs = rlnorm(2)
   rho_obs = runif(1)
-  
-  #sex/pod
-  beta = rlnorm(J)
-  gamma = rlnorm(J)
-  pi = runif(1)
-    
-  return(list(#obs/sex
-              beta = beta, gamma = gamma, pi = pi,
-              #both versions
-              z_t = z_t, mu_t = mu_t, t0p = t0p, sigma_t = sigma_t,
-              L = L, mu = mu, sigma = sigma, z = z, 
-              sigma_obs = sigma_obs, rho_obs = rho_obs
-              ))
+
+  return(list(
+    z_t = z_t, mu_t = mu_t, sigma_t = sigma_t,
+    t0p = t0p, L = L, mu = mu, sigma = sigma, z = z,
+    sigma_obs = sigma_obs, rho_obs = rho_obs
+  ))
 }
 
 # run stan ----
@@ -122,28 +94,18 @@ fit_vb <- stan_fit$sample(
     ind_b = ij_b$ind,
     data_b = ij_b%>%dplyr::select(length, BHDF),
     age_b = ij_b$age,
-    
+
     ind_y = ij_y$ind,
     y_y = ij_y$length,
     age_y = ij_y$age,
-    
+
     ind_z = ij_z$ind,
     z_z = ij_z$BHDF,
     age_z = ij_z$age,
-    
+
     N_b = N_b,
     N_z = N_z,
     N_y = N_y,
-  ### sex/pod model ----
-    n_k = n_k,
-    n_obs_k = n_obs_k,
-    n_obs = n_obs,
-    id = obs_sex$ind,
-    age = obs_sex$age,
-    type = obs_sex$type,
-    val = obs_sex%>%dplyr::select(length, BHDF)%>%replace(is.na(.), 0),
-    sex = sex$SEX,
-    pod = pod$POD
   
   ),
   init = init_vb,
@@ -154,24 +116,22 @@ fit_vb <- stan_fit$sample(
   save_warmup = FALSE,
   max_treedepth = 10,
   parallel_chains = 4,
-  refresh = 100
+  refresh = 10
 )
 
 # results -----
 
-parout = as_draws_df(fit_vb$draws(c(#sex/pod model
-                                    #"beta","gamma","pi",
-                                    #both models
-                                    "mu","mu_t","sigma","sigma_t","sigma_obs","rho_obs",
-                                    "varcov_par",
+parout = as_draws_df(fit_vb$draws(c(
+                                    "mu_t","sigma_t","varcov_par",
+                                    "mu","sigma","sigma_obs","rho_obs",
                                     "corr[1,2]","corr[1,3]","corr[1,4]",
                                     "corr[2,3]","corr[2,4]",
                                     "corr[3,4]",
                                     "Lobs[1,1]","Lobs[2,1]","Lobs[2,2]",
-                                    "mu_pred")))
+                                    "mu_pred"
+                                    )))
 
 saveRDS(parout, file = paste0("./results/parout_",Sys.Date(),".rds"))
-#saveRDS(parout, file = paste0("./results/parout_",Sys.Date(),"sexpod.rds"))
 
 #trace plot
 mcmc_trace(parout)+theme_bw()
@@ -182,6 +142,7 @@ as.data.frame(summary(parout))
 #draws of par from posterior
 parindout = as_draws_df(fit_vb$draws(c("par")))
 t0pindout = as_draws_df(fit_vb$draws(c("t0p")))
+
 #save par for individual plotting
 saveRDS(parindout, file = paste0("./results/parindout_",Sys.Date(),".rds"))
 saveRDS(t0pindout, file = paste0("./results/t0pindout_",Sys.Date(),".rds"))

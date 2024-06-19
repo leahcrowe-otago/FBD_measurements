@@ -39,7 +39,7 @@ parindout_in_summ<-summary(parindout_in)
 
 t0pindout_in = readRDS(file = paste0('./results/t0pindout_',date,'.rds'))
 t0pindout_in_summ<-summary(t0pindout_in)
-
+hist(t0pindout_in_summ$mean)
 # report results ----
 
 ### Fig. S7, plot a couple of individuals ----
