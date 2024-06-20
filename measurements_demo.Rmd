@@ -225,14 +225,26 @@ ID_pertrip_pod<-length_all+
 ID_pertrip_pod
 
 ## Fig. S5 ----
-raw<-ggplot(age_calc)+
+raw_pod<-ggplot(age_calc)+
   geom_point(mapping = aes(x = age_month, y = length_use, color = POD))+
   geom_point(mapping = aes(x = age_month, y = BHDF, color = POD), shape = 21)+
   theme_bw()+
   ylab("Length (m)")+
+  xlab("Age")+
   theme(legend.position = "bottom")
 
-ggsave("./Figures/raw.png", raw, dpi = 320, height = 150, width = 200, units = 'mm')
+raw_sex<-ggplot(age_calc)+
+  geom_point(mapping = aes(x = age_month, y = length_use, color = SEX), alpha = 0.8)+
+  geom_point(mapping = aes(x = age_month, y = BHDF, color = SEX), shape = 21)+
+  theme_bw()+
+  ylab("Length (m)")+
+  xlab("Age")+
+  theme(legend.position = "bottom")+
+  scale_color_viridis_d(begin = 0, end = 0.9)
+
+raw<-ggpubr::ggarrange(raw_pod, raw_sex, labels = "auto", ncol = 1)
+
+ggsave("./Figures/raw.png", raw, dpi = 320, height = 300, width = 200, units = 'mm')
 
 ## Fig. S6 ----
 hist<-ggplot(age_calc%>%group_by(ID,trip, POD)%>%tally())+
