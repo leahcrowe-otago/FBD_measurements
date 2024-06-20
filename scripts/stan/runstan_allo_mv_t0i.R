@@ -105,7 +105,7 @@ fit_vb <- stan_fit$sample(
 
     N_b = N_b,
     N_z = N_z,
-    N_y = N_y,
+    N_y = N_y
   
   ),
   init = init_vb,
