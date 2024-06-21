@@ -24,11 +24,11 @@
   - data output: see data repo for metadata details
     -  individual *i* measurement data at each capture occasion *j* for model
     -  individual life history data
-7. Model run in the "./scripts/stan/runstan_allo_mv_t0i.R" file: "run" the "Stan" code of "allo"metric measurement data in a "m"ulti"v"ariate model with individual varying age at length zero (t0i)
+7. Model run in the "./scripts/stan/runstan_allo_mv_t0.R" file: 'run' the 'stan' code of 'allo'metric measurement data in a 'm'ulti'v'ariate model with fixed age at length zero (t0)
   - data formatting for model
   - calls the Stan model
-    - main model: Appendix I, "./scripts/stan/vb_mod_all0_t0i.stan"
-    - sex/pod effects: Appendix II, "./scripts/stan/vb_mod_all0_t0i_sex.stan"
+    - main model: Appendix I, "./scripts/stan/vb_mod_all0_t0.stan"
+    - sex/pod effects: "./scripts/stan/Appendix II.R" runs the model specified in "./scripts/stan/vb_mod_all0_t0_sexpod.stan"
   - initial values for von Bertalanffy model (init_vb)
   - fit the model (fit_vb)
   - save results
