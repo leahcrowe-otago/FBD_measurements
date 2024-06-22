@@ -51,16 +51,7 @@ In our model, this formulation was implemented both for the variance-covariance 
 
 ### 1.1.2 Non-centered parameterisation
 
-Individual random effects can introduce issues with model fit under the centered-parameterisation. We experienced this when fitting our model, therefore, we implemented a non-centered paramaterisation with individual random effects represented by $\zeta_{t_{0_i}}$ to estimate $t_{0_i}$,
-
-\vspace{-3ex}
-
-```{=tex}
-\begin{equation}
-t_{0_i} = \mathrm{exp}(\mu_{t_0} + \sigma_{t_0} \times \zeta_{t_{0_i}}),\; i = 1,\dotsc, n,
-\end{equation}
-```
-where $\zeta_{t_{0_i}}$ has a standard normal distribution. For the multivariate growth parameter model, $\boldsymbol{\theta_{i}}$, we introduce a vector of individual random effect parameters, $\boldsymbol{\zeta_i}$ = \[$\zeta_{L_{1i}}$, $\zeta_{k_{1i}}$, $\zeta_{L_{2i}}$, $\zeta_{k_{2i}}$\], and find
+Individual random effects can introduce issues with model fit under the centered-parameterisation. We experienced this when fitting our model, therefore, we implemented a non-centered paramaterisation with individual random effects. For the multivariate growth parameter model, $\boldsymbol{\theta_{i}}$, we introduced a vector of individual random effect parameters, $\boldsymbol{\zeta_i}$ = \[$\zeta_{L_{1i}}$, $\zeta_{k_{1i}}$, $\zeta_{L_{2i}}$, $\zeta_{k_{2i}}$\], and find
 
 \vspace{-3ex}
 
@@ -73,7 +64,7 @@ The vector $\boldsymbol{\zeta_i}$ was assumed to come from a multivariate normal
 
 ### 1.1.3 Priors
 
-The parameters were given non-informative priors: all $\mu$ parameters were from a normal distribution, all $\sigma$ parameters were from a student's t-distribution and were constrained to positive numbers, and we used the LKJ prior [@lewandowski2009] for both correlation matrices estimated in our model using the Cholesky formulation of the variance-covariance matrix ($\Sigma$) (Table S1).
+The parameters were given non-informative priors (Table S1). All $\mu$ parameters were from a normal distribution, and all $\sigma$ parameters were constrained to positive numbers from a student's t-distribution. We used a lognormal distribution for the prior distribution of $t_0$. The LKJ prior [@lewandowski2009] for both correlation matrices estimated in our model using the Cholesky formulation of the variance-covariance matrix ($\Sigma$) .
 
 ## 1.2 Conditional distribution
 
@@ -147,7 +138,7 @@ Using the posterior medians from Table S2, we find:
 \begin{equation}
 \begin{split}
 \hat{L}_{1i} & = \mu_{L_1} + \rho_{L_{1}k_{1i}}\sigma_{L_1}\sigma_{k_1} \times \frac{1}{\sigma_{k_1}^2} \times (\mathrm{logit}(k_{1i}) - \mu_{k_1}) \\
-& = 2.739 + 0.259 \times \mathrm{logit}(k_{1i}),
+& = 2.737 + 0.271 \times \mathrm{logit}(k_{1i}),
 \end{split}
 \end{equation}
 ```
@@ -159,7 +150,7 @@ and the associated variance:
 \begin{equation}
 \begin{split}
 \Sigma_{L_1 | k_1} & = \sigma_{L_1}^2 - \rho_{L_{1}k_{1}}\sigma_{L_1}\sigma_{k_1} \times \frac{1}{\sigma_{k_1}^2} \times \rho_{k_{1}L_{1}}\sigma_{k_1}\sigma_{L_1} \\
-& = 0.010.
+& = 0.098.
 \end{split}
 \end{equation}
 ```
@@ -172,8 +163,8 @@ Table S1. Prior distributions specified in the model. Our model used the Cholesk
 ```{r, tab_priors, echo = F, warning = F, message = F}
 library(dplyr);library(kableExtra)
 
-priors = data.frame(Parameter = c("all $\\mu$", "all $\\sigma$", "$L$"), `Prior_distribution` = c("$N(0, 1000)$", 
-                                 "$t_{3}(0, 50)$", "$LKJ(1)$"))
+priors = data.frame(Parameter = c("all $\\mu$", "all $\\sigma$", "$L$","$t_0$"), `Prior_distribution` = c("N(0, 1000)", 
+                                 "t_{3}(0, 50)", "LKJ(1)","Lognormal(0, 10)"))
 
 priors%>%
   kableExtra::kable(booktabs = T, align = "c", escape = F) 
@@ -184,26 +175,54 @@ Table S2. Model estimates of the mean ($\mu$), standard deviation ($\sigma$), an
 ```{r, table, echo = F, out.width = '80%', message = F, warning = F, include = T}
 
 library(dplyr)
-summ = readRDS(file = './results/summtable.rds')
+summ = readRDS(file = './results/summtable_t0.rds')
 
-variable_greek<-c('$\\mu_{L_1}$','$\\mu_{k_1}$','$\\mu_{L_2}$','$\\mu_{k_2}$','$\\mu_{t_0}$',
-                  '$\\sigma_{L_1}$','$\\sigma_{k_1}$','$\\sigma_{L_2}$','$\\sigma_{k_2}$','$\\sigma_{t_0}$',
+variable_greek<-c('$\\mu_{L_1}$','$\\mu_{k_1}$','$\\mu_{L_2}$','$\\mu_{k_2}$',
+                  '$\\sigma_{L_1}$','$\\sigma_{k_1}$','$\\sigma_{L_2}$','$\\sigma_{k_2}$',
                   '$\\sigma_{y_1}$','$\\sigma_{y_2}$','$\\rho_{{y_1}{y_2}}$', '$\\rho_{{L_1}{k_1}}$',
                   '$\\rho_{{L_1}{L_2}}$','$\\rho_{{L_1}{k_2}}$','$\\rho_{{k_1}{L_2}}$','$\\rho_{{k_1}{k_2}}$',
-                  '$\\rho_{{L_2}{k_2}}$')
+                  '$\\rho_{{L_2}{k_2}}$','$t_0$')
 
 summary<-summ%>%
-  slice(1:13,30:35)%>%
+  slice(1:18)%>%
   mutate(Parameter = variable_greek,
-         Order = c(1,3,5,7,9,2,4,6,8,10,11,12,13,14,15,16,17,18,19))%>%
+         Order = c(1,3,5,7,2,4,6,8,9,10,11,12,13,14,15,16,17,18))%>%
   arrange(Order)%>%
-  dplyr::select(Parameter, Median, `90%CI`)
+  dplyr::select(Parameter, Median, '5th percentile', '95th percentile')
 
 library(kableExtra)
 summary%>%
   kableExtra::kable(booktabs = T, align = "c", escape = F)
 ```
 
+\newpage
+
+Table S3. Model parameter estimates of the expanded model (Appendix II) exploring sex($\beta$)- and pod($\gamma$)-effects, including the mean ($\mu$), standard deviation ($\sigma$), correlation ($\rho$), and theoretical age less than zero when the length was zero ($t_0$).
+
+```{r, tableS3, echo = F, out.width = '80%', message = F, warning = F, include = T}
+
+library(dplyr)
+summ_sexpod = readRDS(file = './results/summtable_sexpod_t0.rds')
+
+variable_greek<-c('$\\beta_{L_1}$','$\\beta_{k_1}$','$\\beta_{L_2}$','$\\beta_{k_2}$',
+                  '$\\gamma_{L_1}$','$\\gamma_{k_1}$','$\\gamma_{L_2}$','$\\gamma_{k_2}$','$\\pi$','$t_0$',
+                  '$\\mu_{L_1}$','$\\mu_{k_1}$','$\\mu_{L_2}$','$\\mu_{k_2}$',
+                  '$\\sigma_{L_1}$','$\\sigma_{k_1}$','$\\sigma_{L_2}$','$\\sigma_{k_2}$',
+                  '$\\sigma_{y_1}$','$\\sigma_{y_2}$','$\\rho_{{y_1}{y_2}}$', '$\\rho_{{L_1}{k_1}}$',
+                  '$\\rho_{{L_1}{L_2}}$','$\\rho_{{L_1}{k_2}}$','$\\rho_{{k_1}{L_2}}$','$\\rho_{{k_1}{k_2}}$',
+                  '$\\rho_{{L_2}{k_2}}$')
+
+summary_sexpod<-summ_sexpod%>%
+  slice(1:27)%>%
+  mutate(Parameter = variable_greek,
+         Order = c(1:9,27,10,12,14,16,11,13,15,17:26))%>%
+  arrange(Order)%>%
+  dplyr::select(Parameter, Median, '5th percentile', '95th percentile')
+
+library(kableExtra)
+summary_sexpod%>%
+  kableExtra::kable(booktabs = T, align = "c", escape = F)
+```
 \newpage
 
 # Figures
@@ -232,13 +251,10 @@ Fig. S2. Example photographs of different morphs within the Fiordland bottlenose
 
 \newpage
 
-::: {layout-ncol="1" fig-pos='H'}
+::: {layout-ncol="1" fig-pos="H"}
+![](Figures/Supplement/Squid/858_cr.jpg){height="50%"}
 
-![](Figures/Supplement/Squid/858_cr.jpg){height=50%}
-
-![](Figures/Supplement/Squid/DSC_4944_cr.jpg){height=50%}
-\newline
-Fig. S3. Example photographs of squid sucker marks on Fiordland bottlenose dolphins (pers comm. K. Bolstad) including (a) on the chin in 2015 and (b) left of the eye in 2022.
+![](Figures/Supplement/Squid/DSC_4944_cr.jpg){height="50%"} \newline Fig. S3. Example photographs of squid sucker marks on Fiordland bottlenose dolphins (pers comm. K. Bolstad) including (a) on the chin in 2015 and (b) left of the eye in 2022.
 :::
 
 \newpage
@@ -255,7 +271,7 @@ Fig. S4. the difference between the observed and actual length of the calibratio
 knitr::include_graphics('./Figures/raw.png')
 ```
 
-Fig. S5. Measured values of total length (solid circles) and blowhole to dorsal fin length (open circles).
+Fig. S5. Measured values of total length (solid circles) and blowhole to dorsal fin length (open circles) by a) pod and b) by sex (F = females, M = males, X = unknown).
 
 \newpage
 
@@ -294,7 +310,7 @@ Primary model Stan code. \footnotesize
 
 ```{r, AppendixI, results='markup',echo=FALSE,comment=""}
 
-cat(paste(readLines("./scripts/stan/vb_mod_allo_t0i.stan"), collapse = "\n"))
+cat(paste(readLines("./scripts/stan/vb_mod_allo_t0.stan"), collapse = "\n"))
 ```
 
 \newpage
@@ -309,36 +325,9 @@ Model code to confirm exploratory findings that sex and pod do not influence gro
 
 ```{r, AppendixII, results='markup',echo=FALSE,comment=""}
 
-cat(paste(readLines("./scripts/stan/vb_mod_allo_t0i_sex.stan"), collapse = "\n"))
+cat(paste(readLines("./scripts/stan/vb_mod_allo_t0_sexpod.stan"), collapse = "\n"))
 ```
 
 \normalsize
-
-Table S3. Model estimates of the mean ($\mu$) and standard deviation ($\sigma$) of the parameters specifically estimated in the expanded model to explore sex and pod effects.
-
-insert table here
-
-```{r, tableS3, echo = F, out.width = '80%', message = F, warning = F, include = T}
-
-# library(dplyr)
-# summ = readRDS(file = './results/summtable.rds')
-# 
-# variable_greek<-c('$\\mu_{L_1}$','$\\mu_{k_1}$','$\\mu_{L_2}$','$\\mu_{k_2}$','$\\mu_{t_0}$',
-#                   '$\\sigma_{L_1}$','$\\sigma_{k_1}$','$\\sigma_{L_2}$','$\\sigma_{k_2}$','$\\sigma_{t_0}$',
-#                   '$\\sigma_{y_1}$','$\\sigma_{y_2}$','$\\rho_{{y_1}{y_2}}$', '$\\rho_{{L_1}{k_1}}$',
-#                   '$\\rho_{{L_1}{L_2}}$','$\\rho_{{L_1}{k_2}}$','$\\rho_{{k_1}{L_2}}$','$\\rho_{{k_1}{k_2}}$',
-#                   '$\\rho_{{L_2}{k_2}}$')
-# 
-# summary<-summ%>%
-#   slice(1:13,30:35)%>%
-#   mutate(Parameter = variable_greek,
-#          Order = c(1,3,5,7,9,2,4,6,8,10,11,12,13,14,15,16,17,18,19))%>%
-#   arrange(Order)%>%
-#   dplyr::select(Parameter, Median, `90%CI`)
-# 
-# library(kableExtra)
-# summary%>%
-#   kableExtra::kable(booktabs = T, align = "c", escape = F)
-```
 
 # References
