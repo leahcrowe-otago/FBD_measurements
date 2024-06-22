@@ -13,7 +13,7 @@ parout_in = readRDS(file = paste0('./results/parout_',date,'.rds'))
 
 par_df<-as.data.frame(parout_in)
 #bayesplot::mcmc_dens(parout_in)
-bayesplot::mcmc_trace(parout_in)+theme_bw()
+#bayesplot::mcmc_trace(parout_in)+theme_bw()
 summ_paroutin<-as.data.frame(summary(parout_in))
 
 summ_paroutin%>%
@@ -30,9 +30,10 @@ summ_paroutin%>%
 
 #### Table S2 ----
 summ<-summ_paroutin%>%
-  mutate(`90%CI` = paste0(as.character(format(round(q5,3)),3),"–",as.character(format(round(q95,3)),3)),
-         Median = round(median, 3))%>%
-  dplyr::select(variable, Median,`90%CI`)
+  mutate(Median = round(median, 3),
+         '5th percentile' = format(round(q5,3)),
+         '95th percentile' = format(round(q95,3)))%>%
+  dplyr::select(variable, Median,'5th percentile','95th percentile')
 
 saveRDS(summ, file = "./results/summtable_t0.rds")
 
