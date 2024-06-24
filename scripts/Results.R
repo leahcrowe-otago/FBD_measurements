@@ -4,6 +4,18 @@ library(dplyr)
 library(ggplot2)
 library(ggExtra)
 
+# data ----
+#IDs
+ij_ID = readRDS(file = './data/Measurements/ij_ID.rds')
+n_ind = nrow(ij_ID)
+
+#both bhdf & tl
+ij_b = readRDS(file = './data/Measurements/ij_1.rds')
+#bhdf only
+ij_z = readRDS(file = './data/Measurements/ij_2.rds')
+#total length only
+ij_y = readRDS(file = './data/Measurements/ij_3.rds')
+
 # read in results ----
 date = "2024-06-21" # from runstan_allo_mv_t0
 
@@ -46,6 +58,7 @@ max(summ_paroutin$ess_tail)
 
 t0p_est<-summ_paroutin%>%
   filter(variable == "t0p")
+t0p = t0p_est$median
 
 # individual-level estimates ----
 parindout_in = readRDS(file = paste0('./results/parindout_',date,'.rds'))
@@ -75,8 +88,6 @@ for(i in 1:nind){
   ky = parindout_in[[paste0('par[',i,',2]')]]
   Lz = parindout_in[[paste0('par[',i,',3]')]]
   kz = parindout_in[[paste0('par[',i,',4]')]]
-  #t0p = t0pindout_in[[paste0('t0p[',i,']')]]
-  t0p = t0p_est$median
   
   tmp_y = matrix(NA,length(Ly),ngrid)
   tmp_z = matrix(NA,length(Lz),ngrid)
@@ -226,7 +237,7 @@ vbgc_zero<-ggplot(growest_plot)+
   theme(legend.position = "none")+
   scale_color_grey(start = 0.6, end = 0.1)
 
-ggplot2::ggsave(paste0("./Figures/vbgc_zero_t0.png"), vbgc_zero, device = "png", dpi = 700, width = 250, height = 100, units = 'mm')
+ggplot2::ggsave(paste0("./Figures/vbgc_zero_t0.png"), vbgc_zero, device = "png", dpi = 700, width = 200, height = 100, units = 'mm')
 
 #### Fig. 2b ----
 vbgc_by<-ggplot(growest_plot%>%filter(Length == "TL"))+
@@ -241,7 +252,7 @@ vbgc_by<-ggplot(growest_plot%>%filter(Length == "TL"))+
 
 ab<-ggpubr::ggarrange(vbgc_zero, vbgc_by, common.legend = F, legend = "bottom", widths = c(1,1.5), labels = "auto")
 
-ggplot2::ggsave(paste0("./Figures/vbgcplot_t0.png"), ab, device = "png", dpi = 700, width = 300, height = 150, units = 'mm')
+ggplot2::ggsave(paste0("./Figures/vbgcplot_t0.png"), ab, device = "png", dpi = 700, width = 200, height = 100, units = 'mm')
 
 ## individual median summaries
 ind_median%>%
@@ -276,12 +287,12 @@ uncertainty_Ly<-ggplot(uncertainty%>%filter(param == "Ly"))+
         axis.text.x = element_text(angle = -90, vjust = -0.5))+
   scale_color_viridis_d(begin = 0, end = 0.9)
 
-ggplot2::ggsave(paste0("./Figures/Ly_CI_t0.png"), uncertainty_Ly, device = "png", dpi = 700, height = 200, width = 300, units = 'mm')
+ggplot2::ggsave(paste0("./Figures/Ly_CI_t0.png"), uncertainty_Ly, device = "png", dpi = 700, height = 120, width = 200, units = 'mm')
 
 #### Fig 2, together ----
-curve_plot<-ggpubr::ggarrange(ab,uncertainty_Ly, ncol = 1, labels = c('','c'), heights = c(2,1.25))
+curve_plot<-ggpubr::ggarrange(ab,uncertainty_Ly, ncol = 1, labels = c('','c'), heights = c(2,1.5))
 
-ggplot2::ggsave(paste0("./Figures/curve_plots_t0.png"), curve_plot, device = "png", dpi = 700, height = 225, width = 300, units = 'mm')
+ggplot2::ggsave(paste0("./Figures/curve_plots_t0.png"), curve_plot, device = "png", dpi = 700, height = 175, width = 200, units = 'mm')
 
 #summary on birth year cutoff
 uncertainty%>%
