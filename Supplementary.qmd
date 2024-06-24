@@ -60,7 +60,7 @@ Individual random effects can introduce issues with model fit under the centered
 \boldsymbol{\theta_i} = \boldsymbol{\mu} + \mathrm{diag}(\sigma) \times L \times \boldsymbol{\zeta_i},\; i = 1,\dotsc, n.
 \end{equation}
 ```
-The vector $\boldsymbol{\zeta_i}$ was assumed to come from a multivariate normal distribution with zero mean and identity variance matrix. The above formulations are equivalent to the log-normal and normal distributions detailed in Equation 2 and 3 in the main body of the text, respectively.
+The vector $\boldsymbol{\zeta_i}$ was assumed to come from a multivariate normal distribution with zero mean and identity variance matrix. The above formulations are equivalent to the log-normal and normal distributions detailed in Equation 2 in the main body of the text.
 
 ### 1.1.3 Priors
 
@@ -158,15 +158,16 @@ and the associated variance:
 
 # Tables
 
-Table S1. Prior distributions specified in the model. Our model used the Cholesky formulation to derive the variance-covariance matrix $\Sigma$ as this improved computational efficiency where parameter $L$ refers to the lower positive-definite triangular matrix of the correlation matrix. The $LKJ$ prior with $\eta$ = 1 indicates there is no prior knowledge of an existence of correlation between parameters.
+Table S1. Prior distributions specified in the model. Our model used the Cholesky formulation to derive the variance-covariance matrix $\Sigma$ as this improved computational efficiency where parameter $L$ refers to the lower positive-definite triangular matrix of the correlation matrix. The LKJ prior with $\eta$ = 1 indicates there is no prior knowledge of an existence of correlation between parameters.
 
 ```{r, tab_priors, echo = F, warning = F, message = F}
 library(dplyr);library(kableExtra)
 
-priors = data.frame(Parameter = c("all $\\mu$", "all $\\sigma$", "$L$","$t_0$"), `Prior_distribution` = c("N(0, 1000)", 
-                                 "t_{3}(0, 50)", "LKJ(1)","Lognormal(0, 10)"))
+priors = data.frame(Parameter = c("all $\\mu$", "all $\\sigma$", "$L$","$t_0$"), `Prior distribution` = c("N(0, 1000)", 
+                                 "$\\mathrm{t}_{3}$(0, 50)", "LKJ(1)","Lognormal(0, 10)"))
 
 priors%>%
+  dplyr::select(Parameter, "Prior distribution" = Prior.distribution)%>%
   kableExtra::kable(booktabs = T, align = "c", escape = F) 
 ```
 
@@ -266,7 +267,7 @@ knitr::include_graphics('./Figures/noodle.png')
 
 Fig. S4. the difference between the observed and actual length of the calibration object captured in the field. Note that there was no footage of the calibration object taken during the 2022_07 trip. A boat-hook wrapped in pool noodles was our known-length object as it was rigid, low-profile, and floated just above the surface. Two different length, contrasting coloured noodles (purple and orange) on one fully extended boat-hook allowed for measurements of three varying lengths (total length of both colours together, and two shorter lengths of each of the sections to represent smaller individuals).
 
-```{r, Fig_raw, echo = F, out.height = '60%'}
+```{r, Fig_raw, echo = F, out.height = '90%'}
 
 knitr::include_graphics('./Figures/raw.png')
 ```
@@ -319,11 +320,11 @@ cat(paste(readLines("./scripts/stan/vb_mod_allo_t0.stan"), collapse = "\n"))
 
 \normalsize
 
-Model code to confirm exploratory findings that sex and pod do not influence growth parameters. Results are below in Table S3.
+Model code to confirm exploratory findings that sex and pod do not influence growth parameters. Model results are available in Table S3.
 
 \tiny
 
-```{r, AppendixII, results='markup',echo=FALSE,comment=""}
+```{r, AppendixII, results='markup',echo=FALSE,comment="", warning = F}
 
 cat(paste(readLines("./scripts/stan/vb_mod_allo_t0_sexpod.stan"), collapse = "\n"))
 ```
