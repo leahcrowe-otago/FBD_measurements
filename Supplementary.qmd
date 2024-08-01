@@ -9,8 +9,8 @@ format:
     mathspec: true
     fig-pos: 'H'
 header-includes:
-- \usepackage{booktabs}
-- \usepackage{siunitx}
+  - \usepackage{booktabs}
+  - \usepackage{siunitx}
 ---
 
 ```{=tex}
@@ -198,7 +198,7 @@ summary%>%
 
 \newpage
 
-Table S3. Model parameter estimates of the expanded model (Appendix II) exploring sex($\beta$)- and pod($\gamma$)-effects, including the mean ($\mu$), standard deviation ($\sigma$), correlation ($\rho$), and theoretical age less than zero when the length was zero ($t_0$).
+Table S3. Model parameter estimates of the expanded model exploring sex($\beta$)- and pod($\gamma$)-effects, including the mean ($\mu$), standard deviation ($\sigma$), correlation ($\rho$), and theoretical age less than zero when the length was zero ($t_0$).
 
 ```{r, tableS3, echo = F, out.width = '80%', message = F, warning = F, include = T}
 
