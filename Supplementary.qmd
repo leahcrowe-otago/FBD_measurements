@@ -224,6 +224,7 @@ library(kableExtra)
 summary_sexpod%>%
   kableExtra::kable(booktabs = T, align = "c", escape = F)
 ```
+
 \newpage
 
 # Figures
@@ -302,33 +303,5 @@ knitr::include_graphics('./Figures/Supplement/SWFSC Tt.png')
 ```
 
 Fig. S8. Box plot summary of bottlenose dolphin (*Tursiops truncatus*) total length measurements from stranded specimens organized by degree (N) of latitude where the animal was recovered, organized from North to South (exclusive of missing latitude data, 'NA', from some animals recovered in California). Data were provided by the Southwest Fisheries Science Center/NOAA [@SWFSCdata2023] and included animals collected across the Pacific United States including: CA = California, GU = Guam, HI = Hawaii, OR = Oregon, WA = Washington. All raw data points are plotted, and the boxes represent the interquartile range, where the vertical black bars indicate the median values.
-
-\newpage
-
-# Appendix I
-
-Primary model Stan code. \footnotesize
-
-```{r, AppendixI, results='markup',echo=FALSE,comment=""}
-
-cat(paste(readLines("./scripts/stan/vb_mod_allo_t0.stan"), collapse = "\n"))
-```
-
-\newpage
-
-# Appendix II
-
-\normalsize
-
-Model code to confirm exploratory findings that sex and pod do not influence growth parameters. Model results are available in Table S3.
-
-\tiny
-
-```{r, AppendixII, results='markup',echo=FALSE,comment="", warning = F}
-
-cat(paste(readLines("./scripts/stan/vb_mod_allo_t0_sexpod.stan"), collapse = "\n"))
-```
-
-\normalsize
 
 # References
