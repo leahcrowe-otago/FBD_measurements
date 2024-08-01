@@ -27,8 +27,8 @@
 7. Model run in the "./scripts/stan/runstan_allo_mv_t0.R" file: 'run' the 'stan' code of 'allo'metric measurement data in a 'm'ulti'v'ariate model with fixed age at length zero (t0)
   - data formatting for model
   - calls the Stan model
-    - main model: Appendix I, "./scripts/stan/vb_mod_all0_t0.stan"
-    - sex/pod effects: "./scripts/stan/Appendix II.R" runs the model specified in "./scripts/stan/vb_mod_all0_t0_sexpod.stan"
+    - main model: "./scripts/stan/vb_mod_all0_t0.stan"
+    - for the supplementary sex/pod effect model: "./scripts/stan/sex_pod_effects.R" runs the model specified in "./scripts/stan/vb_mod_all0_t0_sexpod.stan"
   - initial values for von Bertalanffy model (init_vb)
   - fit the model (fit_vb)
   - save results
@@ -41,3 +41,9 @@
   - creates supplementary tables
   - Fig. S1 map created by calling "./scripts/ms_map.R"
   - Fig. S8 of SWFSC stranding data created in "./scripts/TtPacificUS.R"
+10. Data: "./data/Measurements/Data for review"
+  - Metadata-description.pdf: describes the data in the following files:
+    - ij_1.csv
+    - ij_2.csv
+    - ij_3.csv
+    - ij_ID.csv
