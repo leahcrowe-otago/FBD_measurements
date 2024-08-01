@@ -1,25 +1,32 @@
 ---
-title: "Supplementary"
 csl: "ecology.csl"
 editor: visual
+fontsize: 12pt
+geometry: margin=1in
 bibliography: references.bib
+header-includes:
+  - \usepackage{setspace}
+  - \usepackage{times}
+  - \linespread{1.25}
 format:
   pdf:
-    amsmath: true
-    mathspec: true
-    fig-pos: 'H'
-header-includes:
-  - \usepackage{booktabs}
-  - \usepackage{siunitx}
+    documentclass: report
+    keep-tex: true
+    mainfont: "Times New Roman"
 ---
 
 ```{=tex}
 \renewcommand{\theequation}{S\arabic{equation}}
 \vspace{-15ex}
+
+\begin{center}
+\huge
+Supplementary
+\end{center}
 ```
 ```{=tex}
 \begin{center}
-\huge
+\LARGE
 Growth dynamics of bottlenose dolphins (\textit{Tursiops truncatus}) at the southern extreme of their range
 \end{center}
 ```
@@ -156,7 +163,7 @@ and the associated variance:
 ```
 \newpage
 
-# Tables
+## Tables
 
 Table S1. Prior distributions specified in the model. Our model used the Cholesky formulation to derive the variance-covariance matrix $\Sigma$ as this improved computational efficiency where parameter $L$ refers to the lower positive-definite triangular matrix of the correlation matrix. The LKJ prior with $\eta$ = 1 indicates there is no prior knowledge of an existence of correlation between parameters.
 
@@ -225,9 +232,7 @@ summary_sexpod%>%
   kableExtra::kable(booktabs = T, align = "c", escape = F)
 ```
 
-\newpage
-
-# Figures
+## Figures
 
 \vspace{-10ex}
 
