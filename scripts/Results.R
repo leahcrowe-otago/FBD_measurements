@@ -3,6 +3,7 @@ library(latex2exp)
 library(dplyr)
 library(ggplot2)
 library(ggExtra)
+library(cmdstanr)
 
 # data ----
 #IDs
@@ -103,6 +104,7 @@ for(i in 1:nind){
   
   matrix(NA, length(quan_y*n_ind), ngrid)
 
+#sunshine<- #when induse = 4
 ggplot()+
     geom_point(aes(x = x$age, y = y$length, color = "TL"), size = 2.5, alpha = 0.8)+
     geom_point(aes(x = x$age, y = z$BHDF, color = "BHDF"), size = 2.5, alpha = 0.8)+
@@ -153,15 +155,13 @@ ind_median<-id_parsumm%>%
   tidyr::pivot_wider(names_from = "param", values_from = "median")%>%
   group_by(ind)%>%
   tidyr::fill(Ly,logit_ky,Lz,logit_kz, .direction = "downup")%>% #t0p
-  #inverse logit kyout/kzout #exp(x)/(1+exp(x)), k = exp(-K)
+  #logit(k) = log(k/(1-k)), k = exp(-K)
   mutate(ky = 1/(1+exp(-logit_ky)),
          kz = 1/(1+exp(-logit_kz)))%>%
-  distinct(ind, ID, year_zero, age_value, SEX, POD, Ly, logit_ky, ky, Lz, logit_kz, kz)#, t0p)
-
-summary(ind_median)
-
-ind_median%>%
-  filter(year_zero <= 2013)
+  mutate(Ky = -(log(ky)),
+         Kz = -(log(kz)),
+         exp_K = exp(-(-(log(kz)))))%>%
+  distinct(ind, ID, year_zero, age_value, SEX, POD, Ly, Lz, logit_ky, ky,  Ky, logit_kz, kz, Kz, exp_K)
 
 age_vb_y = matrix(NA,nrow(ind_median),ngrid)
 age_vb_byr = matrix(NA,nrow(ind_median),ngrid)
@@ -203,18 +203,6 @@ growest_plot_BHDF<-by_df%>%
 growest_plot<-growest_plot_TL%>%
   bind_rows(growest_plot_BHDF)%>%
   dplyr::rename("Birth year" = age_value)
-
-ggplot(growest_plot)+
-  geom_histogram(mapping = aes(x = est_diff), binwidth = 0.001)
-
-growest_plot%>%
-  filter(est_diff <= 0.01)%>%
-  group_by(ID, Length)%>%
-  mutate(rank = rank(j))%>%
-  filter(rank == 1)%>%
-  ungroup()%>%
-  mutate(mean_limit = mean(agegrid))%>%
-  distinct(mean_limit)
 
 mu_pred_L1<-summ_paroutin%>%filter(variable == "mu_pred[1]")
 mu_pred_L2<-summ_paroutin%>%filter(variable == "mu_pred[3]")
