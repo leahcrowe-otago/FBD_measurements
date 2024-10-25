@@ -1,12 +1,11 @@
 ---
-csl: "ecology.csl"
+csl: "inter-research-science-center.csl"
 editor: visual
 fontsize: 12pt
 geometry: margin=1in
 bibliography: references.bib
 header-includes:
   - \usepackage{setspace}
-  - \usepackage{times}
   - \linespread{1.25}
 format:
   pdf:
@@ -178,36 +177,11 @@ priors%>%
   kableExtra::kable(booktabs = T, align = "c", escape = F) 
 ```
 
-Table S2. Model estimates of the mean ($\mu$), standard deviation ($\sigma$), and correlation ($\rho$) parameters.
-
-```{r, table, echo = F, out.width = '80%', message = F, warning = F, include = T}
-
-library(dplyr)
-summ = readRDS(file = './results/summtable_t0.rds')
-
-variable_greek<-c('$\\mu_{L_1}$','$\\mu_{k_1}$','$\\mu_{L_2}$','$\\mu_{k_2}$',
-                  '$\\sigma_{L_1}$','$\\sigma_{k_1}$','$\\sigma_{L_2}$','$\\sigma_{k_2}$',
-                  '$\\sigma_{y_1}$','$\\sigma_{y_2}$','$\\rho_{{y_1}{y_2}}$', '$\\rho_{{L_1}{k_1}}$',
-                  '$\\rho_{{L_1}{L_2}}$','$\\rho_{{L_1}{k_2}}$','$\\rho_{{k_1}{L_2}}$','$\\rho_{{k_1}{k_2}}$',
-                  '$\\rho_{{L_2}{k_2}}$','$t_0$')
-
-summary<-summ%>%
-  slice(1:18)%>%
-  mutate(Parameter = variable_greek,
-         Order = c(1,3,5,7,2,4,6,8,9,10,11,12,13,14,15,16,17,18))%>%
-  arrange(Order)%>%
-  dplyr::select(Parameter, Median, '5th percentile', '95th percentile')
-
-library(kableExtra)
-summary%>%
-  kableExtra::kable(booktabs = T, align = "c", escape = F)
-```
-
 \newpage
 
-Table S3. Model parameter estimates of the expanded model exploring sex($\beta$)- and pod($\gamma$)-effects, including the mean ($\mu$), standard deviation ($\sigma$), correlation ($\rho$), and theoretical age less than zero when the length was zero ($t_0$).
+Table S2. Model parameter estimates of the expanded model exploring sex($\beta$)- and pod($\gamma$)-effects, including the mean ($\mu$), standard deviation ($\sigma$), correlation ($\rho$), and theoretical age less than zero when the length was zero ($t_0$).
 
-```{r, tableS3, echo = F, out.width = '80%', message = F, warning = F, include = T}
+```{r, tableS2, echo = F, out.width = '80%', message = F, warning = F, include = T}
 
 library(dplyr)
 summ_sexpod = readRDS(file = './results/summtable_sexpod_t0.rds')
@@ -234,34 +208,20 @@ summary_sexpod%>%
 
 ## Figures
 
-\vspace{-10ex}
-
-```{r, map, echo = F,out.width = '85%'}
-
-#source('C:/Users/leahm/OneDrive - University of Otago/Documents/git-otago/FBD_measurements/scripts/ms_map.R', local = TRUE, verbose = F)$value
-
-knitr::include_graphics(c('./Figures/map.png'))
-
-```
-
-\vspace{-10ex}
-
-Fig. S1. Map of the Patea-Doubtful (yellow) and the Tamatea-Dusky (purple) complexes in southwestern Aotearoa-New Zealand relative to Ata Whenua-Fiordland National Park (green) and the Te Moana o Atawhenua-Fiordland Marine Area (all areas of the sea inshore of the teal line, including all fiords). The 50m (grey) and 200m (dark blue) isobaths are displayed. \newpage
-
 ```{r, morphs, echo = F, out.width='80%'}
 
 knitr::include_graphics(c('./Figures/Supplement/Morphs/Morphs_fig.png'))
 
 ```
 
-Fig. S2. Example photographs of different morphs within the Fiordland bottlenose dolphin sub-populations. a) Dark morph on the left, lighter morph on the right. b, d, and f are all darker morphs, c and e are lighter morphs.
+Fig. S1. Example photographs of different morphs within the Fiordland bottlenose dolphin sub-populations. a) Dark morph on the left, lighter morph on the right. b, d, and f are all darker morphs, c and e are lighter morphs.
 
 \newpage
 
 ::: {layout-ncol="1" fig-pos="H"}
 ![](Figures/Supplement/Squid/858_cr.jpg){height="50%"}
 
-![](Figures/Supplement/Squid/DSC_4944_cr.jpg){height="50%"} \newline Fig. S3. Example photographs of squid sucker marks on Fiordland bottlenose dolphins (pers comm. K. Bolstad) including (a) on the chin in 2015 and (b) left of the eye in 2022.
+![](Figures/Supplement/Squid/DSC_4944_cr.jpg){height="50%"} \newline Fig. S2. Example photographs of squid sucker marks on Fiordland bottlenose dolphins (pers comm. K. Bolstad) including (a) on the chin in 2015 and (b) left of the eye in 2022.
 :::
 
 \newpage
@@ -271,14 +231,14 @@ Fig. S2. Example photographs of different morphs within the Fiordland bottlenose
 knitr::include_graphics('./Figures/noodle.png')
 ```
 
-Fig. S4. the difference between the observed and actual length of the calibration object captured in the field. Note that there was no footage of the calibration object taken during the 2022_07 trip. A boat-hook wrapped in pool noodles was our known-length object as it was rigid, low-profile, and floated just above the surface. Two different length, contrasting coloured noodles (purple and orange) on one fully extended boat-hook allowed for measurements of three varying lengths (total length of both colours together, and two shorter lengths of each of the sections to represent smaller individuals).
+Fig. S3. the difference between the observed and actual length of the calibration object captured in the field. Note that there was no footage of the calibration object taken during the 2022_07 trip. A boat-hook wrapped in pool noodles was our known-length object as it was rigid, low-profile, and floated just above the surface. Two different length, contrasting coloured noodles (purple and orange) on one fully extended boat-hook allowed for measurements of three varying lengths (total length of both colours together, and two shorter lengths of each of the sections to represent smaller individuals).
 
 ```{r, Fig_raw, echo = F, out.height = '90%'}
 
 knitr::include_graphics('./Figures/raw.png')
 ```
 
-Fig. S5. Measured values of total length (solid circles) and blowhole to dorsal fin length (open circles) by a) pod and b) by sex (F = females, M = males, X = unknown).
+Fig. S4. Measured values of total length (solid circles) and blowhole to dorsal fin length (open circles) by a) pod and b) by sex (F = females, M = males, X = unknown).
 
 \newpage
 
@@ -287,7 +247,7 @@ knitr::include_graphics('./Figures/hist_fig.png')
 
 ```
 
-Fig. S6. Number of snapshots where an individual dolphin measurement of TL and/or BHDF was taken per pod (a) over the course of the entire study and (b) per trip sampling effort.
+Fig. S5. Number of snapshots where an individual dolphin measurement of TL and/or BHDF was taken per pod (a) over the course of the entire study and (b) per trip sampling effort.
 
 \newpage
 
@@ -299,7 +259,7 @@ Fig. S6. Number of snapshots where an individual dolphin measurement of TL and/o
 ![](Figures/indplot_23.png)
 :::
 
-Fig. S7. Example VBGC for three individuals. The black circles are the measured blowhole to dorsal fin lengths, the grey circles are the measured total lengths, the solid lines are the corresponding median growth curve model estimates, and the dashed lines represent the 90% credible intervals. During this study, (a) was measured as an adult, (b) was measured as a juvenile, and (c) was measured when it was near the age of reproductive maturity (around 10 y). The animal plotted in (b), known as 'Sunshine', was found dead when it was 1 y, and those directly measured morphometric lengths are plotted in orange along the growth curves.
+Fig. S6. Example VBGC for three individuals. The black circles are the measured blowhole to dorsal fin lengths, the grey circles are the measured total lengths, the solid lines are the corresponding median growth curve model estimates, and the dashed lines represent the 90% credible intervals. During this study, (a) was measured as an adult, (b) was measured as a juvenile, and (c) was measured when it was near the age of reproductive maturity (around 10 y). The animal plotted in (b), known as 'Sunshine', was found dead when it was 1 y, and those directly measured morphometric lengths are plotted in orange along the growth curves.
 
 ```{r, SWFSC, echo = F, out.height = '80%'}
 #source('C:/Users/leahm/OneDrive - University of Otago/Documents/git-otago/FBD_measurements/scripts/TtPacificUS.R', local = TRUE, verbose = F)$value
@@ -307,6 +267,8 @@ Fig. S7. Example VBGC for three individuals. The black circles are the measured 
 knitr::include_graphics('./Figures/Supplement/SWFSC Tt.png')
 ```
 
-Fig. S8. Box plot summary of bottlenose dolphin (*Tursiops truncatus*) total length measurements from stranded specimens organized by degree (N) of latitude where the animal was recovered, organized from North to South (exclusive of missing latitude data, 'NA', from some animals recovered in California). Data were provided by the Southwest Fisheries Science Center/NOAA [@SWFSCdata2023] and included animals collected across the Pacific United States including: CA = California, GU = Guam, HI = Hawaii, OR = Oregon, WA = Washington. All raw data points are plotted, and the boxes represent the interquartile range, where the vertical black bars indicate the median values.
+\singlespacing
+
+Fig. S7. Box plot summary of bottlenose dolphin (*Tursiops truncatus*) total length measurements from stranded specimens organized by degree (N) of latitude where the animal was recovered, organized from North to South (exclusive of missing latitude data, 'NA', from some animals recovered in California). Data were provided by the Southwest Fisheries Science Center/NOAA [@SWFSCdata2023] and included animals collected across the Pacific United States including: CA = California, GU = Guam, HI = Hawaii, OR = Oregon, WA = Washington. All raw data points are plotted, and the boxes represent the interquartile range, where the vertical black bars indicate the median values.
 
 # References
