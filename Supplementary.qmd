@@ -179,7 +179,7 @@ priors%>%
 
 \newpage
 
-Table S2. Model parameter estimates of the expanded model exploring sex($\beta$)- and pod($\gamma$)-effects, including the mean ($\mu$), standard deviation ($\sigma$), correlation ($\rho$), and theoretical age less than zero when the length was zero ($t_0$).
+Table S2. Model parameter estimates of the expanded model exploring sex($\beta$)- and pod($\gamma$)-effects, including the probability of an individual being male ($\pi$), the mean ($\mu$), standard deviation ($\sigma$), correlation ($\rho$), and theoretical age less than zero when the length was zero ($t_0$). The base parameters represent the estimated maximum total length ($L_1$), maximum blowhole to dorsal fin length ($L_2$), total length growth rate (logit($k_1$)), and the growth rate of the blowhole to dorsal fin length (logit($k_2$)). Additionally, $y_1$ and $y_2$ refer to the measurements of total length and blowhole to dorsal fin length, respectively.
 
 ```{r, tableS2, echo = F, out.width = '80%', message = F, warning = F, include = T}
 
@@ -231,7 +231,7 @@ Fig. S1. Example photographs of different morphs within the Fiordland bottlenose
 knitr::include_graphics('./Figures/noodle.png')
 ```
 
-Fig. S3. the difference between the observed and actual length of the calibration object captured in the field. Note that there was no footage of the calibration object taken during the 2022_07 trip. A boat-hook wrapped in pool noodles was our known-length object as it was rigid, low-profile, and floated just above the surface. Two different length, contrasting coloured noodles (purple and orange) on one fully extended boat-hook allowed for measurements of three varying lengths (total length of both colours together, and two shorter lengths of each of the sections to represent smaller individuals).
+Fig. S3. The percent error between the observed and actual length of the calibration object captured in the field. Note that there was no footage of the calibration object taken during the 2022_07 trip. A boat-hook wrapped in pool noodles was our known-length object as it was rigid, low-profile object that floated just above the surface. Two different length, contrasting coloured noodles (purple and orange) on one fully extended boat-hook allowed for measurements of three varying lengths (total length of both colours together, 1.947 m, and two shorter lengths of each of the sections to represent smaller individuals, 1.485 m and 0.462 m). Calibration flights occurred at similar altitudes that were flown over dolphins for data collection (mean: 17.1 m, range: 12.8--24.5 m).
 
 ```{r, Fig_raw, echo = F, out.height = '90%'}
 
@@ -247,7 +247,7 @@ knitr::include_graphics('./Figures/hist_fig.png')
 
 ```
 
-Fig. S5. Number of snapshots where an individual dolphin measurement of TL and/or BHDF was taken per pod (a) over the course of the entire study and (b) per trip sampling effort.
+Fig. S5. (a) The dates of drone sampling flights (black lines connect dates on the same field trip) along with the number of snapshots collected where an individual dolphin measurement of TL and/or BHDF was taken per pod (b) over the course of the entire study and (c) per trip sampling effort.
 
 \newpage
 
@@ -259,16 +259,6 @@ Fig. S5. Number of snapshots where an individual dolphin measurement of TL and/o
 ![](Figures/indplot_23.png)
 :::
 
-Fig. S6. Example VBGC for three individuals. The black circles are the measured blowhole to dorsal fin lengths, the grey circles are the measured total lengths, the solid lines are the corresponding median growth curve model estimates, and the dashed lines represent the 90% credible intervals. During this study, (a) was measured as an adult, (b) was measured as a juvenile, and (c) was measured when it was near the age of reproductive maturity (around 10 y). The animal plotted in (b), known as 'Sunshine', was found dead when it was 1 y, and those directly measured morphometric lengths are plotted in orange along the growth curves.
-
-```{r, SWFSC, echo = F, out.height = '80%'}
-#source('C:/Users/leahm/OneDrive - University of Otago/Documents/git-otago/FBD_measurements/scripts/TtPacificUS.R', local = TRUE, verbose = F)$value
-
-knitr::include_graphics('./Figures/Supplement/SWFSC Tt.png')
-```
-
-\singlespacing
-
-Fig. S7. Box plot summary of bottlenose dolphin (*Tursiops truncatus*) total length measurements from stranded specimens organized by degree (N) of latitude where the animal was recovered, organized from North to South (exclusive of missing latitude data, 'NA', from some animals recovered in California). Data were provided by the Southwest Fisheries Science Center/NOAA [@SWFSCdata2023] and included animals collected across the Pacific United States including: CA = California, GU = Guam, HI = Hawaii, OR = Oregon, WA = Washington. All raw data points are plotted, and the boxes represent the interquartile range, where the vertical black bars indicate the median values.
+Fig. S6. Example VBGC for three individuals. The grey circles are the measured blowhole to dorsal fin lengths, the black circles are the measured total lengths, the solid lines are the corresponding median growth curve model estimates, and the dashed lines represent the 90% credible intervals. During this study, (a) was measured as an adult, (b) was measured as a juvenile, and (c) was measured when it was near the age of reproductive maturity (around 10 y). The animal plotted in (b), known as 'Sunshine', was found dead when it was 1 y, and directly measured lengths are plotted in orange.
 
 # References
