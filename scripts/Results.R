@@ -17,6 +17,14 @@ ij_z = readRDS(file = './data/Measurements/ij_2.rds')
 #total length only
 ij_y = readRDS(file = './data/Measurements/ij_3.rds')
 
+ij_all<-ij_b%>%
+  bind_rows(ij_z)%>%
+  bind_rows(ij_y)
+
+ij_ID%>%
+  group_by(POD,SEX)%>%
+  tally()
+
 # read in results ----
 date = "2024-06-21" # from runstan_allo_mv_t0
 
@@ -131,7 +139,7 @@ ggplot()+
 # 
 # ggplot2::ggsave(paste0("./Figures/indplot_sunshine_t0.png"), sunshine_plot, device = "png", dpi = 700, width = 100, height = 100, units = 'mm')
 
-### Fig. 2, VBGCs, L and k by birthyear----
+### Fig. 3, VBGCs, L and k by birthyear----
 
 #rename logit_ks
 id_parsumm<-parindout_in_summ%>%
@@ -186,7 +194,8 @@ growest_plot_TL<-by_df%>%
   mutate(agegrid = rep(agegrid,143))%>%
   left_join(ij_ID, by = c("i" = "ind"))%>%
   group_by(ID)%>%
-  mutate(est_diff = lead(est)-est)%>%
+  mutate(est_diff = lead(est)-est,
+         age_diff = lead(agegrid)-agegrid)%>%
   dplyr::rename("Pod" = "POD")%>%
   mutate(Length = "TL")
 
@@ -196,18 +205,27 @@ growest_plot_BHDF<-by_df%>%
   mutate(agegrid = rep(agegrid,143))%>%
   left_join(ij_ID, by = c("i" = "ind"))%>%
   group_by(ID)%>%
-  mutate(est_diff = lead(est)-est)%>%
+  mutate(est_diff = lead(est)-est,
+         age_diff = lead(agegrid)-agegrid)%>%
   dplyr::rename("Pod" = "POD")%>%
   mutate(Length = "BHDF")
 
 growest_plot<-growest_plot_TL%>%
   bind_rows(growest_plot_BHDF)%>%
-  dplyr::rename("Birth year" = age_value)
+  dplyr::rename("First year" = age_value)
+
+growbig<-growest_plot%>%
+  mutate(diff = est_diff/age_diff)%>%
+  filter(agegrid > 0)%>%
+  arrange(-diff)
+
+growbig%>%filter(agegrid >= 14.7 & agegrid < 15.4)%>%as.data.frame()%>%arrange(ID)%>%filter(Length == "TL")%>%
+  dplyr::summarise(mean = mean(est_diff), min = min(est_diff), max = max(est_diff))
 
 mu_pred_L1<-summ_paroutin%>%filter(variable == "mu_pred[1]")
 mu_pred_L2<-summ_paroutin%>%filter(variable == "mu_pred[3]")
 
-#### Fig. 2a ----
+#### Fig. 3a ----
 vbgc_zero<-ggplot(growest_plot)+
   annotate("rect", xmin = -5, xmax = 55, ymin = mu_pred_L1$q5, ymax =  mu_pred_L1$q95, fill = "red", alpha = 0.1)+
   annotate("rect", xmin = -5, xmax = 55, ymin = mu_pred_L2$q5, ymax =  mu_pred_L2$q95, fill = "red", alpha = 0.1)+
@@ -227,9 +245,9 @@ vbgc_zero<-ggplot(growest_plot)+
 
 ggplot2::ggsave(paste0("./Figures/vbgc_zero_t0.png"), vbgc_zero, device = "png", dpi = 700, width = 200, height = 100, units = 'mm')
 
-#### Fig. 2b ----
+#### Fig. 3b ----
 vbgc_by<-ggplot(growest_plot%>%filter(Length == "TL"))+
-  geom_line(aes(x = year_by, y = est, group = interaction(i, Length), color = `Birth year`), alpha = 0.6, linewidth = 0.3)+
+  geom_line(aes(x = year_by, y = est, group = interaction(i, Length), color = `First year`), alpha = 0.6, linewidth = 0.3)+
   xlim(c(1980,2050))+
   coord_cartesian(ylim=c(0, 3.5))+
   theme_bw()+
@@ -256,15 +274,25 @@ ind_median%>%
   group_by(age_value)%>%
   summarise(median = median(Ly), max = max(Ly), min = min(Ly))
 
-#### Fig. 2c ----
+ind_median%>%ungroup()%>%
+  filter(Ly == max(Ly))
+
+ind_median%>%ungroup()%>%
+  filter(year_zero < 2013)%>%
+  filter(Ly == min(Ly))
+
+ind_median%>%filter(age_value == "est")%>%arrange(-year_zero)
+
+#### Fig. 3c ----
 uncertainty<-id_parsumm%>%ungroup()%>%arrange(param, year_zero)%>%group_by(year_zero)%>%
   mutate(rank = percent_rank(ind))%>%
   mutate(year_cat = as.numeric(year_zero+(rank)))%>%
   dplyr::rename(`Birth year` = "age_value",'Sex' = "SEX","Pod" = "POD")
 
 uncertainty_Ly<-ggplot(uncertainty%>%filter(param == "Ly"))+
+  geom_point(uncertainty%>%filter(param == "Ly" & `Birth year` == "est"), mapping = aes(x = year_cat, y = median, group = as.factor(i), shape = Pod), color = "#ffb000", size = 3, alpha = 0.6)+
   geom_linerange(aes(x = year_cat, ymin = q95, ymax = q5, group = as.factor(i), color = Sex), linewidth = 0.5)+
-  geom_point(aes(x = year_cat, y = median, group = as.factor(i), color = Sex, shape = Pod), size = 2, alpha = 0.6)+
+  geom_point(aes(x = year_cat, y = median, group = as.factor(i), color = Sex, shape = Pod), size = 2, alpha = 0.7)+
   #facet_wrap(~param, ncol = 1, scales = "free")+
   theme_bw()+
   theme(legend.position = "bottom")+
@@ -277,7 +305,7 @@ uncertainty_Ly<-ggplot(uncertainty%>%filter(param == "Ly"))+
 
 ggplot2::ggsave(paste0("./Figures/Ly_CI_t0.png"), uncertainty_Ly, device = "png", dpi = 700, height = 120, width = 200, units = 'mm')
 
-#### Fig 2, together ----
+#### Fig 3, together ----
 curve_plot<-ggpubr::ggarrange(ab,uncertainty_Ly, ncol = 1, labels = c('','c'), heights = c(2,1.5))
 
 ggplot2::ggsave(paste0("./Figures/curve_plots_t0.png"), curve_plot, device = "png", dpi = 700, height = 175, width = 200, units = 'mm')
@@ -291,7 +319,7 @@ uncertainty%>%
   ))%>%
   group_by(year_group)%>%dplyr::summarise(mean = mean(median))
 
-## Fig. 4, box plots ----
+## Fig. 5, box plots ----
 
 box<-ind_median%>%
   dplyr::select(-ky, -kz)%>% #t0p
@@ -308,7 +336,16 @@ box<-ind_median%>%
   ))%>%
   dplyr::rename('Sex' = 'SEX', "Pod" = "POD")
 
-#### Fig. 4a, pod ----
+box_Ly<-box%>%filter(Sex == "F" & param == "Ly")%>%ungroup()
+
+plot_Ly<-quantile(box_Ly$median, probs = c(0.05, 0.25, 0.5, 0.75, 0.95))
+
+IQR_1.5<-(plot_Ly[4]-plot_Ly[2])*1.5
+
+plot_Ly[2]-IQR_1.5
+plot_Ly[4]+IQR_1.5
+
+#### Fig. 5a, pod ----
 pod_box<-ggplot(box)+
   geom_boxplot(aes(x = param2, y = median, fill = Pod), alpha = 0.6)+
   facet_wrap(~group, scales = "free")+
@@ -319,7 +356,7 @@ pod_box<-ggplot(box)+
   theme(strip.text = ggtext::element_markdown(),
         axis.text.x = ggtext::element_markdown())
 
-#### Fig. 4b, sex ----
+#### Fig. 5b, sex ----
 sex_box<-ggplot(box)+
   geom_boxplot(aes(x = param2, y = median, fill = Sex), alpha = 0.5)+
   facet_wrap(.~as.factor(group), scales = "free", ncol = 4)+
@@ -331,12 +368,12 @@ sex_box<-ggplot(box)+
   theme(strip.text = ggtext::element_markdown(),
         axis.text.x = ggtext::element_markdown())
 
-#### Fig. 4, together ----
+#### Fig. 5, together ----
 ggpubr::ggarrange(pod_box, sex_box, ncol = 1, labels = "auto")
 
 ggplot2::ggsave(paste0("./Figures/boxplots_t0.png"), device = "png", dpi = 700, height = 175, width = 150, units = 'mm')
 
-### Fig. 3, y given x
+### Fig. 4, y given x, three conditional distribution plots ----
 
 muLy<-summ_paroutin%>%
   filter(variable == "mu[1]")
@@ -371,9 +408,7 @@ vc22<-summ_paroutin%>%
 vc11<-summ_paroutin%>%
   filter(variable == "varcov_par[1,1]")
 
-## Fig. 3, three conditional distribution plots ----
-
-#### Fig. 3a, L_1 | logit(k_1) ----
+#### Fig. 4a, L_1 | logit(k_1) ----
 #regression coefficient / slope
 slope_Lk<-vc12$median/vc22$median
 slope_Lk
@@ -384,7 +419,7 @@ var_Lk<-vc11$median-slope_Lk*vc12$median
 sd_Lk<-sqrt(var_Lk)
 sd_Lk
 
-#t0
+#equation
 eq_Lk<-expression(paste(hat(y) == 0.27*x + 2.74,", ",sigma == 0.1,'0'))
 
 kyLy<-ggplot()+
@@ -397,7 +432,7 @@ kyLy<-ggplot()+
   ylab(bquote(L['1i']))+
   annotate(geom = "text", x=0.35, y=3.3, label=eq_Lk, parse = F, size = 3)
 
-#### Fig. 3b, logit(k_2) | logit(k_1) ----
+#### Fig. 4b, logit(k_2) | logit(k_1) ----
 #regression coefficient / slope
 slope_k<-vc24$median/vc22$median
 slope_k
@@ -408,7 +443,7 @@ var_k<-vc44$median-slope_k*vc24$median
 sd_k<-sqrt(var_k)
 sd_k
 
-#t0
+#equation
 eq_k<-expression(paste(hat(y) == 1.18*x - 0.16,", ",sigma == 0.14))
 
 kykz<-ggplot()+
@@ -424,7 +459,7 @@ kykz<-ggplot()+
   ylim(c(-0.3, 1.6))+
   coord_fixed(ratio = 1)
 
-#### Fig. 3c, Ly given Lz ----
+#### Fig. 4c, Ly given Lz ----
 #regression coefficient / slope
 slope_L<-vc13$median/vc33$median
 y_intercept_L<-muLy$median - slope_L*muLz$median
@@ -435,7 +470,7 @@ slope_L
 y_intercept_L
 sd_L
 
-#t0
+#equation
 eq_L<-expression(paste(hat(y) == 2.19*x + 0.87,", ",sigma == 0.07))
 
 LzLy<-ggplot()+
@@ -449,6 +484,20 @@ LzLy<-ggplot()+
   annotate(geom = "text", x=0.87, y=3.3, label=eq_L, parse = F, size = 3)+
   coord_fixed(ratio = 0.4)
 
-#### Fig. 3, together ----
-params_plot<-ggpubr::ggarrange(kyLy, kykz, LzLy, labels = "auto")
+#### Fig. 4d, Ly given Ky ----
+
+LyKy<-ggplot(ind_median)+
+  geom_point(ind_median%>%filter(age_value == "est"), mapping = aes(x = Ky, y = Ly, group = as.factor(i)), color = "#ffb000", size = 4.5, alpha = 0.8)+
+  geom_point(aes(x = Ky, Ly), alpha = 0.9)+
+  geom_point(ind_median%>%filter(year_zero <= 2007), mapping = aes(x = Ky, y = Ly, group = as.factor(i)), size = 3, alpha = 0.8)+
+  theme_bw()+
+  scale_color_viridis_d(begin = 0, end = 0.9)+
+  xlab(bquote(K['1i']))+
+  ylab(bquote(L['1i']))+
+  theme(legend.position = "bottom")
+
+##
+
+#### Fig. 4, together ----
+params_plot<-ggpubr::ggarrange(kyLy, LyKy, kykz, LzLy,  labels = "auto")
 ggplot2::ggsave(paste0("./Figures/params_t0.png"), params_plot, device = "png", dpi = 700, height = 200, width = 200, units = 'mm', bg="white")
