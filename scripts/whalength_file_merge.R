@@ -107,22 +107,41 @@ noodle<-length_ID_merge%>%
     TRUE ~ Total.Length..m.
   ))
 
+summary(noodle)
+
 noodle_diff<-noodle%>%
   ungroup()%>%
   mutate(diff_TL = Total.Length..m.-1.947, ## noodle total length
          diff_RBH = Rostrum.BH-0.462, ## noodle orange length
-         diff_BHDF = BH.DF.insertion-1.485) ## noodle purple length
+         diff_BHDF = BH.DF.insertion-1.485)%>%
+  mutate(perc_TL = Total.Length..m./1.947, ## noodle total length
+       perc_RBH = Rostrum.BH/0.462, ## noodle orange length
+       perc_BHDF = BH.DF.insertion/1.485)
+
+summary(noodle_diff)
 
 ggplot(noodle_diff)+
-  geom_point(mapping = aes(y = diff_TL, x = 1.947, color = "Total length"))+
-  geom_point(mapping = aes(y = diff_RBH, x = 0.462, color = "Orange"))+
-  geom_point(mapping = aes(y = diff_BHDF, x = 1.485, color = "Purple"))+
+  geom_point(mapping = aes(y = perc_TL, x = 1.947, color = "Total length"))+
+  geom_point(mapping = aes(y = perc_RBH, x = 0.462, color = "Orange"))+
+  geom_point(mapping = aes(y = perc_BHDF, x = 1.485, color = "Purple"))+
   theme_bw()+
   xlab("Actual length (m)")+
-  ylab("Difference between observed and actual length (m)")+
+  ylab("% Error between observed and actual length")+
   facet_wrap(~trip, ncol = 4)+
   theme(legend.position = c(0.88,0.2))+
   guides(color=guide_legend(title='Segment measured'))+
   scale_color_manual(values = c("orange","purple","black"))
+
+# ggplot(noodle_diff)+
+#   geom_point(mapping = aes(y = diff_TL, x = 1.947, color = "Total length"))+
+#   geom_point(mapping = aes(y = diff_RBH, x = 0.462, color = "Orange"))+
+#   geom_point(mapping = aes(y = diff_BHDF, x = 1.485, color = "Purple"))+
+#   theme_bw()+
+#   xlab("Actual length (m)")+
+#   ylab("Difference between observed and actual length (m)")+
+#   facet_wrap(~trip, ncol = 4)+
+#   theme(legend.position = c(0.88,0.2))+
+#   guides(color=guide_legend(title='Segment measured'))+
+#   scale_color_manual(values = c("orange","purple","black"))
 
 ggplot2::ggsave(paste0("./Figures/noodle.png"), device = "png", dpi = 700, height = 120, width = 250, units = 'mm')
