@@ -47,12 +47,12 @@ MA<-sf::read_sf(shapefile_path, layer = "Marine_Protected_Areas_under_the_Marine
 FMA<-subset(MA, Name == "Fiordland Marine Area")
 
 # fiord labels ----
-fiord_labels<-data.frame(label = c("Piopiotahi-Milford Sound","Te H\u101pua-Sutherland Sound",
-                                   "H\u101wea-Bligh Sound","Te Houhou-George Sound","Taitetimu-Caswell Sound",
-                                   "Taiporoporo-Charles Sound","Hinenui-Nancy Sound","Te Awa-o-T\u16b-Thompson Sound",
-                                   "Patea-Doubtful Sound","Te R\u101-Dagg Sound",
-                                   "Te Puaitaha-\nBreaksea Sound","Tamatea-Dusky Sound","Taiari-Chalky Inlet",
-                                   "Rakituma-Preservation Inlet", "Motup\u14dhue-Bluff", "Rakiura-Stewart Island"),
+fiord_labels<-data.frame(label = c("Piopiotahi/Milford Sound","Te H\u101pua/Sutherland Sound",
+                                   "H\u101wea/Bligh Sound","Te Houhou/George Sound","Taitetimu/Caswell Sound",
+                                   "Taiporoporo/Charles Sound","Hinenui/Nancy Sound","Te Awa-o-T\u16b/Thompson Sound",
+                                   "Patea/Doubtful Sound","Te R\u101/Dagg Sound",
+                                   "Te Puaitaha/\nBreaksea Sound","Tamatea/Dusky Sound","Taiari/Chalky Inlet",
+                                   "Rakituma/Preservation Inlet", "Motup\u14dhue/Bluff", "Rakiura/Stewart Island"),
                          lat = c(-44.55, -44.72,
                                  -44.77, -44.85, -45.01,
                                  -45.05, -45.1, -45.15,
@@ -122,7 +122,7 @@ bathy_FMA
 
 ###small NZ with box ----
 
-dunedin<-data.frame(label = c("\u14ctepoti-Dunedin"),
+dunedin<-data.frame(label = c("\u14ctepoti/Dunedin"),
                          lat = c(-45.880),
                          lon = c(170.501))
 
@@ -152,8 +152,6 @@ NZ
 map_a<-cowplot::ggdraw() +
   cowplot::draw_plot(bathy_FMA) +
   cowplot::draw_plot(NZ, x = 0.2, y = 0.65, width = 0.2, height = 0.3)
-
-map
 
 ggsave("./figures/map.png", map_a, dpi = 700, height = 6, width = 4, units = 'in')
 ggsave("./figures/map.svg", map_a, dpi = 700, height = 6, width = 4, units = 'in')
