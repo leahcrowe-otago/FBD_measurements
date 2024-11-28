@@ -64,7 +64,7 @@ measurement_merge%>%
 
 ```{r, whalength_file_merge, include=FALSE}
 
-source('./whalength_file_merge.R', local = TRUE, verbose = F)$value
+source('./scripts/whalength_file_merge.R', local = TRUE, verbose = F)$value
 
 #wl below stands for Whalelength to signify that those were measurement results from WL, not the ones I manually entered during the process in the ID spreadsheet to signify that the total length was actual measured, not just the hack to only measure BHDF for some individuals 
 measure_data<-length_ID_merge_Tt%>%
@@ -179,6 +179,21 @@ age_calc<-age_length%>%
  length_data%>%
    filter(ID == 'calibration')
 
+ timeline<-age_calc%>%
+   distinct(DATE, POD, trip)
+ 
+ timeline_plot<-ggplot(timeline)+
+   geom_point(aes(x = ymd(DATE), y = POD, color = POD), alpha = 0.7)+
+   scale_x_date(date_labels = "%Y %b %d", breaks = "1 month")+
+   geom_line(aes(x = ymd(DATE), y = POD, group = interaction(POD,trip)))+
+   theme_bw()+
+   xlab("Date")+
+   ylab("")+
+   theme(legend.position = "none",
+         axis.text.x = element_text(angle = 90, vjust = 0.5))
+ 
+ggsave("./Figures/timeline.png", timeline_plot, dpi = 320, height = 50, width = 300, units = 'mm')
+  
 ```
 
 ```{r age_length, echo = F, message = F}
@@ -265,7 +280,7 @@ hist_all<-ggplot(age_calc%>%group_by(ID,POD)%>%tally())+
 age_calc%>%group_by(ID,POD)%>%tally()%>%arrange(-n)
 age_calc%>%group_by(ID,trip, POD)%>%tally()%>%arrange(-n)
 
-hist_fig<-ggpubr::ggarrange(hist_all, hist, ncol = 1, heights = c(1,2), labels = "auto")
+hist_fig<-ggpubr::ggarrange(timeline_plot, hist_all, hist, ncol = 1, heights = c(1,1,2), labels = "auto")
 
 ggsave("./Figures/hist_fig.png", hist_fig, dpi = 320, height = 200, width = 150, units = 'mm')
 
