@@ -336,14 +336,19 @@ box<-ind_median%>%
   ))%>%
   dplyr::rename('Sex' = 'SEX', "Pod" = "POD")
 
-box_Ly<-box%>%filter(Sex == "F" & param == "Ly")%>%ungroup()
+box_Ly_F<-box%>%filter(Sex == "F" & param == "Ly")%>%ungroup()
+plot_Ly_F<-quantile(box_Ly_F$median, probs = c(0.05, 0.25, 0.5, 0.75, 0.95))
+box_Ly_M<-box%>%filter(Sex == "M" & param == "Ly")%>%ungroup()
+plot_Ly_M<-quantile(box_Ly_M$median, probs = c(0.05, 0.30, 0.5, 0.70, 0.95))
 
-plot_Ly<-quantile(box_Ly$median, probs = c(0.05, 0.25, 0.5, 0.75, 0.95))
+#IQR1.5
+IQR1.5_F<-(plot_Ly_F[4]-plot_Ly_F[2])*1.5
+plot_Ly_F[2]-IQR1.5_F
+plot_Ly_F[4]+IQR1.5_F
 
-IQR_1.5<-(plot_Ly[4]-plot_Ly[2])*1.5
-
-plot_Ly[2]-IQR_1.5
-plot_Ly[4]+IQR_1.5
+IQR1.5_M<-(plot_Ly_M[4]-plot_Ly_M[2])*1.5
+plot_Ly_M[2]-IQR1.5_M
+plot_Ly_M[4]+IQR1.5_M
 
 #### Fig. 5a, pod ----
 pod_box<-ggplot(box)+
@@ -355,6 +360,8 @@ pod_box<-ggplot(box)+
   theme(legend.position = "bottom")+
   theme(strip.text = ggtext::element_markdown(),
         axis.text.x = ggtext::element_markdown())
+
+ggplot_build(pod_box)$data
 
 #### Fig. 5b, sex ----
 sex_box<-ggplot(box)+
@@ -368,6 +375,7 @@ sex_box<-ggplot(box)+
   theme(strip.text = ggtext::element_markdown(),
         axis.text.x = ggtext::element_markdown())
 
+ggplot_build(sex_box)$data
 #### Fig. 5, together ----
 ggpubr::ggarrange(pod_box, sex_box, ncol = 1, labels = "auto")
 
