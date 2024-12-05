@@ -6,6 +6,7 @@ library(ggplot2)
 
 # data ----
 i = 34
+
 #IDs
 ij_ID = readRDS(file = './data/Measurements/ij_ID.rds')
 n_ind = nrow(ij_ID)
@@ -17,6 +18,10 @@ ij_b = readRDS(file = './data/Measurements/ij_1.rds')
 ij_z = readRDS(file = './data/Measurements/ij_2.rds')
 #total length only
 ij_y = readRDS(file = './data/Measurements/ij_3.rds')
+
+#run below to adjust minimum age
+age_est_add<-5 # add time to age (years)
+source('./scripts/stan/adjust_age_minyr.R', local = TRUE, verbose = F)$value
 
 ij_all<-ij_b%>%
   bind_rows(ij_z)%>%
@@ -48,6 +53,9 @@ N_y
 
 N_b+N_z+N_y
 N_b/(N_b+N_z+N_y)
+
+#params matrix dims
+J=4
 
 # model ----
 # z matrix and z_t are the individual deviations from the population parameters
