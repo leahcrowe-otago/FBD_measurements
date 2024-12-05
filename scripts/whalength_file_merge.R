@@ -114,9 +114,9 @@ noodle_diff<-noodle%>%
   mutate(diff_TL = Total.Length..m.-1.947, ## noodle total length
          diff_RBH = Rostrum.BH-0.462, ## noodle orange length
          diff_BHDF = BH.DF.insertion-1.485)%>%
-  mutate(perc_TL = Total.Length..m./1.947, ## noodle total length
-       perc_RBH = Rostrum.BH/0.462, ## noodle orange length
-       perc_BHDF = BH.DF.insertion/1.485)
+  mutate(perc_TL = (Total.Length..m./1.947)*100-100, ## noodle total length
+       perc_RBH = Rostrum.BH/0.462*100-100, ## noodle orange length
+       perc_BHDF = BH.DF.insertion/1.485*100-100)
 
 summary(noodle_diff)
 
@@ -130,7 +130,8 @@ ggplot(noodle_diff)+
   facet_wrap(~trip, ncol = 4)+
   theme(legend.position = c(0.88,0.2))+
   guides(color=guide_legend(title='Segment measured'))+
-  scale_color_manual(values = c("orange","purple","black"))
+  scale_color_manual(values = c("orange","purple","black"))+
+  scale_y_continuous(breaks = seq(-7.5, 7.5, by = 2.5))
 
 # ggplot(noodle_diff)+
 #   geom_point(mapping = aes(y = diff_TL, x = 1.947, color = "Total length"))+
