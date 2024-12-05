@@ -1,6 +1,7 @@
 
 
 data {
+  
   int<lower=0> n_ind; // number individuals
   int<lower=0> N_b; // number of times when tl and bhdf measurements were both taken
   int<lower=0> N_z; // number of times when only bhdf measurements were taken
@@ -23,6 +24,7 @@ data {
  }
 
 parameters {
+  
   real t0p;
   
   matrix[n_ind, J] z;
@@ -37,12 +39,13 @@ parameters {
  }
 
 transformed parameters{
+  
   matrix[n_ind, J] par;
   matrix[2,2] varcov;
   cholesky_factor_cov[2] Lobs;
 
   for(i in 1:n_ind){
-    par[i] = (mu + diag_pre_multiply(sigma,L)*z[i]')';
+      par[i] = (mu + diag_pre_multiply(sigma,L)*z[i]')';
   }
 
   varcov[1,1] = sigma_obs[1]^2;
@@ -85,7 +88,7 @@ matrix[N_b,2] obs_mean;
   L ~ lkj_corr_cholesky(1);
   
   for (i in 1:2){
-  sigma_obs[i] ~ student_t(3, 0, 50);
+    sigma_obs[i] ~ student_t(3, 0, 50);
   }
 
  }
@@ -104,3 +107,5 @@ generated quantities {
   vector[J] mu_pred = multi_normal_cholesky_rng(mu, L_covar);
 
  }
+ 
+ 
