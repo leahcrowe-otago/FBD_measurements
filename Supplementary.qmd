@@ -162,6 +162,8 @@ and the associated variance:
 ```
 \newpage
 
+## 1.3 Testing the sensitivity of the age assigned to unknown aged individuals
+
 ## Tables
 
 Table S1. Prior distributions specified in the model. Our model used the Cholesky formulation to derive the variance-covariance matrix $\Sigma$ as this improved computational efficiency where parameter $L$ refers to the lower positive-definite triangular matrix of the correlation matrix. The LKJ prior with $\eta$ = 1 indicates there is no prior knowledge of an existence of correlation between parameters.
@@ -179,7 +181,9 @@ priors%>%
 
 \newpage
 
-Table S2. Model parameter estimates of the expanded model exploring sex($\beta$)- and pod($\gamma$)-effects, including the probability of an individual being male ($\pi$), the mean ($\mu$), standard deviation ($\sigma$), correlation ($\rho$), and theoretical age less than zero when the length was zero ($t_0$). The base parameters represent the estimated maximum total length ($L_1$), maximum blowhole to dorsal fin length ($L_2$), total length growth rate (logit($k_1$)), and the growth rate of the blowhole to dorsal fin length (logit($k_2$)). Additionally, $y_1$ and $y_2$ refer to the measurements of total length and blowhole to dorsal fin length, respectively.
+\newgeometry{margin=0.95in}
+
+Table S2. Model parameter estimates of the expanded model exploring sex ($\beta$)- and pod ($\gamma$)-effects, including the probability of an individual being male ($\pi$), the mean ($\mu$), standard deviation ($\sigma$), correlation ($\rho$), and theoretical age less than zero when length was zero ($t_0$). The base parameters represent the estimated maximum total length ($L_1$), maximum blowhole to dorsal fin length ($L_2$), total length growth rate (logit($k_1$)), and the growth rate of the blowhole to dorsal fin length (logit($k_2$)). Additionally, $y_1$ and $y_2$ refer to the measurements of total length and blowhole to dorsal fin length, respectively.
 
 ```{r, tableS2, echo = F, out.width = '80%', message = F, warning = F, include = T}
 
@@ -205,6 +209,8 @@ library(kableExtra)
 summary_sexpod%>%
   kableExtra::kable(booktabs = T, align = "c", escape = F)
 ```
+
+\restoregeometry
 
 ## Figures
 
