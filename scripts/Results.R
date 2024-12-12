@@ -25,10 +25,10 @@ ij_ID%>%
   group_by(POD,SEX)%>%
   tally()
 
-# read in results ----
-date = "2024-06-21" # from runstan_allo_mv_t0
-
+# read in results from runstan_allo_mv_t0 ----
 # k is logit(k)
+date = "2024-06-21" # main results
+
 # all population-level based params ----
 parout_in = readRDS(file = paste0('./results/parout_',date,'.rds'))
 
@@ -248,7 +248,7 @@ ggplot2::ggsave(paste0("./Figures/vbgc_zero_t0.png"), vbgc_zero, device = "png",
 #### Fig. 3b ----
 vbgc_by<-ggplot(growest_plot%>%filter(Length == "TL"))+
   geom_line(aes(x = year_by, y = est, group = interaction(i, Length), color = `First year`), alpha = 0.6, linewidth = 0.3)+
-  xlim(c(1980,2050))+
+  #xlim(c(1980,2050))+
   coord_cartesian(ylim=c(0, 3.5))+
   theme_bw()+
   xlab("Year")+
@@ -289,7 +289,9 @@ uncertainty<-id_parsumm%>%ungroup()%>%arrange(param, year_zero)%>%group_by(year_
   mutate(year_cat = as.numeric(year_zero+(rank)))%>%
   dplyr::rename(`Birth year` = "age_value",'Sex' = "SEX","Pod" = "POD")
 
-uncertainty_Ly<-ggplot(uncertainty%>%filter(param == "Ly"))+
+uncertainty_Ly_data<-uncertainty%>%filter(param == "Ly")
+
+uncertainty_Ly<-ggplot(uncertainty_Ly_data)+
   geom_point(uncertainty%>%filter(param == "Ly" & `Birth year` == "est"), mapping = aes(x = year_cat, y = median, group = as.factor(i), shape = Pod), color = "#ffb000", size = 3, alpha = 0.6)+
   geom_linerange(aes(x = year_cat, ymin = q95, ymax = q5, group = as.factor(i), color = Sex), linewidth = 0.5)+
   geom_point(aes(x = year_cat, y = median, group = as.factor(i), color = Sex, shape = Pod), size = 2, alpha = 0.7)+
@@ -318,6 +320,14 @@ uncertainty%>%
     TRUE ~ "After"
   ))%>%
   group_by(year_group)%>%dplyr::summarise(mean = mean(median))
+
+early<-uncertainty_Ly_data%>%
+  filter(year_zero <= 2008)
+summary(early)
+
+later<-uncertainty_Ly_data%>%
+  filter(year_zero > 2008)
+summary(later)
 
 ## Fig. 5, box plots ----
 
