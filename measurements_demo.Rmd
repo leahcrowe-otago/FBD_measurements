@@ -126,7 +126,7 @@ measurements_demo_ind<-length_data%>%
     as.numeric(str_sub(trip,6,7)) >= 9 ~ as.numeric(str_sub(trip,1,4))+1,
   ))%>%
   mutate(month = as.numeric(str_sub(trip,6,7)))%>%
-  dplyr::select(trip, DATE, YEAR, ID, length_use, BHDF, SEX, MOM, BIRTH_YEAR, INUTERO, FIRST_DATE, FIRST_YEAR, FIRST_CALF, ends_with('2022'), ends_with('2023'), ends_with('2024'), POD, month)%>%
+  dplyr::select(trip, DATE, YEAR, ID, length_use, BHDF, Rostrum.BH, SEX, MOM, BIRTH_YEAR, INUTERO, FIRST_DATE, FIRST_YEAR, FIRST_CALF, ends_with('2022'), ends_with('2023'), ends_with('2024'), POD, month)%>%
   #tidyr::pivot_longer(cols = starts_with("X"), names_to = "AGECLASS_YEAR", values_to = "AGECLASS")%>%
   tidyr::pivot_longer(cols = starts_with("2"), names_to = "AGECLASS_YEAR", values_to = "AGECLASS")%>%
   mutate(AGECLASS_YEAR = str_replace(AGECLASS_YEAR, "X", ""))%>%
@@ -193,7 +193,28 @@ age_calc<-age_length%>%
          axis.text.x = element_text(angle = 90, vjust = 0.5))
  
 ggsave("./Figures/timeline.png", timeline_plot, dpi = 320, height = 50, width = 300, units = 'mm')
-  
+
+## RBH
+
+age_calc%>%filter(!is.na(length_use), ID == "FIVE")%>%
+  dplyr::select(ID, BHDF, Rostrum.BH, length_use)%>%
+  mutate(UJDF = BHDF + Rostrum.BH)%>%
+  mutate(length_use/UJDF)
+
+ujdf<-age_calc%>%filter(!is.na(length_use))%>%
+  dplyr::select(ID, FIRST_YEAR, BHDF, Rostrum.BH, length_use)%>%
+  mutate(UJDF = BHDF + Rostrum.BH)%>%
+  mutate(prop = length_use/UJDF)
+summary(ujdf)
+
+2.17*min(ujdf$prop, na.rm = T)
+2.17*mean(ujdf$prop, na.rm = T)
+2.17*max(ujdf$prop, na.rm = T)
+
+hist(ujdf$prop)
+
+plot(ujdf$FIRST_YEAR,ujdf$prop)
+
 ```
 
 ```{r age_length, echo = F, message = F}
