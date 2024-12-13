@@ -78,13 +78,16 @@ parindout_in_summ<-summary(parindout_in)
 ### Fig. S7, plot a couple of individuals ----
 induse = c(42,95,23)
 #induse = 4 #sunshine
+#induse = 76 #reel
 
 ngrid = 101
 agegrid = seq(from = -2, to = max(ij_b$age), length.out = ngrid)
 nind = length(induse)
 
 label = c("a","b","c")
-#label = "b" #for sunshine
+#label = "b" #for sunshine 
+#label = "a" #for reel
+
 for(i in 1:nind){
   k = label[i]
   i = induse[i]
@@ -313,21 +316,44 @@ curve_plot<-ggpubr::ggarrange(ab,uncertainty_Ly, ncol = 1, labels = c('','c'), h
 ggplot2::ggsave(paste0("./Figures/curve_plots_t0.png"), curve_plot, device = "png", dpi = 700, height = 175, width = 200, units = 'mm')
 
 #summary on birth year cutoff
-uncertainty%>%
-  filter(year_zero < 2013 & param == "Ly")%>%
-  mutate(year_group = case_when(
-    year_zero <= 2007 ~ "Before",
-    TRUE ~ "After"
-  ))%>%
-  group_by(year_group)%>%dplyr::summarise(mean = mean(median))
 
-early<-uncertainty_Ly_data%>%
-  filter(year_zero <= 2008)
-summary(early)
+early_later<-uncertainty_Ly_data%>%
+  mutate(era = case_when(year_zero <= 2008 ~ "older",
+                         #year_zero > 2000 & year_zero <= 2012 ~ "mid-age",
+                         TRUE ~ "younger"))
 
-later<-uncertainty_Ly_data%>%
-  filter(year_zero > 2008)
-summary(later)
+early_later%>%
+  group_by(era)%>%
+  tally()
+
+
+el2<-ggplot(early_later)+
+  geom_density(aes(x = median,  after_stat(scaled), fill = era),alpha = 0.7)+
+  xlim(c(2.5,3.5))+
+  ylab("")+
+  theme_bw()+
+  theme(legend.title = element_blank())+
+  scale_fill_viridis_d()
+el1<-ggplot(early_later)+
+  geom_density(aes(x = q5, fill = era, after_stat(scaled)), alpha = 0.3)+
+  xlim(c(2.5,3.5))+
+  theme_bw()+
+  theme(legend.title = element_blank())+
+  ylab("")+
+  xlab("5%CI")+
+  scale_fill_viridis_d()
+el3<-ggplot(early_later)+
+  geom_density(aes(x = q95, fill = era, after_stat(scaled)), alpha = 0.3)+
+  xlim(c(2.5,3.5))+
+  theme_bw()+
+  theme(legend.title = element_blank())+
+  ylab("")+
+  xlab("95%CI")+
+  scale_fill_viridis_d()
+
+shorter<-ggpubr::ggarrange(el1, el2, el3, nrow = 1, common.legend = T, legend = "bottom")
+ggplot2::ggsave(paste0("./Figures/shorter.png"), shorter, device = "png", dpi = 300, height = 100, width = 300, units = 'mm')
+
 
 ## Fig. 5, box plots ----
 
@@ -450,7 +476,21 @@ kyLy<-ggplot()+
   ylab(bquote(L['1i']))+
   annotate(geom = "text", x=0.35, y=3.3, label=eq_Lk, parse = F, size = 3)
 
-#### Fig. 4b, logit(k_2) | logit(k_1) ----
+#### Fig. 4b, L_1 given K_1 ----
+
+LyKy<-ggplot(ind_median)+
+  geom_point(ind_median%>%filter(age_value == "est"), mapping = aes(x = Ky, y = Ly, group = as.factor(i)), color = "#ffb000", size = 4.5, alpha = 0.8)+
+  geom_point(aes(x = Ky, Ly), alpha = 0.9)+
+  geom_point(ind_median%>%filter(year_zero <= 2012), mapping = aes(x = Ky, y = Ly, group = as.factor(i)), size = 3, alpha = 0.8)+
+  theme_bw()+
+  scale_color_viridis_d(begin = 0, end = 0.9)+
+  xlab(bquote(K['1i']))+
+  ylab(bquote(L['1i']))+
+  theme(legend.position = "bottom")
+
+##
+
+#### Fig. 4c, logit(k_2) | logit(k_1) ----
 #regression coefficient / slope
 slope_k<-vc24$median/vc22$median
 slope_k
@@ -477,7 +517,7 @@ kykz<-ggplot()+
   ylim(c(-0.3, 1.6))+
   coord_fixed(ratio = 1)
 
-#### Fig. 4c, Ly given Lz ----
+#### Fig. 4d, Ly given Lz ----
 #regression coefficient / slope
 slope_L<-vc13$median/vc33$median
 y_intercept_L<-muLy$median - slope_L*muLz$median
@@ -502,19 +542,6 @@ LzLy<-ggplot()+
   annotate(geom = "text", x=0.87, y=3.3, label=eq_L, parse = F, size = 3)+
   coord_fixed(ratio = 0.4)
 
-#### Fig. 4d, Ly given Ky ----
-
-LyKy<-ggplot(ind_median)+
-  geom_point(ind_median%>%filter(age_value == "est"), mapping = aes(x = Ky, y = Ly, group = as.factor(i)), color = "#ffb000", size = 4.5, alpha = 0.8)+
-  geom_point(aes(x = Ky, Ly), alpha = 0.9)+
-  geom_point(ind_median%>%filter(year_zero <= 2007), mapping = aes(x = Ky, y = Ly, group = as.factor(i)), size = 3, alpha = 0.8)+
-  theme_bw()+
-  scale_color_viridis_d(begin = 0, end = 0.9)+
-  xlab(bquote(K['1i']))+
-  ylab(bquote(L['1i']))+
-  theme(legend.position = "bottom")
-
-##
 
 #### Fig. 4, together ----
 params_plot<-ggpubr::ggarrange(kyLy, LyKy, kykz, LzLy,  labels = "auto")
