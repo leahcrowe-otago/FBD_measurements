@@ -22,7 +22,7 @@
   - calls "whalength_file_merge.R"
     - merges all *Whalelength* outputs
     - creates Fig. S4, calibration measurements 
-  - Supplementary Figures S5 & S6
+  - Supplementary Figures S5
   - data output: see data repo for metadata details
     -  individual *i* measurement data at each capture occasion *j* for model
     -  individual life history data
@@ -38,7 +38,7 @@
   - read data
   - summarise results
   - create table S2
-  - create Figs. 2–4, S7
+  - create Figs. 2–4, S1.3.1a, S6, S7
 9. "Supplementary.qmd" creates the suppmat file
   - creates supplementary tables
   - Fig. S1 map created by calling "./scripts/ms_map.R"
