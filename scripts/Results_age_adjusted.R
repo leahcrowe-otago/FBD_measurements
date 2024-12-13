@@ -31,8 +31,7 @@ ij_ID%>%
 
 # read in results ----
 # from runstan_allo_mv_t0
-date = "2024-06-21" # real run
-date = "2024-12-05" # add 5 years to unknown birth year animals
+date = "2024-12-13" # add 5 years to unknown birth year animals
 
 # k is logit(k)
 # all population-level based params ----
@@ -82,17 +81,15 @@ parindout_in_summ<-summary(parindout_in)
 
 # report results ----
 
-### Fig. S7, plot a couple of individuals ----
-induse = c(42,95,23)
-#induse = 4 #sunshine
-#induse = 76 # for plus 5
+### Fig. S1.3.1, plot a couple of individuals ----
+
+induse = 76 # for plus 5
 
 ngrid = 101
 agegrid = seq(from = -2, to = max(ij_b$age), length.out = ngrid)
 nind = length(induse)
 
-label = c("a","b","c")
-#label = "b" #for sunshine
+label = "b" #Reel plus 5
 
 for(i in 1:nind){
   k = label[i]
@@ -139,8 +136,7 @@ ggplot()+
     scale_color_grey(start = 0.6, end = 0.1)+
     labs(title = k)
   
-  ggplot2::ggsave(paste0("./Figures/indplot_",i,"_t0.png"), device = "png", dpi = 700, width = 100, height = 100, units = 'mm')
-  #ggplot2::ggsave(paste0("./Figures/plus5/indplot_",i,"_p5.png"), device = "png", dpi = 700, width = 100, height = 100, units = 'mm')
+  ggplot2::ggsave(paste0("./Figures/plus5/indplot_",i,"_p5.png"), device = "png", dpi = 700, width = 100, height = 100, units = 'mm')
   
 }
 
@@ -253,8 +249,7 @@ vbgc_zero<-ggplot(growest_plot)+
   theme(legend.position = "none")+
   scale_color_grey(start = 0.6, end = 0.1)
 
-ggplot2::ggsave(paste0("./Figures/vbgc_zero_t0.png"), vbgc_zero, device = "png", dpi = 700, width = 200, height = 100, units = 'mm')
-#ggplot2::ggsave(paste0("./Figures/plus5/vbgc_zero_p5.png"), vbgc_zero, device = "png", dpi = 700, width = 200, height = 100, units = 'mm')
+ggplot2::ggsave(paste0("./Figures/plus5/vbgc_zero_p5.png"), vbgc_zero, device = "png", dpi = 700, width = 200, height = 100, units = 'mm')
 
 
 #### Fig. 3b ----
@@ -270,7 +265,6 @@ vbgc_by<-ggplot(growest_plot%>%filter(Length == "TL"))+
 
 ab<-ggpubr::ggarrange(vbgc_zero, vbgc_by, common.legend = F, legend = "bottom", widths = c(1,1.5), labels = "auto")
 
-#ggplot2::ggsave(paste0("./Figures/vbgcplot_t0.png"), ab, device = "png", dpi = 700, width = 200, height = 100, units = 'mm')
 ggplot2::ggsave(paste0("./Figures/plus5/vbgcplot_p5.png"), ab, device = "png", dpi = 700, width = 200, height = 100, units = 'mm')
 
 ## individual median summaries
@@ -316,13 +310,11 @@ uncertainty_Ly<-ggplot(uncertainty%>%filter(param == "Ly"))+
         axis.text.x = element_text(angle = -90, vjust = -0.5))+
   scale_color_viridis_d(begin = 0, end = 0.9)
 
-#ggplot2::ggsave(paste0("./Figures/Ly_CI_t0.png"), uncertainty_Ly, device = "png", dpi = 700, height = 120, width = 200, units = 'mm')
 ggplot2::ggsave(paste0("./Figures/plus5/Ly_CI_p5.png"), uncertainty_Ly, device = "png", dpi = 700, height = 120, width = 200, units = 'mm')
 
 #### Fig 3, together ----
 curve_plot<-ggpubr::ggarrange(ab,uncertainty_Ly, ncol = 1, labels = c('','c'), heights = c(2,1.5))
 
-#ggplot2::ggsave(paste0("./Figures/curve_plots_t0.png"), curve_plot, device = "png", dpi = 700, height = 175, width = 200, units = 'mm')
 ggplot2::ggsave(paste0("./Figures/plus5/curve_plots_p5.png"), curve_plot, device = "png", dpi = 700, height = 175, width = 200, units = 'mm')
 
 #summary on birth year cutoff
@@ -394,7 +386,6 @@ ggplot_build(sex_box)$data
 #### Fig. 5, together ----
 ggpubr::ggarrange(pod_box, sex_box, ncol = 1, labels = "auto")
 
-#ggplot2::ggsave(paste0("./Figures/boxplots_t0.png"), device = "png", dpi = 700, height = 175, width = 150, units = 'mm')
 ggplot2::ggsave(paste0("./Figures/plus5/boxplots_p5.png"), device = "png", dpi = 700, height = 175, width = 150, units = 'mm')
 
 ### Fig. 4, y given x, three conditional distribution plots ----
@@ -444,7 +435,6 @@ sd_Lk<-sqrt(var_Lk)
 sd_Lk
 
 #equation
-#eq_Lk<-expression(paste(hat(y) == 0.27*x + 2.74,", ",sigma == 0.1,'0'))
 eq_Lk<-expression(paste(hat(y) == 0.26*x + 2.74,", ",sigma == 0.09)) ##age adjusted
 
 kyLy<-ggplot()+
@@ -498,7 +488,6 @@ y_intercept_L
 sd_L
 
 #equation
-eq_L<-expression(paste(hat(y) == 2.19*x + 0.87,", ",sigma == 0.07))
 eq_L<-expression(paste(hat(y) == 2.18*x + 0.88,", ",sigma == 0.07)) # age adjusted
 
 LzLy<-ggplot()+
@@ -528,5 +517,4 @@ LyKy<-ggplot(ind_median)+
 
 #### Fig. 4, together ----
 params_plot<-ggpubr::ggarrange(kyLy, LyKy, kykz, LzLy,  labels = "auto")
-#ggplot2::ggsave(paste0("./Figures/params_t0.png"), params_plot, device = "png", dpi = 700, height = 200, width = 200, units = 'mm', bg="white")
 ggplot2::ggsave(paste0("./Figures/plus5/params_p5.png"), params_plot, device = "png", dpi = 700, height = 200, width = 200, units = 'mm', bg="white")
