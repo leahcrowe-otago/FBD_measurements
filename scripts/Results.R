@@ -326,7 +326,6 @@ early_later%>%
   group_by(era)%>%
   tally()
 
-
 el2<-ggplot(early_later)+
   geom_density(aes(x = median,  after_stat(scaled), fill = era),alpha = 0.7)+
   xlim(c(2.5,3.5))+
@@ -359,7 +358,7 @@ ggplot2::ggsave(paste0("./Figures/shorter.png"), shorter, device = "png", dpi = 
 
 box<-ind_median%>%
   dplyr::select(-ky, -kz)%>% #t0p
-  tidyr::pivot_longer(cols = c(Ly, logit_ky, Lz, logit_kz), names_to = "param", values_to =  "median")%>%
+  tidyr::pivot_longer(cols = c(Ly, logit_ky, Lz, logit_kz), names_to = "param", values_to =  "Median")%>%
   mutate(param2 = case_when(
     param == "Ly" ~ "L<sub>1i</sub>",
     param == "Lz" ~ "L<sub>2i</sub>",
@@ -371,6 +370,13 @@ box<-ind_median%>%
     TRUE ~ param2
   ))%>%
   dplyr::rename('Sex' = 'SEX', "Pod" = "POD")
+
+box%>%ungroup()%>%group_by(param)%>%dplyr::summarise(min = min(Median), median = median(Median), max = max(Median))
+
+box%>%ungroup()%>%dplyr::select(Pod, param, Median)%>%group_by(Pod, param)%>%dplyr::summarise(min = min(Median), median = median(Median), max = max(Median))
+box%>%ungroup()%>%group_by(param,Sex)%>%dplyr::summarise(min = min(Median), median = median(Median), max = max(Median))
+
+max(box$median)
 
 box_Ly_F<-box%>%filter(Sex == "F" & param == "Ly")%>%ungroup()
 plot_Ly_F<-quantile(box_Ly_F$median, probs = c(0.05, 0.25, 0.5, 0.75, 0.95))
