@@ -7,11 +7,13 @@ bibliography: references.bib
 header-includes:
   - \usepackage{setspace}
   - \linespread{1.25}
+  - \floatplacement{table}{H}
 format:
   pdf:
     documentclass: report
     keep-tex: true
     mainfont: "Times New Roman"
+    fig-pos: 'H'
 ---
 
 ```{=tex}
@@ -162,7 +164,66 @@ and the associated variance:
 ```
 \newpage
 
-## 1.3 Testing the sensitivity of the age assigned to unknown aged individuals
+## 1.3 Model sensitivity to age assignments of unknown aged individuals
+
+We re-ran our model with data where age was adjusted by an additional five years at each measurement occasion for 20 individuals not seen in their birth year (this excluded known reproductive females which already had an applied approach for adjusting age). These results yielded slightly higher logit($k_{hi}$) estimates (Table S1.3.1) corresponding to slower growth rates (differences between median estimates of \< 0.035 on the logit scale) (Fig. 1.3.1), which is reasonable given the added time to reach the measured lengths. It is likely that an age adjustment is appropriate for some of these individuals, but it is impossible to know with the sighting histories we have which individuals these are. As an example, the unknown aged individual first seen most recently in this dataset (Reel, a Dusky pod male) was first sighted in 2008, and we found no differences between modeled growth curves (Fig. 1.3.2). Finally, this age adjustment had no impact on overall findings related to effects from pod and sex membership as the range of median estimates for the Doubtful pod and for females encompass the values from all other groups (Fig. 1.3.3). Overall, these modeled results yield minor differences from the results presented in the main text and our substantive conclusions are unchanged.
+
+\newpage
+
+Table S1.3.1
+
+```{r, table, echo = F, out.width = '80%', message = F, warning = F, include = T}
+
+library(dplyr)
+summ = readRDS(file = './results/summtable_p5.rds')
+
+variable_greek<-c('$\\mu_{L_1}$','$\\mu_{k_1}$','$\\mu_{L_2}$','$\\mu_{k_2}$',
+                  '$\\sigma_{L_1}$','$\\sigma_{k_1}$','$\\sigma_{L_2}$','$\\sigma_{k_2}$',
+                  '$\\sigma_{y_1}$','$\\sigma_{y_2}$','$\\rho_{{y_1}{y_2}}$', '$\\rho_{{L_1}{k_1}}$',
+                  '$\\rho_{{L_1}{L_2}}$','$\\rho_{{L_1}{k_2}}$','$\\rho_{{k_1}{L_2}}$','$\\rho_{{k_1}{k_2}}$',
+                  '$\\rho_{{L_2}{k_2}}$','$t_0$')
+
+variable_text<-c('Mean maximum TL','Mean TL growth rate (logit)','Mean maximum BHDF length','Mean BHDF growth rate (logit)',
+                  'Standard deviation of maximum TL','Standard deviation of TL growth rate (logit)','Standard deviation of maximum BHDF length','Standard deviation of BHDF growth rate (logit)',
+                  'Error associated with TL measurements','Error associated with BHDF measurements','Correlation between TL and BHDF measurements', 'Correlation between maximum TL and logit TL growth rate',
+                  'Correlation between maximum TL and maximum BHDF length','Correlation between maximum BHDF length and logit BHDF growth rate','Correlation between logit TL growth rate and maximum BHDF length','Correlation between logit TL growth rate and logit BHDF growth rate',
+                  'Correlation between maximum BHDF length and logit BHDF growth rate','Theoretical age when length is 0')
+
+summary<-summ%>%
+  slice(1:18)%>%
+  mutate(`Parameter description` = variable_text,
+         Parameter = variable_greek,
+         Order = c(1,3,2,4,5,7,6,8,9,10,11,12,13,14,15,16,17,18))%>%
+  arrange(Order)%>%
+  dplyr::select(`Parameter description`, Parameter, Median, '5th percentile', '95th percentile')
+
+library(kableExtra)
+summary%>%
+  kableExtra::kable(booktabs = T, align = "c", escape = F)
+```
+\newpage
+
+::: {layout-nrow="1"}
+![](./Figures/plus_age/catplot_2024-06-21.png){width="49%"} ![](./Figures/plus_age/catplot_2024-12-13_5.png){width="49%"}
+:::
+
+Fig. 1.3.1 Caterpillar plots of the estimated growth rate parameters (\[2\] = logit($k_1$), \[4\] = logit($k_2$)), including mean ('mu') and associated standard deviation ('sigma') estimates using the original data formulation in the main text (left) and data where five years were added to the age of unknown aged individuals (excluding reproductive females) at measurement occasions (right).
+
+::: {layout-nrow="1"}
+![](./Figures/indplot_76_t0.png){width="49%"} ![](Figures/plus_age/indplot_76_p5.png){width="49%"}
+:::
+
+Fig. 1.3.2 Growth curves estimated for Reel, the most recently added unknown aged individual to the catalogue in this dataset, where a) is the modeled growth curve without adjustments to age (first year sighted is used as birth year), and b) is the modeled growth curve adding five years to the assigned age at each measurement occasion.
+
+\newpage
+
+::: {layout-nrow="1"}
+![](./Figures/plus_age/boxplots_p5.png)
+:::
+
+Fig. 1.3.3 Summary by group of individual estimates using data with five years added to the age of unknown aged individuals (excluding reproductive females) at measurement occasions. Summary boxplots of the growth rates (logit($k_{hi}$)) and maximum total length ($L_{hi}$) median estimates where $h$ = 1 is the total length and $h$ = 2 is the blowhole to dorsal fin length. Each individual $i$ is grouped by (a) pod membership and (b) sex (F = female, M = male, X = unknown). Note that the y-axis is in meters for $L_{hi}$. The colored boxes are the interquartile range (25th--75th percentile) with the median represented by the horizontal black line within the box, the whiskers are the range of values falling within 1.5x the interquartile range, and the blacks dots are outlying points.
+
+\newpage
 
 ## Tables
 
@@ -183,7 +244,7 @@ priors%>%
 
 \newgeometry{margin=0.95in}
 
-Table S2. Model parameter estimates of the expanded model exploring sex ($\beta$)- and pod ($\gamma$)-effects, including the probability of an individual being male ($\pi$), the mean ($\mu$), standard deviation ($\sigma$), correlation ($\rho$), and theoretical age less than zero when length was zero ($t_0$). The base parameters represent the estimated maximum total length ($L_1$), maximum blowhole to dorsal fin length ($L_2$), total length growth rate (logit($k_1$)), and the growth rate of the blowhole to dorsal fin length (logit($k_2$)). Additionally, $y_1$ and $y_2$ refer to the measurements of total length and blowhole to dorsal fin length, respectively.
+Table S2. Model parameter estimates of the expanded model exploring sex ($\beta$)- and pod ($\gamma$)-effects, including the probability of an individual being male ($\pi$), the mean ($\mu$), standard deviation ($\sigma$), correlation ($\rho$), and hypothetical age less than zero when length was zero ($t_0$). The base parameters represent the estimated maximum total length ($L_1$), maximum blowhole to dorsal fin length ($L_2$), total length growth rate (logit($k_1$)), and the growth rate of the blowhole to dorsal fin length (logit($k_2$)). Additionally, $y_1$ and $y_2$ refer to the measurements of total length and blowhole to dorsal fin length, respectively.
 
 ```{r, tableS2, echo = F, out.width = '80%', message = F, warning = F, include = T}
 
@@ -225,9 +286,9 @@ Fig. S1. Example photographs of different morphs within the Fiordland bottlenose
 \newpage
 
 ::: {layout-ncol="1" fig-pos="H"}
-![](Figures/Supplement/Squid/858_cr.jpg){height="50%"}
+![](Figures/Supplement/Squid/858_cr.jpg){height="48%"}
 
-![](Figures/Supplement/Squid/DSC_4944_cr.jpg){height="50%"} \newline Fig. S2. Example photographs of squid sucker marks on Fiordland bottlenose dolphins (pers comm. K. Bolstad) including (a) on the chin in 2015 and (b) left of the eye in 2022.
+![](Figures/Supplement/Squid/DSC_4944_cr.jpg){height="48%"} \newline Fig. S2. Example photographs of squid sucker marks on Fiordland bottlenose dolphins (pers comm. K. Bolstad) including (a) on the chin in 2015 and (b) left of the eye in 2022.
 :::
 
 \newpage
@@ -257,6 +318,12 @@ Fig. S5. (a) The dates of drone sampling flights (black lines connect dates on t
 
 \newpage
 
+![](Figures/shorter.png)
+
+Fig. S6. The distribution of the 5% credible intervals (CI), median, and 95%CI total length estimates for individuals ($\theta_{L_{1i}}$) grouped as 'older' (first seen before 2009) or 'younger' (born in 2009 or after) animals.
+
+\newpage
+
 ::: {layout-nrow="1"}
 ![](Figures/indplot_42.png)
 
@@ -265,6 +332,6 @@ Fig. S5. (a) The dates of drone sampling flights (black lines connect dates on t
 ![](Figures/indplot_23.png)
 :::
 
-Fig. S6. Example VBGC for three individuals. The grey circles are the measured blowhole to dorsal fin lengths, the black circles are the measured total lengths, the solid lines are the corresponding median growth curve model estimates, and the dashed lines represent the 90% credible intervals. During this study, (a) was measured as an adult, (b) was measured as a juvenile, and (c) was measured when it was near the age of reproductive maturity (around 10 y). The animal plotted in (b), known as 'Sunshine', was found dead when it was 1 y, and directly measured lengths are plotted in orange.
+Fig. S7. Example VBGC for three individuals. The grey circles are the measured blowhole to dorsal fin lengths, the black circles are the measured total lengths, the solid lines are the corresponding median growth curve model estimates, and the dashed lines represent the 90% credible intervals. During this study, (a) was measured as an adult, (b) was measured as a juvenile, and (c) was measured when it was near the age of reproductive maturity (around 10 y). The animal plotted in (b), known as 'Sunshine', was found dead when it was 1 y, and directly measured lengths are plotted in orange.
 
 # References
