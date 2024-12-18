@@ -17,13 +17,23 @@ ij_z = readRDS(file = './data/Measurements/ij_2.rds')
 #total length only
 ij_y = readRDS(file = './data/Measurements/ij_3.rds')
 
+ij_all<-ij_b%>%
+  bind_rows(ij_z)%>%
+  bind_rows(ij_y)%>%
+  mutate(age_add = 0)
+
 #run below to adjust minimum age
 age_est_add<-5 # add time to age (years), use same value from the model run
 source('./scripts/stan/adjust_age_minyr.R', local = TRUE, verbose = F)$value
 
-ij_all<-ij_b%>%
+#these ij_* have been changed in the above script
+ij_all_5<-ij_b%>%
   bind_rows(ij_z)%>%
-  bind_rows(ij_y)
+  bind_rows(ij_y)%>%
+  mutate(age_add = 5)
+
+ij_all<-ij_all%>%
+  bind_rows(ij_all_5)
 
 ij_ID%>%
   group_by(POD,SEX)%>%
@@ -31,119 +41,150 @@ ij_ID%>%
 
 # read in results ----
 # from runstan_allo_mv_t0
-date = "2024-12-13" # add 5 years to unknown birth year animals
+date = "2024-06-21"
+date_5 = "2024-12-13_5" # add 5 years to unknown birth year animals
+date_10 = "2024-12-13_10" # add 5 years to unknown birth year animals
 
 # k is logit(k)
 # all population-level based params ----
 parout_in = readRDS(file = paste0('./results/parout_',date,'.rds'))
+parout_in_5 = readRDS(file = paste0('./results/parout_',date_5,'.rds'))
+parout_in_10 = readRDS(file = paste0('./results/parout_',date_10,'.rds'))
 
 par_df<-as.data.frame(parout_in)
+par_df_5<-as.data.frame(parout_in_5)
+par_df_10<-as.data.frame(parout_in_10)
 #bayesplot::mcmc_dens(parout_in)
 #bayesplot::mcmc_trace(parout_in)+theme_bw()
 summ_paroutin<-as.data.frame(summary(parout_in))
-
-summ_paroutin%>%
-  filter(grepl("mu",variable))
-
-summ_paroutin%>%
-  filter(grepl("corr",variable))
-
-summ_paroutin%>%
-  filter(grepl("sigma_obs",variable))
-
-summ_paroutin%>%
-  filter(grepl("rho",variable))
+summ_paroutin_5<-as.data.frame(summary(parout_in_5))
 
 #### Table S2 ----
-summ<-summ_paroutin%>%
+summ_5<-summ_paroutin_5%>%
   mutate(Median = round(median, 3),
          '5th percentile' = format(round(q5,3)),
          '95th percentile' = format(round(q95,3)))%>%
   dplyr::select(variable, Median,'5th percentile','95th percentile')
 
-saveRDS(summ, file = "./results/summtable_t0.rds")
-#saveRDS(summ, file = "./results/summtable_p5.rds")
+saveRDS(summ_5, file = "./results/summtable_p5.rds")
 
 #### Rhat, ESS ----
-max(summ_paroutin$rhat)
-min(summ_paroutin$ess_bulk)
-min(summ_paroutin$ess_tail)
-max(summ_paroutin$ess_bulk)
-max(summ_paroutin$ess_tail)
+max(summ_paroutin_5$rhat)
+min(summ_paroutin_5$ess_bulk)
+min(summ_paroutin_5$ess_tail)
+max(summ_paroutin_5$ess_bulk)
+max(summ_paroutin_5$ess_tail)
 
 t0p_est<-summ_paroutin%>%
   filter(variable == "t0p")
 t0p = t0p_est$median
 
+t0p_est_5<-summ_paroutin_5%>%
+  filter(variable == "t0p")
+t0p_5 = t0p_est_5$median
+
 # individual-level estimates ----
-parindout_in = readRDS(file = paste0('./results/parindout_',date,'.rds'))
+parindout_in = readRDS(file = paste0('./results/parindout_',date,'.rds'))%>%mutate(age_add = 0)
 parindout_in_summ<-summary(parindout_in)
+
+parindout_in_5 = readRDS(file = paste0('./results/parindout_',date_5,'.rds'))%>%mutate(age_add = 5)
+parindout_in_summ_5<-summary(parindout_in_5)
+
+parindout_in<-parindout_in%>%
+  bind_rows(parindout_in_5)
 
 # report results ----
 
 ### Fig. S1.3.1, plot a couple of individuals ----
 
-induse = 76 # for plus 5
+induse = c(0,5)
 
 ngrid = 101
 agegrid = seq(from = -2, to = max(ij_b$age), length.out = ngrid)
 nind = length(induse)
 
-label = "b" #Reel plus 5
+#label = "b" #Reel plus 5
 
-for(i in 1:nind){
-  k = label[i]
-  i = induse[i]
-  print(i)
-  x = ij_all%>%filter(ind == i)%>%select(age)
-  y = ij_all%>%filter(ind == i)%>%select(length)
-  z = ij_all%>%filter(ind == i)%>%select(BHDF)
+#for(i in 1:nind){
+ # k = label[i]
+ #  i = induse[i]
+#  print(i)
+
+i = 76
+
+  ij_all_76<-ij_all%>%
+    bind_rows(ij_all_5)%>%
+    filter(ind == i)
+  
+  ij_all_76$age_add<-as.factor(ij_all_76$age_add)
+  
+  x = ij_all_76%>%select(age, age_add)
+  y = ij_all_76%>%select(length, age_add)
+  z = ij_all_76%>%select(BHDF, age_add)
   
   Ly = parindout_in[[paste0('par[',i,',1]')]]
   ky = parindout_in[[paste0('par[',i,',2]')]]
   Lz = parindout_in[[paste0('par[',i,',3]')]]
   kz = parindout_in[[paste0('par[',i,',4]')]]
   
-  tmp_y = matrix(NA,length(Ly),ngrid)
-  tmp_z = matrix(NA,length(Lz),ngrid)
+  Ly_5 = parindout_in_5[[paste0('par[',i,',1]')]]
+  ky_5 = parindout_in_5[[paste0('par[',i,',2]')]]
+  Lz_5 = parindout_in_5[[paste0('par[',i,',3]')]]
+  kz_5 = parindout_in_5[[paste0('par[',i,',4]')]]
+
+  tmp_y0 = matrix(NA,length(Ly),ngrid)
+  tmp_z0 = matrix(NA,length(Lz),ngrid)
+  
+  tmp_y5 = matrix(NA,length(Ly),ngrid)
+  tmp_z5 = matrix(NA,length(Lz),ngrid)
+    
+  for(j in 1:ngrid){
+    #inverse logit kyout/kzout 1/(1+exp(-k))
+    tmp_y0[,j] = Ly*(1-(1/(1+exp(-ky))^(t0p + agegrid[j])))
+    tmp_z0[,j] = Lz*(1-(1/(1+exp(-kz))^(t0p + agegrid[j])))
+  }  
+  
+  quan_y0 = apply(tmp_y0, 2, quantile, c(0.05, 0.5, 0.95), na.rm = T)
+  quan_z0 = apply(tmp_z0, 2, quantile, c(0.05, 0.5, 0.95), na.rm = T)
   
   for(j in 1:ngrid){
     #inverse logit kyout/kzout 1/(1+exp(-k))
-    tmp_y[,j] = Ly*(1-(1/(1+exp(-ky))^(t0p + agegrid[j])))
-    tmp_z[,j] = Lz*(1-(1/(1+exp(-kz))^(t0p + agegrid[j])))
+    tmp_y5[,j] = Ly_5*(1-(1/(1+exp(-ky_5))^(t0p_5 + agegrid[j])))
+    tmp_z5[,j] = Lz_5*(1-(1/(1+exp(-kz_5))^(t0p_5 + agegrid[j])))
   }  
   
-  quan_y = apply(tmp_y, 2, quantile, c(0.05, 0.5, 0.95), na.rm = T)
-  quan_z = apply(tmp_z, 2, quantile, c(0.05, 0.5, 0.95), na.rm = T)
+  quan_y5 = apply(tmp_y5, 2, quantile, c(0.05, 0.5, 0.95), na.rm = T)
+  quan_z5 = apply(tmp_z5, 2, quantile, c(0.05, 0.5, 0.95), na.rm = T)
+  
   
   matrix(NA, length(quan_y*n_ind), ngrid)
 
-#sunshine<- #when induse = 4
 ggplot()+
-    geom_point(aes(x = x$age, y = y$length, color = "TL"), size = 2.5, alpha = 0.8)+
-    geom_point(aes(x = x$age, y = z$BHDF, color = "BHDF"), size = 2.5, alpha = 0.8)+
-    geom_line(aes(x = agegrid, y = quan_y[1,], color = "TL"), linetype = "dashed")+
-    geom_line(aes(x = agegrid, y = quan_y[2,], color = "TL"))+
-    geom_line(aes(x = agegrid, y = quan_y[3,], color = "TL"), linetype = "dashed")+
-    geom_line(aes(x = agegrid, y = quan_z[1,], color = "BHDF"), linetype = "dashed")+
-    geom_line(aes(x = agegrid, y = quan_z[2,], color = "BHDF"))+
-    geom_line(aes(x = agegrid, y = quan_z[3,], color = "BHDF"), linetype = "dashed")+
+    geom_point(aes(x = ij_all_76$age, y = ij_all_76$length, color = "TL", shape = ij_all_76$age_add), size = 2.5, alpha = 0.8)+
+    geom_point(aes(x = ij_all_76$age, y = ij_all_76$BHDF, color = "BHDF", shape = ij_all_76$age_add), size = 2.5, alpha = 0.8)+
+  geom_line(aes(x = agegrid, y = quan_y5[1,]), color = "red", linetype = "dotted")+
+  geom_line(aes(x = agegrid, y = quan_y5[2,]), color = "red")+
+  geom_line(aes(x = agegrid, y = quan_y5[3,]), color = "red", linetype = "dotted")+
+  geom_line(aes(x = agegrid, y = quan_z5[1,]), color = "red", linetype = "dotted")+
+  geom_line(aes(x = agegrid, y = quan_z5[2,]), color = "red")+
+  geom_line(aes(x = agegrid, y = quan_z5[3,]), color = "red", linetype = "dotted")+  
+  
+  geom_line(aes(x = agegrid, y = quan_y0[1,], color = "TL"), linetype = "dashed")+
+    geom_line(aes(x = agegrid, y = quan_y0[2,], color = "TL"))+
+    geom_line(aes(x = agegrid, y = quan_y0[3,], color = "TL"), linetype = "dashed")+
+    geom_line(aes(x = agegrid, y = quan_z0[1,], color = "BHDF"), linetype = "dashed")+
+    geom_line(aes(x = agegrid, y = quan_z0[2,], color = "BHDF"))+
+    geom_line(aes(x = agegrid, y = quan_z0[3,], color = "BHDF"), linetype = "dashed")+
+
     coord_cartesian(ylim=c(0, 3.5))+
     theme_bw()+
     ylab("Length (m)")+
     xlab("Age (years)")+
     theme(legend.position = "none")+
-    scale_color_grey(start = 0.6, end = 0.1)+
-    labs(title = k)
+    scale_color_grey(start = 0.6, end = 0.1)
   
-  ggplot2::ggsave(paste0("./Figures/plus5/indplot_",i,"_p5.png"), device = "png", dpi = 700, width = 100, height = 100, units = 'mm')
+  ggplot2::ggsave(paste0("./Figures/plus_age/indplot_76_0&5.png"), device = "png", dpi = 700, width = 200, height = 200, units = 'mm')
   
-}
-
-# sunshine_plot<-sunshine+
-#   geom_point(aes(x = c(1,1) , y = c(2.07,0.65)), color = "darkorange", size = 2.5, alpha = 0.8)
-# 
-# ggplot2::ggsave(paste0("./Figures/indplot_sunshine_t0.png"), sunshine_plot, device = "png", dpi = 700, width = 100, height = 100, units = 'mm')
 
 ### Fig. 3, VBGCs, L and k by birthyear----
 
@@ -249,7 +290,7 @@ vbgc_zero<-ggplot(growest_plot)+
   theme(legend.position = "none")+
   scale_color_grey(start = 0.6, end = 0.1)
 
-ggplot2::ggsave(paste0("./Figures/plus5/vbgc_zero_p5.png"), vbgc_zero, device = "png", dpi = 700, width = 200, height = 100, units = 'mm')
+ggplot2::ggsave(paste0("./Figures/plus_age/vbgc_zero_p5.png"), vbgc_zero, device = "png", dpi = 700, width = 200, height = 100, units = 'mm')
 
 
 #### Fig. 3b ----
@@ -265,7 +306,7 @@ vbgc_by<-ggplot(growest_plot%>%filter(Length == "TL"))+
 
 ab<-ggpubr::ggarrange(vbgc_zero, vbgc_by, common.legend = F, legend = "bottom", widths = c(1,1.5), labels = "auto")
 
-ggplot2::ggsave(paste0("./Figures/plus5/vbgcplot_p5.png"), ab, device = "png", dpi = 700, width = 200, height = 100, units = 'mm')
+ggplot2::ggsave(paste0("./Figures/plus_age/vbgcplot_p5.png"), ab, device = "png", dpi = 700, width = 200, height = 100, units = 'mm')
 
 ## individual median summaries
 ind_median%>%
@@ -310,12 +351,12 @@ uncertainty_Ly<-ggplot(uncertainty%>%filter(param == "Ly"))+
         axis.text.x = element_text(angle = -90, vjust = -0.5))+
   scale_color_viridis_d(begin = 0, end = 0.9)
 
-ggplot2::ggsave(paste0("./Figures/plus5/Ly_CI_p5.png"), uncertainty_Ly, device = "png", dpi = 700, height = 120, width = 200, units = 'mm')
+ggplot2::ggsave(paste0("./Figures/plus_age/Ly_CI_p5.png"), uncertainty_Ly, device = "png", dpi = 700, height = 120, width = 200, units = 'mm')
 
 #### Fig 3, together ----
 curve_plot<-ggpubr::ggarrange(ab,uncertainty_Ly, ncol = 1, labels = c('','c'), heights = c(2,1.5))
 
-ggplot2::ggsave(paste0("./Figures/plus5/curve_plots_p5.png"), curve_plot, device = "png", dpi = 700, height = 175, width = 200, units = 'mm')
+ggplot2::ggsave(paste0("./Figures/plus_age/curve_plots_p5.png"), curve_plot, device = "png", dpi = 700, height = 175, width = 200, units = 'mm')
 
 #summary on birth year cutoff
 uncertainty%>%
@@ -386,7 +427,7 @@ ggplot_build(sex_box)$data
 #### Fig. 5, together ----
 ggpubr::ggarrange(pod_box, sex_box, ncol = 1, labels = "auto")
 
-ggplot2::ggsave(paste0("./Figures/plus5/boxplots_p5.png"), device = "png", dpi = 700, height = 175, width = 150, units = 'mm')
+ggplot2::ggsave(paste0("./Figures/plus_age/boxplots_p5.png"), device = "png", dpi = 700, height = 175, width = 150, units = 'mm')
 
 ### Fig. 4, y given x, three conditional distribution plots ----
 
@@ -435,7 +476,7 @@ sd_Lk<-sqrt(var_Lk)
 sd_Lk
 
 #equation
-eq_Lk<-expression(paste(hat(y) == 0.26*x + 2.74,", ",sigma == 0.09)) ##age adjusted
+eq_Lk<-expression(paste(hat(y) == 0.27*x + 2.74,", ",sigma == 0.09)) ##age adjusted
 
 kyLy<-ggplot()+
   geom_point(ind_median, mapping = aes(x = logit_ky, y = Ly), color = "black", alpha = 0.9)+
@@ -517,4 +558,5 @@ LyKy<-ggplot(ind_median)+
 
 #### Fig. 4, together ----
 params_plot<-ggpubr::ggarrange(kyLy, LyKy, kykz, LzLy,  labels = "auto")
-ggplot2::ggsave(paste0("./Figures/plus5/params_p5.png"), params_plot, device = "png", dpi = 700, height = 200, width = 200, units = 'mm', bg="white")
+ggplot2::ggsave(paste0("./Figures/plus_age/params_p5.png"), params_plot, device = "png", dpi = 700, height = 200, width = 200, units = 'mm', bg="white")
+

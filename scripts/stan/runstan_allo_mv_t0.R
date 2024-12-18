@@ -20,7 +20,7 @@ ij_z = readRDS(file = './data/Measurements/ij_2.rds')
 ij_y = readRDS(file = './data/Measurements/ij_3.rds')
 
 #run below to adjust minimum age
-age_est_add<-5 # add time to age (years)
+age_est_add<-10 # add time to age (years)
 source('./scripts/stan/adjust_age_minyr.R', local = TRUE, verbose = F)$value
 
 ij_all<-ij_b%>%
@@ -132,7 +132,7 @@ parout = as_draws_df(fit_vb$draws(c(
                                     "varcov_par","mu_pred"
                                     )))
 
-saveRDS(parout, file = paste0("./results/parout_",Sys.Date(),".rds"))
+saveRDS(parout, file = paste0("./results/parout_",Sys.Date(),"_10.rds"))
 
 #trace plot
 mcmc_trace(parout)+theme_bw()
@@ -144,4 +144,4 @@ as.data.frame(summary(parout))
 parindout = as_draws_df(fit_vb$draws(c("par")))
 
 #save par for individual plotting
-saveRDS(parindout, file = paste0("./results/parindout_",Sys.Date(),".rds"))
+saveRDS(parindout, file = paste0("./results/parindout_",Sys.Date(),"_10.rds"))
