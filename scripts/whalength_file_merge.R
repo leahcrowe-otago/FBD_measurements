@@ -97,6 +97,7 @@ length_ID_merge_Tt<-length_ID_merge%>%
   ))
 
 head(length_ID_merge_Tt)
+summary(length_ID_merge_Tt)
 
 # Fig. S4, noodle ----
 
