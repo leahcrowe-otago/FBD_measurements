@@ -166,11 +166,11 @@ and the associated variance:
 
 ## 1.3 Model sensitivity to age assignments of unknown aged individuals
 
-We re-ran our model with data where age was adjusted by an additional five years at each measurement occasion for 20 individuals not seen in their birth year (this excluded known reproductive females which already had an applied approach for adjusting age). These results yielded slightly higher logit($k_{hi}$) estimates (Table S1.3.1) corresponding to slower growth rates (differences between median estimates of \< 0.035 on the logit scale) (Fig. 1.3.1), which is reasonable given the added time to reach the measured lengths. It is likely that an age adjustment is appropriate for some of these individuals, but it is impossible to know with the sighting histories we have which individuals these are. As an example, the unknown aged individual first seen most recently in this dataset (Reel, a Dusky pod male) was first sighted in 2008, and we found no differences between modeled growth curves (Fig. 1.3.2). Finally, this age adjustment had no impact on overall findings related to effects from pod and sex membership as the range of median estimates for the Doubtful pod and for females encompass the values from all other groups (Fig. 1.3.3). Overall, these modeled results yield minor differences from the results presented in the main text and our substantive conclusions are unchanged.
+We re-ran our model with data where age was adjusted by an additional five and 10 years at each measurement occasion for 20 individuals not seen in their birth year (this excluded known reproductive females which already had an adjustment based on observed reproductive history). In the five year adjustment, results yielded slightly higher logit($k_{hi}$) estimates (Table S1.3.1) corresponding to slower growth rates (differences between median estimates of \< 0.035 on the logit scale). In the 10 year adjustment, growth estimates were also slower than the results from the five year adjustment, but at a lesser rate (Fig. S1.3.1). Both are expected results given the added time to reach the measured lengths. It is likely that an age adjustment is appropriate for some individuals in this group while others' ages will have been overestimated, but this is impossible to know given the available sighting histories. The five year age adjustment resulted in no major changes to the effects from pod and sex membership as the range of median estimates for the Doubtful pod and for females similarly encompassed the values from all other groups (Fig. S1.3.2). Overall, these modeled results yield minor differences from the results presented in the main text and our substantive conclusions are unchanged.
 
 \newpage
 
-Table S1.3.1
+Table S1.3.1 Model estimates using data where five years were added to the age of unknown aged individuals (excluding reproductive females) at measurement occasions. Parameters include the the mean ($\mu$), standard deviation ($\sigma$), correlation ($\rho$), and hypothetical age less than zero when length was zero ($t_0$). The subscripts of the parameters are defined as follows: $L_1$ = maximum total length, $L_2$ = maximum blowhole to dorsal fin length, $k_1$ = logit-transformed growth rate of total length, and $k_2$ = logit-transformed growth rate of blowhole to dorsal fin length.
 
 ```{r, table, echo = F, out.width = '80%', message = F, warning = F, include = T}
 
@@ -201,19 +201,16 @@ library(kableExtra)
 summary%>%
   kableExtra::kable(booktabs = T, align = "c", escape = F)
 ```
+
 \newpage
+\newgeometry{margin=0.95in}
 
 ::: {layout-nrow="1"}
-![](./Figures/plus_age/catplot_2024-06-21.png){width="49%"} ![](./Figures/plus_age/catplot_2024-12-13_5.png){width="49%"}
+![](./Figures/plus_age/catplots510.png){width="95%"}
 :::
 
-Fig. 1.3.1 Caterpillar plots of the estimated growth rate parameters (\[2\] = logit($k_1$), \[4\] = logit($k_2$)), including mean ('mu') and associated standard deviation ('sigma') estimates using the original data formulation in the main text (left) and data where five years were added to the age of unknown aged individuals (excluding reproductive females) at measurement occasions (right).
 
-::: {layout-nrow="1"}
-![](./Figures/indplot_76_t0.png){width="49%"} ![](Figures/plus_age/indplot_76_p5.png){width="49%"}
-:::
-
-Fig. 1.3.2 Growth curves estimated for Reel, the most recently added unknown aged individual to the catalogue in this dataset, where a) is the modeled growth curve without adjustments to age (first year sighted is used as birth year), and b) is the modeled growth curve adding five years to the assigned age at each measurement occasion.
+Fig. S1.3.1 Caterpillar plots of the parameter estimates using the original data formulation in the main text (black), and data where five (red) and 10 (blue) years were added to the age of unknown aged individuals (excluding reproductive females) at measurement occasions. The thinner lines represent the 90% credible intervals (CI), the thicker lines are the 50%CI, and the dots represent the distribution medians. See Table 1 and Table S1.3.1 for parameter definitions.
 
 \newpage
 
@@ -221,7 +218,9 @@ Fig. 1.3.2 Growth curves estimated for Reel, the most recently added unknown age
 ![](./Figures/plus_age/boxplots_p5.png)
 :::
 
-Fig. 1.3.3 Summary by group of individual estimates using data with five years added to the age of unknown aged individuals (excluding reproductive females) at measurement occasions. Summary boxplots of the growth rates (logit($k_{hi}$)) and maximum total length ($L_{hi}$) median estimates where $h$ = 1 is the total length and $h$ = 2 is the blowhole to dorsal fin length. Each individual $i$ is grouped by (a) pod membership and (b) sex (F = female, M = male, X = unknown). Note that the y-axis is in meters for $L_{hi}$. The colored boxes are the interquartile range (25th--75th percentile) with the median represented by the horizontal black line within the box, the whiskers are the range of values falling within 1.5x the interquartile range, and the blacks dots are outlying points.
+Fig. S1.3.2 Summary by group of individual estimates using data with five years added to the age of unknown aged individuals (excluding reproductive females) at measurement occasions. Summary boxplots of the growth rates (logit($k_{hi}$)) and maximum total length ($L_{hi}$) median estimates where $h$ = 1 is the total length and $h$ = 2 is the blowhole to dorsal fin length. Each individual $i$ is grouped by (a) pod membership and (b) sex (F = female, M = male, X = unknown). Note that the y-axis is in meters for $L_{hi}$. The colored boxes are the interquartile range (25th--75th percentile) with the median represented by the horizontal black line within the box, the whiskers are the range of values falling within 1.5x the interquartile range, and the blacks dots are outlying points.
+
+\restoregeometry
 
 \newpage
 
