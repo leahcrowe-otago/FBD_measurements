@@ -38,11 +38,11 @@
   - read data
   - summarise results
   - create table S2
-  - create Figs. 2–4, S1.3.1a, S6, S7
+  - create Figs. 2–4, S6, S7
 9. "Supplementary.qmd" creates the suppmat file
   - creates supplementary tables
+  - Section 1.3 created from './scripts/Results_age_adjusted.R'
   - Fig. S1 map created by calling "./scripts/ms_map.R"
-  - Fig. S8 of SWFSC stranding data created in "./scripts/TtPacificUS.R"
 10. Data: "./data/Measurements/Data for review"
   - Metadata-description.pdf: describes the data in the following files:
     - ij_1.csv
