@@ -353,7 +353,13 @@ el3<-ggplot(early_later)+
 shorter<-ggpubr::ggarrange(el1, el2, el3, nrow = 1, common.legend = T, legend = "bottom")
 ggplot2::ggsave(paste0("./Figures/shorter.png"), shorter, device = "png", dpi = 300, height = 100, width = 300, units = 'mm')
 
-
+box_uncertainty_growth<-uncertainty%>%
+  filter(param == "logit_ky")%>%
+  mutate(era = case_when(year_zero <= 2008 ~ "older",
+                                     #year_zero > 2000 & year_zero <= 2012 ~ "mid-age",
+                                     TRUE ~ "younger"))%>%
+  group_by(era)
+  
 ## Fig. 5, box plots ----
 
 box<-ind_median%>%
