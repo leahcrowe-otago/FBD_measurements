@@ -7,11 +7,8 @@ shapefile_path<-"C:/Users/leahm/OneDrive - University of Otago/Documents/git-ota
 
 fiordland_base <- marmap::getNOAA.bathy(lon1 = 165, lon2 = 169,
                         lat1 = -43.5, lat2 = -47.5, resolution = 0.5, keep = TRUE)
-#plot(fiordland_base, image = TRUE)
-#marmap::scaleBathy(fiordland_base, deg = 2, x = "bottomleft", inset = 5)
 
 fiordland_base_raster<-marmap::as.raster(fiordland_base)
-#mapview::mapview(fiordland_base_raster)
 
 test_spdf <- as(fiordland_base_raster, "SpatialPixelsDataFrame")
 test_df <- as.data.frame(test_spdf)%>%filter(layer < 0)
@@ -32,7 +29,6 @@ alliso200<-as.data.frame(st_coordinates(alliso200))
 # other shapesfiles ----
 
 NZ_coast<-sf::read_sf(shapefile_path, layer = "nz-coastlines-and-islands-polygons-topo-1500k") #https://data.linz.govt.nz/layer/51560-nz-coastlines-and-islands-polygons-topo-1500k/
-#NZ_coast<-as.data.frame(st_coordinates(NZ_coast))
 
 NZ_lakes<-sf::read_sf(shapefile_path, layer = "nz-lake-polygons-topo-150k") #https://data.linz.govt.nz/layer/50293-nz-lake-polygons-topo-150k/
 big_lakes<-subset(NZ_lakes, !is.na(name_ascii))
@@ -66,16 +62,8 @@ fiord_labels<-data.frame(label = c("Piopiotahi/Milford Sound","Te H\u101pua/Suth
                                  166.67, 166.47, 166.51,
                                  166.6, 168.33, 167.75))
 
-# fiord_labels_white<-data.frame(label = c("Taiporoporo-Charles Sound","Hinenui-Nancy Sound",
-#                                    "Te R\u101-Dagg Sound","Taiari-Chalky Inlet","Rakituma-Preservation Inlet"),
-#                          lat = c(-45.05,-45.1,
-#                                  -45.38,-46.02,-46.1),
-#                          lon = c(167.08, 167.02,
-#                                  166.72,166.51,166.6))
 
 # map ----
-
-#fiord_fill = c("Marine Reserve" = "orange")
 
 bathy_FMA<-ggplot()+
   geom_raster(data=test_df, aes(x=x, y=y, fill=`Depth (m)`), alpha=0.8)+
@@ -94,17 +82,14 @@ bathy_FMA<-ggplot()+
         panel.border = element_rect(colour = "black", fill=NA, size=1))+
   xlab("Longitude")+
   ylab("Latitude")+
-  #geom_sf(data = mpa, aes(fill = "Marine Reserve"), alpha = 1)+
   geom_sf(data = FNP, fill = "darkgreen", alpha = 0.3, lwd = 0.1)+
   geom_sf(data = big_lakes, alpha = 0.7, fill = "steelblue2", lwd = 0.1)+
   coord_sf(xlim = c(165.2,168.5), ylim = c(-47.2,-44.05), crs = 4269)+
-  #scale_fill_manual(values = fiord_fill)+
   theme(legend.position = c(0.90, 0.40),
         legend.title =  element_text(size = 6),
         legend.margin = margin(c(1, 1, 1, 1)),
         legend.key.size = unit(0.2, 'cm'),
         legend.text = element_text(size = 5),
-        #legend.spacing.y = unit(-0.02, "cm"),
         legend.box.background = element_rect(color = "white",fill = "white"),
         legend.key = element_rect(fill = NA),
         axis.text = element_text(size = 8),
@@ -142,8 +127,7 @@ NZ<-base+
   xlab("")+
   ylab("")+
   geom_rect(mapping = aes(xmin = 165.2, xmax = 168.7, ymin = -47.5, ymax = -44), fill = NA, color = "red")+
-  theme_void()#+
-  #geom_point(data = dunedin, aes(x = lon, y = lat), size = 0.8, color = "red")
+  theme_void()
 
 NZ
 
@@ -156,43 +140,35 @@ map_a<-cowplot::ggdraw() +
 ggsave("./figures/map.png", map_a, dpi = 700, height = 6, width = 4, units = 'in')
 ggsave("./figures/map.svg", map_a, dpi = 700, height = 6, width = 4, units = 'in')
 
-#### map b close up of Dusky/Doubtful ----
-
-complex_base <- marmap::getNOAA.bathy(lon1 = 166, lon2 = 167.5,
-                        lat1 = -45.9, lat2 = -45.0, resolution = 0.1)
-complex_base_raster<-marmap::as.raster(complex_base)
-complex_spdf <- as(complex_base_raster, "SpatialPixelsDataFrame")
-complex_df <- as.data.frame(complex_spdf)%>%filter(layer <= 0)
-colnames(complex_df) <- c("Depth (m)", "x", "y")
-
-map_b<-ggplot()+
-  geom_raster(data=test_df, aes(x=x, y=y, fill=`Depth (m)`), alpha=0.8)+
-  geom_sf(data = FMA, alpha = 0.05, color = "aquamarine", lwd = 0.4)+
-  geom_sf(data = NZ_coast, alpha = 0.9, fill = "white", lwd = 0.1)+
-  geom_path(alliso200, mapping = aes(X,Y,group = L2), color = "steelblue4", alpha = 0.7, linewidth = 0.1)+
-  geom_path(alliso50, mapping = aes(X,Y,group = L2), color = "antiquewhite4", alpha = 0.9, linewidth = 0.1)+
-  theme(panel.background = element_rect(fill = "lightblue"),
-        panel.grid.major = element_line(size = 0.1, linetype = 'solid', colour = "black"),
-        panel.border = element_rect(colour = "black", fill=NA, size=1))+
-  xlab("Longitude")+
-  ylab("Latitude")+
-  geom_sf(data = FNP, fill = "darkgreen", alpha = 0.3)+
-  geom_sf(data = big_lakes, alpha = 0.7, fill = "steelblue2")+
-  coord_sf(xlim = c(166.3,167.2), ylim = c(-45.85,-45.11), crs = 4269)+
-  theme(#legend.position = c(0.90, 0.10),
-        # legend.title =  element_text(size = 6),
-        # legend.margin = margin(c(1, 1, 1, 1)),
-        # legend.key.size = unit(0.2, 'cm'),
-        # legend.text = element_text(size = 5),
-        # #legend.spacing.y = unit(-0.02, "cm"),
-        # legend.box.background = element_rect(color = "white",fill = "white"),
-        # legend.key = element_rect(fill = NA),
-        legend.position = "none",
-        axis.text = element_text(size = 8),
-        axis.title = element_text(size = 8))
-
-map_b
-
-ggsave("./figures/map_b.png", map_b, dpi = 700, height = 6, width = 4, units = 'in')
-ggsave("./figures/map_b.svg", map_b, dpi = 700, height = 6, width = 4, units = 'in')
+# #### map b close up of Dusky/Doubtful ----
+# 
+# complex_base <- marmap::getNOAA.bathy(lon1 = 166, lon2 = 167.5,
+#                         lat1 = -45.9, lat2 = -45.0, resolution = 0.1)
+# complex_base_raster<-marmap::as.raster(complex_base)
+# complex_spdf <- as(complex_base_raster, "SpatialPixelsDataFrame")
+# complex_df <- as.data.frame(complex_spdf)%>%filter(layer <= 0)
+# colnames(complex_df) <- c("Depth (m)", "x", "y")
+# 
+# map_b<-ggplot()+
+#   geom_raster(data=test_df, aes(x=x, y=y, fill=`Depth (m)`), alpha=0.8)+
+#   geom_sf(data = FMA, alpha = 0.05, color = "aquamarine", lwd = 0.4)+
+#   geom_sf(data = NZ_coast, alpha = 0.9, fill = "white", lwd = 0.1)+
+#   geom_path(alliso200, mapping = aes(X,Y,group = L2), color = "steelblue4", alpha = 0.7, linewidth = 0.1)+
+#   geom_path(alliso50, mapping = aes(X,Y,group = L2), color = "antiquewhite4", alpha = 0.9, linewidth = 0.1)+
+#   theme(panel.background = element_rect(fill = "lightblue"),
+#         panel.grid.major = element_line(size = 0.1, linetype = 'solid', colour = "black"),
+#         panel.border = element_rect(colour = "black", fill=NA, size=1))+
+#   xlab("Longitude")+
+#   ylab("Latitude")+
+#   geom_sf(data = FNP, fill = "darkgreen", alpha = 0.3)+
+#   geom_sf(data = big_lakes, alpha = 0.7, fill = "steelblue2")+
+#   coord_sf(xlim = c(166.3,167.2), ylim = c(-45.85,-45.11), crs = 4269)+
+#   theme(legend.position = "none",
+#         axis.text = element_text(size = 8),
+#         axis.title = element_text(size = 8))
+# 
+# map_b
+# 
+# ggsave("./figures/map_b.png", map_b, dpi = 700, height = 6, width = 4, units = 'in')
+# ggsave("./figures/map_b.svg", map_b, dpi = 700, height = 6, width = 4, units = 'in')
 
