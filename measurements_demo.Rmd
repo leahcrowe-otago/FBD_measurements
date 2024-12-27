@@ -66,7 +66,7 @@ measurement_merge%>%
 
 source('./scripts/whalength_file_merge.R', local = TRUE, verbose = F)$value
 
-#wl below stands for Whalelength to signify that those were measurement results from WL, not the ones I manually entered during the process in the ID spreadsheet to signify that the total length was actual measured, not just the hack to only measure BHDF for some individuals 
+#wl below stands for Whalelength to signify that those were measurement results from WL, not the ones I manually entered during the process in the ID spreadsheet to identify that the total length was actually measured, not just the hack to only measure BHDF for some individuals 
 measure_data<-length_ID_merge_Tt%>%
   filter(issue == "N")%>%
   dplyr::select(ID, trip, YEAR, DATE, Filename, "tilt_wl" = Tilt..degrees., "alt_corrected" = Corrected.height..m., "length_wl" = Total.Length..m.,
@@ -102,6 +102,12 @@ prop_bh<-length_data%>%
   mutate(prop_rostrum_tl = Rostrum.BH/length_use)
 
 summary(prop_bh)
+
+ppm<-length_ID_merge_Tt%>%
+  #dplyr::select(Pixel.length..to.be.scaled.by.height.in.m.,Corrected.height..m., laser_altitude_m)%>%
+  mutate(ppm = Pixel.length..to.be.scaled.by.height.in.m.*Corrected.height..m.)
+
+summary(ppm)
 
 ```
 
@@ -150,6 +156,7 @@ age_length<-measurements_demo_ind
 age_length$BIRTH_YEAR<-as.numeric(age_length$BIRTH_YEAR)
 age_length$FIRST_YEAR<-as.numeric(age_length$FIRST_YEAR)
 age_length$YEAR<-as.numeric(age_length$YEAR)
+
 
 age_calc<-age_length%>%
   ungroup()%>%
@@ -215,6 +222,8 @@ hist(ujdf$prop)
 
 plot(ujdf$FIRST_YEAR,ujdf$prop)
 
+summary(age_calc)
+
 ```
 
 ```{r age_length, echo = F, message = F}
@@ -224,6 +233,10 @@ age_calc<-age_calc%>%
   mutate(age = case_when(
     age_value == "est" & !is.na(FIRST_CALF) & (as.numeric(FIRST_CALF) - as.integer(avg_primo_age)) < as.numeric(FIRST_YEAR) ~ age + (as.integer(avg_primo_age) - (as.numeric(FIRST_CALF) - as.numeric(FIRST_YEAR))),
     TRUE ~ age
+  ))%>%
+  mutate(age_add = case_when(
+    age_value == "est" & !is.na(FIRST_CALF) & (as.numeric(FIRST_CALF) - as.integer(avg_primo_age)) < as.numeric(FIRST_YEAR) ~ "est_f",
+    TRUE ~ age_value
   ))%>%
   mutate(age_month = case_when(
     month == 9 ~ age + 0,
@@ -317,7 +330,7 @@ age_calc%>%
 ID_index<-age_calc%>%
   arrange(SEX,length_use,ID)%>%
   mutate(year_zero = as.numeric(AGECLASS_YEAR)-age)%>%
-  distinct(ID,year_zero,SEX,POD,age_value)%>%
+  distinct(ID,year_zero,SEX,POD,age_value, age_add)%>%
   mutate(ind = 1:n())
 
 ij_ID<-ID_index
