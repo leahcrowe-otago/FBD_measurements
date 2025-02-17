@@ -134,16 +134,4 @@ ggplot(noodle_diff)+
   scale_color_manual(values = c("orange","purple","black"))+
   scale_y_continuous(breaks = seq(-7.5, 7.5, by = 2.5))
 
-# ggplot(noodle_diff)+
-#   geom_point(mapping = aes(y = diff_TL, x = 1.947, color = "Total length"))+
-#   geom_point(mapping = aes(y = diff_RBH, x = 0.462, color = "Orange"))+
-#   geom_point(mapping = aes(y = diff_BHDF, x = 1.485, color = "Purple"))+
-#   theme_bw()+
-#   xlab("Actual length (m)")+
-#   ylab("Difference between observed and actual length (m)")+
-#   facet_wrap(~trip, ncol = 4)+
-#   theme(legend.position = c(0.88,0.2))+
-#   guides(color=guide_legend(title='Segment measured'))+
-#   scale_color_manual(values = c("orange","purple","black"))
-
 ggplot2::ggsave(paste0("./Figures/noodle.png"), device = "png", dpi = 700, height = 120, width = 250, units = 'mm')
