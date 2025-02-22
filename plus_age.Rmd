@@ -1,0 +1,87 @@
+---
+csl: inter-research-science-center.csl
+bibliography: references.bib
+output:
+  pdf_document:
+    keep_tex: yes
+  word_document: default
+  html_noteboook: default
+  html_document:
+    df_print: paged
+editor: visual
+header-includes:
+- \usepackage[left]{lineno}
+- \linenumbers
+- \usepackage{setspace}
+- \usepackage{times}
+fontsize: 12pt
+geometry: margin=0.8in
+---
+
+# Main results
+
+\tiny
+
+```{r, main, echo = F, warning = F, message=FALSE, out.width= "30%"}
+# k is logit(k)
+
+library(bayesplot)
+library(cmdstanr)
+library(dplyr)
+
+options(width = 200)
+
+# all population-level based params ----
+parout_in_0 = readRDS(file = paste0('./results/parout_2024-06-21.rds'))%>%mutate(age_add = 0)
+parout_in_5 = readRDS(file = paste0('./results/parout_2024-12-13_5.rds'))%>%mutate(age_add = 5)
+parout_in_10 = readRDS(file = paste0('./results/parout_2024-12-13_10.rds'))%>%mutate(age_add = 10)
+## caterpillar plots ----
+
+p0<-apply(parout_in_0%>%dplyr::select("mu[2]","mu[4]","sigma[2]","sigma[4]"), 2, quantile, c(0.05,0.25, 0.5, 0.75, 0.95), na.rm = T)
+p5<-apply(parout_in_5%>%dplyr::select("mu[2]","mu[4]","sigma[2]","sigma[4]"), 2, quantile, c(0.05,0.25, 0.5, 0.75, 0.95), na.rm = T)
+p10<-apply(parout_in_10%>%dplyr::select("mu[2]","mu[4]","sigma[2]","sigma[4]"), 2, quantile, c(0.05,0.25, 0.5, 0.75, 0.95), na.rm = T)
+
+ggplot()+
+  geom_linerange(mapping = aes(xmin = matrix(p0[1,]), xmax = matrix(p0[5,]), y = c(1,2,3,4)), size = 1)+
+  geom_linerange(mapping = aes(xmin = matrix(p5[1,]), xmax = matrix(p5[5,]), y = c(1.1,2.1,3.1,4.1)), size = 1, color = "red")+
+  geom_linerange(mapping = aes(xmin = matrix(p10[1,]), xmax = matrix(p10[5,]), y = c(1.2,2.2,3.2,4.2)), size = 1, color = "blue")+
+  geom_linerange(mapping = aes(xmin = matrix(p0[2,]), xmax = matrix(p0[4,]), y = c(1,2,3,4)), size = 3)+
+  geom_linerange(mapping = aes(xmin = matrix(p5[2,]), xmax = matrix(p5[4,]), y = c(1.1,2.1,3.1,4.1)), size = 3, color = "red")+
+  geom_linerange(mapping = aes(xmin = matrix(p10[2,]), xmax = matrix(p10[4,]), y = c(1.2,2.2,3.2,4.2)), size = 3, color = "blue")+
+  geom_point(mapping = aes(x = matrix(p0[3,]), y = c(1,2,3,4)), size = 3, color = "white")+
+  geom_point(mapping = aes(x = matrix(p5[3,]), y = c(1.1,2.1,3.1,4.1)), size = 3, color = "white")+
+  geom_point(mapping = aes(x = matrix(p10[3,]), y = c(1.2,2.2,3.2,4.2)), size = 3, color = "white")+
+  theme_bw()+
+  xlab('')+
+  ylab('')+
+  scale_y_continuous(breaks=seq(1:4),labels=c("mu_ky","mu_kz","sigma_ky","sigma_kz"))
+```
+
+# Add 5 years to unknown aged individuals
+
+```{r, p5, echo = F, out.width= "30%"}
+# add 5 years to unknown aged adults
+x<-"2024-12-13_5"
+# all population-level based params ----
+parout_in = readRDS(file = paste0('./results/parout_',x,'.rds'))
+par_df<-as.data.frame(summary(parout_in))
+print(par_df%>%filter((grepl("mu",variable) & !grepl("pred",variable)) | (grepl("sigma",variable) & !grepl("obs",variable))))
+
+print(par_df$median[2]-par_df$median[4])
+
+## caterpillar plots ----
+catplot_5<-mcmc_intervals(parout_in, pars = c("mu[2]","mu[4]","sigma[2]","sigma[4]"))
+print(catplot_5)
+png(paste0('./Figures/plus_age/catplot_',x,'.png'), width=3, height=2, units="in", res=200)
+
+catplot_0+catplot_5
+
+```
+
+# Add 10 years to unknown aged individuals
+
+```{r, p10, echo = F, out.width= "30%"}
+# add 10 years to unknown aged adults
+date_results("2024-12-13_10") # add 10 years to unknown aged animals
+
+```
