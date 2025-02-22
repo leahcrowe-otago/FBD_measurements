@@ -166,7 +166,7 @@ and the associated variance:
 
 ## 1.3 Model sensitivity to age assignments of unknown aged individuals
 
-We re-ran our model with data where age was adjusted by an additional five and 10 years at each measurement occasion for 20 individuals not seen in their birth year (this excluded known reproductive females which already had an adjustment based on observed reproductive history). In the five year adjustment, results yielded slightly higher logit($k_{hi}$) estimates (Table S1.3.1) corresponding to slower growth rates (differences between median estimates of \< 0.035 on the logit scale). In the 10 year adjustment, growth estimates were also slower than the results from the five year adjustment, but at a lesser rate (Fig. S1.3.1). Both are expected results given the added time to reach the measured lengths. It is likely that an age adjustment is appropriate for some individuals in this group while others' ages will have been overestimated, but this is impossible to know given the available sighting histories. The five year age adjustment resulted in no major changes to the effects from pod and sex membership as the range of median estimates for the Doubtful pod and for females similarly encompassed the values from all other groups (Fig. S1.3.2). Overall, these modeled results yield minor differences from the results presented in the main text and our substantive conclusions are unchanged.
+We re-ran our model with data where age was adjusted by an additional five and 10 years at each measurement occasion for 20 individuals not seen in their birth year (this excluded known reproductive females which already had an adjustment based on observed reproductive history). In the five year adjustment, results yielded slightly higher logit($k_{hi}$) estimates (Table S1.3.1) corresponding to slower growth rates (differences between median estimates of \< 0.035 on the logit scale). In the 10 year adjustment, growth estimates were also slower than the results from the five year adjustment, but at a lesser rate (Fig. S1.3.1). Both are expected results given the added time to reach the measured lengths. It is likely that an age adjustment is appropriate for some individuals in this group as they are actually older than their minimum age, while an age adjustment for others will overestimate their ages. Because the birth year of these animals is unknown, it is impossible to know an appropriate adjustment given the available sighting histories. The five year age adjustment resulted in no major changes to the effects from pod and sex membership as the range of median estimates for the Doubtful pod and for females similarly encompassed the values from all other groups (Fig. S1.3.2). Overall, these modeled results yield minor differences from the results presented in the main text and our substantive conclusions are unchanged.
 
 \newpage
 
@@ -202,13 +202,13 @@ summary%>%
   kableExtra::kable(booktabs = T, align = "c", escape = F)
 ```
 
+```{=tex}
 \newpage
 \newgeometry{margin=0.95in}
-
+```
 ::: {layout-nrow="1"}
 ![](./Figures/plus_age/catplots510.png){width="95%"}
 :::
-
 
 Fig. S1.3.1 Caterpillar plots of the parameter estimates using the original data formulation in the main text (black), and data where five (red) and 10 (blue) years were added to the age of unknown aged individuals (excluding reproductive females) at measurement occasions. The thinner lines represent the 90% credible intervals (CI), the thicker lines are the 50%CI, and the dots represent the distribution medians. See Table 1 and Table S1.3.1 for parameter definitions.
 
