@@ -51,7 +51,9 @@ Poster presented at the 2024 Society for Marine Mammalogy conference:
   - Fig. S1 map created by calling "./scripts/ms_map.R"
 10. Data: "./data/Measurements/Data for review"
   - Metadata-description.pdf: describes the data in the following files:
+    - i_estimates.csv
     - ij_1.csv
     - ij_2.csv
     - ij_3.csv
     - ij_ID.csv
+    - mcmc_results.csv
