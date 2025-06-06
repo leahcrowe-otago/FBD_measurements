@@ -1,6 +1,10 @@
 # FBD_measurements
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.14563512.svg)](https://doi.org/10.5281/zenodo.14563512)
 
+This repository is associated with the following publication:
+
+Crowe LM, Schofield MR, Dawson SM, Rayment WJ (2025) Growth dynamics of bottlenose dolphins (\textit{Tursiops truncatus}) at the southern extreme of their range. Marine Ecology Progress Series https://doi.org/10.3354/meps14858
+
 Poster presented at the 2024 Society for Marine Mammalogy conference:
 [Crowe LM, Schofield MR, Dawson SM, Rayment WJ (Nov 2024). Growth estimates of bottlenose dolphins (_Tursiops truncatus_) at the southern extreme of their range. Poster presentation at the 25th Biennial Conference on the Biology of Marine Mammals, Perth, Western Australia, Australia.](https://github.com/leahcrowe-otago/FBD_measurements/blob/main/outputs/SMM%20abstract%202024/E%26E%2061_CROWE_LEAH_SMM2024.pdf)
 
